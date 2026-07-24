@@ -1,0 +1,7 @@
+[Cc][Ll][Aa][Uu][Dd][Ee].md
+.[Cc][Ll][Aa][Uu][Dd][Ee]/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
