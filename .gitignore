@@ -5,3 +5,9 @@ __pycache__/
 .venv/
 venv/
 .env
+
+# Artefactos intermedios y de demo del pipeline (no forman parte de la
+# entrega oficial en Entrega/ -- ver README_pipeline.md)
+intermedios/
+*.pytest_cache/
+.pytest_cache/
