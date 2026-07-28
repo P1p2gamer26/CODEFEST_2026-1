@@ -11,7 +11,14 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..config import ENCODER_PRIMARY_HF_ID, ENCODER_PRIMARY_NAME
+from ..config import (
+    E5_PASSAGE_PREFIX,
+    E5_QUERY_PREFIX,
+    ENCODER_PRIMARY_HF_ID,
+    ENCODER_PRIMARY_NAME,
+    ENCODER_SECONDARY_HF_ID,
+    ENCODER_SECONDARY_NAME,
+)
 
 
 class Encoder(ABC):
@@ -34,6 +41,20 @@ class Encoder(ABC):
     def encode_one(self, text: str) -> np.ndarray:
         return self.encode([text])[0]
 
+    # --- Codificacion asimetrica (consulta vs. pasaje) ---
+    # Algunos encoders (familia E5) se entrenaron con prefijos DISTINTOS para
+    # la consulta y para el documento indexado, y omitirlos degrada la calidad
+    # de forma silenciosa. Los encoders que no los necesitan heredan estas
+    # implementaciones por defecto y se comportan igual que antes.
+
+    def encode_passages(self, texts: list[str]) -> np.ndarray:
+        """Codifica fragmentos para INDEXAR (src/embedding/build_index.py)."""
+        return self.encode(texts)
+
+    def encode_query(self, text: str) -> np.ndarray:
+        """Codifica una consulta para BUSCAR (src/retrieval/search.py)."""
+        return self.encode_one(text)
+
 
 class SentenceTransformerEncoder(Encoder):
     """Encoder real de produccion: `sentence-transformers/paraphrase-
@@ -49,12 +70,20 @@ class SentenceTransformerEncoder(Encoder):
     con acceso normal a internet: `python scripts/build_corpus_index.py`.
     """
 
-    def __init__(self, hf_id: str = ENCODER_PRIMARY_HF_ID, name: str = ENCODER_PRIMARY_NAME):
+    def __init__(
+        self,
+        hf_id: str = ENCODER_PRIMARY_HF_ID,
+        name: str = ENCODER_PRIMARY_NAME,
+        query_prefix: str = "",
+        passage_prefix: str = "",
+    ):
         from sentence_transformers import SentenceTransformer
 
         self.name = name
         self._model = SentenceTransformer(hf_id)
         self.dim = self._model.get_sentence_embedding_dimension()
+        self.query_prefix = query_prefix
+        self.passage_prefix = passage_prefix
 
     def encode(self, texts: list[str]) -> np.ndarray:
         embeddings = self._model.encode(
@@ -64,6 +93,12 @@ class SentenceTransformerEncoder(Encoder):
             show_progress_bar=False,
         )
         return embeddings.astype("float32")
+
+    def encode_passages(self, texts: list[str]) -> np.ndarray:
+        return self.encode([self.passage_prefix + t for t in texts])
+
+    def encode_query(self, text: str) -> np.ndarray:
+        return self.encode_one(self.query_prefix + text)
 
     def count_tokens(self, text: str) -> int:
         tokens = self._model.tokenizer(text, add_special_tokens=False)
@@ -87,7 +122,12 @@ class HashingFakeEncoder(Encoder):
         self.name = name
 
     def _hash_vector(self, text: str) -> np.ndarray:
-        seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest(), 16) % (2**32)
+        # El nombre entra en la semilla para que dos encoders falsos distintos
+        # produzcan rankings distintos (necesario para probar la fusion RRF
+        # multi-encoder sin red). Sigue siendo determinista: mismo nombre +
+        # mismo texto -> mismo vector.
+        seed_material = f"{self.name}\x00{text}".encode("utf-8")
+        seed = int(hashlib.sha256(seed_material).hexdigest(), 16) % (2**32)
         rng = np.random.default_rng(seed)
         vec = rng.normal(size=self.dim).astype("float32")
         norm = np.linalg.norm(vec)
@@ -100,8 +140,37 @@ class HashingFakeEncoder(Encoder):
         return len(text.split())
 
 
+# Encoders conocidos: nombre corto (el que se usa en la carpeta de entrega
+# `encoder_<nombre>/` y en la CLI) -> como instanciarlo. Agregar un encoder
+# nuevo es agregar una entrada aqui.
+KNOWN_ENCODERS: dict[str, dict] = {
+    ENCODER_PRIMARY_NAME: {
+        "hf_id": ENCODER_PRIMARY_HF_ID,
+        "query_prefix": "",
+        "passage_prefix": "",
+    },
+    ENCODER_SECONDARY_NAME: {
+        "hf_id": ENCODER_SECONDARY_HF_ID,
+        "query_prefix": E5_QUERY_PREFIX,
+        "passage_prefix": E5_PASSAGE_PREFIX,
+    },
+}
+
+
 @lru_cache(maxsize=None)
 def get_encoder(name: str = ENCODER_PRIMARY_NAME, use_fake: bool = False) -> Encoder:
     if use_fake:
         return HashingFakeEncoder(name=name)
-    return SentenceTransformerEncoder(name=name)
+
+    spec = KNOWN_ENCODERS.get(name)
+    if spec is None:
+        raise ValueError(
+            f"encoder desconocido: {name!r}. Conocidos: {sorted(KNOWN_ENCODERS)}. "
+            f"Agregar una entrada en KNOWN_ENCODERS (src/embedding/encoders.py)."
+        )
+    return SentenceTransformerEncoder(
+        hf_id=spec["hf_id"],
+        name=name,
+        query_prefix=spec["query_prefix"],
+        passage_prefix=spec["passage_prefix"],
+    )

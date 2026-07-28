@@ -190,8 +190,24 @@ python scripts/inspect_results.py \
   --index-dir Entrega/base_vectorial/encoder_paraphrase-multilingual-MiniLM-L12-v2
 ```
 
-Validar el esquema por línea de comandos (mismo comando en cualquier
-plataforma porque es Python puro):
+**Antes de entregar, correr siempre el validador completo:**
+
+```bash
+python scripts/validar_entrega.py                 # durante el desarrollo
+python scripts/validar_entrega.py --esperar-50    # antes de la entrega final
+```
+
+Verifica de una sola pasada todo lo que puede costar la evaluación:
+estructura de carpetas y archivos (sec. 1.4), esquema estricto de
+`resultados.jsonl` (3 documentos + 10 fragmentos, ranks correctos, ≤250
+palabras por fragmento), que cada `doc_id`/`chunk_id` reportado exista de
+verdad en la metadata (trazabilidad), que el índice FAISS y `metadata.jsonl`
+estén alineados (sec. 5.3), los campos obligatorios de la Tabla 1, y que el
+informe técnico no pase de 8 páginas. Sale con código 1 si algo falla, así
+que sirve en CI.
+
+Validación mínima del esquema a mano, si se quiere sin el script (mismo
+comando en cualquier plataforma porque es Python puro):
 
 ```bash
 python -c "
@@ -205,6 +221,47 @@ with open('Entrega/resultados.jsonl', encoding='utf-8') as f:
 print('esquema OK')
 "
 ```
+
+### Paso 3b (opcional) — Multi-encoder con fusión RRF
+
+La especificación permite construir la base con más de un encoder (sec. 4.4)
+y combinar sus rankings sin modelos generativos (sec. 8.4). El pipeline lo
+soporta pasando varios `--encoder-name`:
+
+```bash
+# OFFLINE: construye un índice por encoder, cada uno en su carpeta
+python scripts/build_corpus_index.py --with-graph \
+  --encoder-name paraphrase-multilingual-MiniLM-L12-v2 multilingual-e5-base
+
+# ONLINE: busca en ambos índices y fusiona los rankings con RRF
+python Entrega/generador.py --consultas <archivo> --use-graph \
+  --encoder-name paraphrase-multilingual-MiniLM-L12-v2 multilingual-e5-base
+```
+
+El segundo encoder (`intfloat/multilingual-e5-base`, MIT, 768 dim) se eligió
+por **diversidad, no por ser "mejor"**: está entrenado para recuperación
+densa mientras que el primario está afinado para similitud de paráfrasis, así
+que sus errores no están correlacionados — que es la condición para que
+fusionar dos rankings aporte algo.
+
+**Detalle importante:** el chunking se hace **una sola vez** (con el tokenizer
+del primer encoder) y esos mismos fragmentos se indexan con todos. Si cada
+encoder fragmentara por su cuenta, los `chunk_id` colisionarían apuntando a
+textos distintos y la fusión mezclaría fragmentos que no son el mismo.
+`generador.py` valida esto al cargar y aborta si los índices no coinciden.
+
+Para saber si el segundo encoder aporta algo antes de pagar su costo:
+
+```bash
+python scripts/compare_encoders.py
+```
+
+Reporta cuánto se solapan los rankings de ambos. Si son casi idénticos,
+fusionar no aporta y conviene entregar un solo encoder.
+
+> Al probar con `--use-fake-encoder` y varios encoders, pasar **siempre**
+> `--out-base intermedios/<algo>` (y `--index-base` en el generador) para no
+> escribir índices de prueba dentro de `Entrega/`.
 
 ### Paso 4 — Cuando cambien corpus/consultas (de sintéticos a los oficiales de ADL)
 
@@ -363,7 +420,7 @@ Mapeo directo a la Sección 1.4 ("Entregables") de
 
 | # | Entregable exigido | Dónde está | Estado |
 |---|---|---|---|
-| 1 | Base vectorial: `index.faiss` + `metadata.jsonl` por encoder, en `base_vectorial/encoder_<nombre>/` | `Entrega/base_vectorial/encoder_paraphrase-multilingual-MiniLM-L12-v2/` | ✅ generado con el encoder real, `index.faiss` serializado con `faiss.write_index()` |
+| 1 | Base vectorial: `index.faiss` + `metadata.jsonl` por encoder, en `base_vectorial/encoder_<nombre>/` | `Entrega/base_vectorial/encoder_paraphrase-multilingual-MiniLM-L12-v2/` | ✅ generado con el encoder real, `index.faiss` serializado con `faiss.write_index()`. Con multi-encoder (paso 3b) se crea una subcarpeta adicional por cada encoder, como permite la sec. 1.4 |
 | 1b | Grafo de conocimiento (bonus) en `base_vectorial/grafo/grafo.graphml` | `Entrega/base_vectorial/grafo/grafo.graphml` | ✅ (bonus implementado) |
 | 2 | `resultados.jsonl`, 50 líneas, consultas q001–q050 | `Entrega/resultados.jsonl` | ⚠️ 50 líneas presentes, pero generadas con las consultas de prueba provisionales, no las oficiales — regenerar con q001–q050 cuando ADL las entregue (paso 4 de la sección 6) |
 | 3 | Documento técnico en PDF (máx. 8 páginas): chunking, encoder(s), tipo de índice FAISS, grafo | `Entrega/informe_tecnico.pdf` | ✅ |
@@ -405,6 +462,8 @@ scripts/
   gen_synthetic_corpus.py   genera corpus_ejemplo/ (dev only, no es parte del pipeline)
   build_corpus_index.py     OFFLINE: corpus -> indice FAISS + metadata + grafo
   inspect_results.py        inspeccion cualitativa manual de resultados.jsonl
+  validar_entrega.py        valida Entrega/ contra la especificacion (correr antes de entregar)
+  compare_encoders.py       diagnostico: cuanto difieren dos encoders entre si
   gui_app.py                 lanza la interfaz grafica (Tkinter)
 tests/                  pytest (31 pruebas, corren con HashingFakeEncoder, sin red)
 Entrega/                estructura oficial de entrega (ver sec. 1.4 de la especificacion)

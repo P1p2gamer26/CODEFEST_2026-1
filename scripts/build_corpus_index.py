@@ -33,7 +33,16 @@ logger = logging.getLogger("build_corpus_index")
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--corpus-dir", type=Path, default=CORPUS_DIR)
-    parser.add_argument("--encoder-name", default=ENCODER_PRIMARY_NAME)
+    parser.add_argument(
+        "--encoder-name",
+        nargs="+",
+        default=[ENCODER_PRIMARY_NAME],
+        help="Uno o varios encoders (sec. 4.4). Con varios se construye un indice "
+        "independiente por encoder, cada uno en su carpeta encoder_<nombre>/, y "
+        "Entrega/generador.py puede fusionar sus rankings con RRF. El chunking se "
+        "hace una sola vez (con el tokenizer del primero) para que los chunk_id "
+        "sean identicos entre indices.",
+    )
     parser.add_argument(
         "--use-fake-encoder",
         action="store_true",
@@ -56,6 +65,15 @@ def main() -> None:
     )
     parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument(
+        "--out-base",
+        type=Path,
+        default=None,
+        help="Carpeta base donde crear las subcarpetas encoder_<nombre>/. Por defecto "
+        "Entrega/base_vectorial (la oficial). Usar SIEMPRE al probar con varios "
+        "encoders y --use-fake-encoder, para no escribir indices de prueba dentro "
+        "de la entrega.",
+    )
+    parser.add_argument(
         "--graph-out-path",
         type=Path,
         default=GRAFO_PATH,
@@ -67,19 +85,33 @@ def main() -> None:
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    encoder = get_encoder(name=args.encoder_name, use_fake=args.use_fake_encoder)
-    logger.info(
-        "encoder: %s (dim=%d)%s",
-        encoder.name,
-        encoder.dim,
-        " [FAKE -- solo pruebas, no usar para la entrega final]" if args.use_fake_encoder else "",
-    )
+    if args.out_dir is not None and len(args.encoder_name) > 1:
+        logger.error(
+            "--out-dir solo vale con un unico --encoder-name (con varios, cada indice "
+            "va a su propia carpeta encoder_<nombre>/ como exige la sec. 1.4)"
+        )
+        sys.exit(2)
+
+    encoders = [get_encoder(name=n, use_fake=args.use_fake_encoder) for n in args.encoder_name]
+    for enc in encoders:
+        logger.info(
+            "encoder: %s (dim=%d)%s",
+            enc.name,
+            enc.dim,
+            " [FAKE -- solo pruebas, no usar para la entrega final]" if args.use_fake_encoder else "",
+        )
 
     doc_id_manifest = load_doc_id_manifest(args.doc_id_manifest) if args.doc_id_manifest else None
 
+    # Se fragmenta UNA sola vez, con el tokenizer del primer encoder, y esos
+    # mismos records se indexan con todos. Si cada encoder fragmentara por su
+    # cuenta, los chunk_id colisionarian apuntando a textos distintos y la
+    # fusion RRF por chunk_id (sec. 8.4) mezclaria fragmentos que no son el
+    # mismo. Ver el docstring de src/retrieval/fusion.py.
+    logger.info("fragmentando con el tokenizer de: %s", encoders[0].name)
     records = build_corpus_chunks(
         corpus_dir=args.corpus_dir,
-        count_tokens=encoder.count_tokens,
+        count_tokens=encoders[0].count_tokens,
         doc_id_manifest=doc_id_manifest,
     )
     if not records:
@@ -89,8 +121,15 @@ def main() -> None:
 
     write_chunks_jsonl(records)
 
-    out_dir = build_and_persist(records, encoder, out_dir=args.out_dir)
-    logger.info("indice FAISS y metadata escritos en: %s", out_dir)
+    for enc in encoders:
+        if args.out_dir is not None:
+            target = args.out_dir
+        elif args.out_base is not None:
+            target = args.out_base / f"encoder_{enc.name}"
+        else:
+            target = None  # build_and_persist resuelve la ruta oficial de entrega
+        out_dir = build_and_persist(records, enc, out_dir=target)
+        logger.info("indice FAISS y metadata escritos en: %s", out_dir)
 
     if args.with_graph:
         from src.graph.build_graph import build_knowledge_graph, export_graphml

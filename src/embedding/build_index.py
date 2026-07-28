@@ -21,7 +21,9 @@ def build_faiss_index(records: list[ChunkRecord], encoder: Encoder) -> faiss.Ind
     if not records:
         raise ValueError("no hay chunks para indexar")
 
-    embeddings = encoder.encode([r.texto for r in records])
+    # encode_passages (no encode) para que los encoders que lo requieran
+    # apliquen su prefijo de pasaje -- ver src/embedding/encoders.py.
+    embeddings = encoder.encode_passages([r.texto for r in records])
     index = faiss.IndexFlatIP(encoder.dim)  # producto interno = coseno (vectores normalizados)
     index.add(embeddings)
     return index
