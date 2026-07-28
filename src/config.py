@@ -55,11 +55,30 @@ ENCODER_PRIMARY_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 ENCODER_PRIMARY_HF_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 ENCODER_MAX_INPUT_TOKENS = 512
 
+# Secundario (opcional, sec. 4.4): se usa junto al primario fusionando ambos
+# rankings con RRF (sec. 8.4). Elegido por DIVERSIDAD, no por ser "mejor": E5
+# esta entrenado para recuperacion densa mientras que el primario esta afinado
+# para similitud de parafrasis, asi que sus errores no estan correlacionados --
+# que es la condicion para que fusionar dos rankings aporte algo. MIT, 768 dim,
+# multilingue nativo, limite 512 tokens.
+ENCODER_SECONDARY_NAME = "multilingual-e5-base"
+ENCODER_SECONDARY_HF_ID = "intfloat/multilingual-e5-base"
+
+# La familia E5 exige estos prefijos: sin ellos la calidad cae de forma
+# silenciosa (el modelo fue entrenado siempre con ellos). Consulta y pasaje
+# llevan prefijos DISTINTOS -- por eso `Encoder` expone codificacion asimetrica.
+E5_QUERY_PREFIX = "query: "
+E5_PASSAGE_PREFIX = "passage: "
+
+
 def encoder_dir(encoder_name: str) -> Path:
     return BASE_VECTORIAL_DIR / f"encoder_{encoder_name}"
 
 # --- Chunking ---
-CHUNK_TOKEN_BUDGET = 280  # margen bajo el limite de 512 tokens del encoder
+# El presupuesto debe respetar el limite MINIMO de entrada entre todos los
+# encoders en uso (hoy 512 en ambos). 280 deja margen de sobra aunque los
+# tokenizers difieran entre si.
+CHUNK_TOKEN_BUDGET = 280
 CHUNK_OVERLAP_SENTENCES = 1
 
 # --- Formato de salida (resultados.jsonl) ---

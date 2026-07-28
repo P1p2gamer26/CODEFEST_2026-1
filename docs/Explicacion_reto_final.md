@@ -343,6 +343,7 @@ para no perder consistencia.
 | Tamaño real del corpus (~1826 archivos) | ⚠️ Aún no probado a esa escala — solo se ha corrido contra el corpus sintético (15 docs) y el corpus real de ejemplo (~30 PDFs). Con el volumen real hay que revalidar tiempos de indexación y si `IndexFlatIP` (el que se usa hoy) sigue siendo razonable o conviene pasar a `IndexIVFFlat`/`IndexHNSW` (sec. 5.2 de la especificación). |
 | Corpus y las 50 consultas aún no entregados por ADL | ℹ️ Confirmado por la charla — no es una omisión nuestra, es un insumo externo pendiente. Nada que hacer hasta que llegue. |
 | Usar la extensión real del archivo (minúsculas) en `formato`, no solo pdf/html/md | ✅ Ya se hace así: `html`, `json`, `pdf`, `csv`/`xlsx`, `img` (ver `src/extraction/*_extractor.py`) |
+| Múltiples encoders, cada uno con su carpeta y su `metadata.jsonl` (sec. 4.4) | ✅ Soportado: `--encoder-name A B` crea `encoder_A/` y `encoder_B/`, y los rankings se fusionan con RRF. Detrás de flag hasta poder medir su impacto. |
 
 ### Lo que hay que mejorar / vigilar de aquí a que llegue el corpus real
 
@@ -350,7 +351,7 @@ Ordenado por impacto sobre las métricas (NDCG@10 + F1@3), que es lo único
 que evalúa la Etapa 1:
 
 1. ~~**Ajustar `doc_id`** para aceptar el que entregue ADL~~ — ✅ hecho, ver la tabla de arriba.
-2. **Multi-encoder**: `reciprocal_rank_fusion()` (`src/retrieval/fusion.py`) ya existe y funciona, pero hoy solo fusiona vector+grafo; `generador.py` recibe un único `--encoder-name`. Conectar un segundo encoder y fusionar ambos índices es la palanca más directa sobre las dos métricas, y la infraestructura ya está construida.
+2. ~~**Multi-encoder**~~ — ✅ hecho. `scripts/build_corpus_index.py` y `Entrega/generador.py` aceptan varios `--encoder-name`; los rankings se fusionan con RRF (sec. 8.4) junto con el grafo (sec. 8.5). Segundo encoder: `intfloat/multilingual-e5-base` (MIT, 768 dim), elegido por diversidad de objetivo de entrenamiento. Queda **detrás de flag**, no activo por defecto, hasta poder medir si mejora. `scripts/compare_encoders.py` reporta cuánto se solapan ambos rankings para decidirlo con datos.
 3. **Revalidar el tipo de índice FAISS** con el volumen real de ~1826 documentos (probablemente sigue siendo manejable con `IndexFlatIP`, que además garantiza resultados exactos, pero hay que medirlo, no asumirlo).
 4. **Calibrar el chunking** con documentos reales: los PDFs de SIPRI/NASA/Banco Mundial tienen estructura muy distinta al corpus sintético, y el tamaño de chunk y el overlap pegan directo al NDCG.
 5. **Ampliar el informe técnico**: va en 3 páginas de las 8 permitidas, y ahí es exactamente donde se evalúan las justificaciones de diseño.

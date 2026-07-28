@@ -44,7 +44,9 @@ def search(
     candidatos de FAISS antes de filtrar, ya que los filtros pueden
     descartar algunos de los top-k crudos.
     """
-    query_vec = encoder.encode_one(query).reshape(1, -1)
+    # encode_query (no encode_one) para que los encoders que lo requieran
+    # apliquen su prefijo de consulta -- ver src/embedding/encoders.py.
+    query_vec = encoder.encode_query(query).reshape(1, -1)
     fetch_k = min(index.ntotal, max(k * overfetch_factor, k))
     scores, ids = index.search(query_vec, fetch_k)
 

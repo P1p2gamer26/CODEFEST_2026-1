@@ -61,11 +61,33 @@ FASE ONLINE (cada vez que llega una consulta)
   solo para probar la mecánica del pipeline sin depender de internet ni de
   calidad semántica real). `build_index.py` vectoriza todos los fragmentos y
   arma el índice FAISS + `metadata.jsonl` paralelo.
+
+  La interfaz distingue **codificación de consulta vs. de pasaje**
+  (`encode_query()` / `encode_passages()`), porque algunos encoders —la
+  familia E5, que usamos como secundario opcional— se entrenaron con prefijos
+  distintos para cada caso (`"query: "` / `"passage: "`) y omitirlos degrada
+  la calidad en silencio. Los encoders que no los necesitan heredan el
+  comportamiento por defecto sin cambios. `KNOWN_ENCODERS` mapea el nombre
+  corto (el que se usa en `encoder_<nombre>/` y en la CLI) a su `hf_id` y sus
+  prefijos.
 - **`retrieval/`** — `search.py` busca los k vecinos más cercanos en FAISS;
   `aggregate.py` colapsa fragmentos a nivel de documento (para elegir los 3
-  documentos más relevantes); `fusion.py` combina el ranking vectorial con el
-  del grafo si está activado; `truncate.py` recorta cada fragmento a <=250
-  palabras según pide el esquema de entrega.
+  documentos más relevantes); `fusion.py` implementa Reciprocal Rank Fusion
+  (RRF) para combinar varias listas ordenadas —uno o varios encoders, más el
+  grafo tratado como un "índice" adicional (sec. 8.5)—; `truncate.py` recorta
+  cada fragmento a <=250 palabras según pide el esquema de entrega.
+
+  RRF se eligió sobre CombSUM/CombMNZ porque solo mira posiciones, no
+  puntuaciones absolutas, y por lo tanto es robusto a que dos encoders operen
+  en escalas distintas. `rebuild_hits_from_fusion()` relee siempre el texto
+  desde la metadata en vez de confiar en el item representativo de la fusión:
+  eso garantiza que el texto devuelto corresponda de verdad al `chunk_id`
+  reportado, aunque el item haya venido de otra lista.
+
+  **Invariante:** fusionar por `chunk_id` solo es válido si todos los índices
+  comparten los mismos fragmentos. Por eso el chunking se hace una sola vez y
+  se reutiliza para todos los encoders (ver `scripts/build_corpus_index.py`),
+  y `Entrega/generador.py` aborta si detecta índices desincronizados.
 - **`graph/`** — bonus. `ner.py` extrae entidades con spaCy
   (`es/en/pt_core_news_sm`); `relations.py` infiere relaciones simples entre
   entidades co-ocurrentes; `build_graph.py` arma un grafo `networkx` y lo

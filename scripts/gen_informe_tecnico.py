@@ -149,6 +149,53 @@ def build_story() -> list:
     ]))
     story.append(tbl)
     story.append(Spacer(1, 8))
+
+    story.append(h2("3.1 Encoder secundario y fusion de rankings (sec. 4.4)"))
+    story.append(p(
+        "El pipeline soporta construir la base con mas de un encoder. El "
+        "secundario es <b>intfloat/multilingual-e5-base</b> (encoder tipo BERT, "
+        "licencia MIT, 768 dimensiones, multilingue nativo, limite 512 tokens). "
+        "El criterio de seleccion no fue elegir un modelo \"mejor\" en abstracto, "
+        "sino uno con <b>errores decorrelacionados</b> respecto al primario: E5 "
+        "esta entrenado para recuperacion densa mientras que el primario esta "
+        "afinado para similitud de parafrasis. Fusionar dos rankings solo aporta "
+        "cuando los modelos se equivocan en casos distintos; dos encoders de la "
+        "misma familia habrian aportado poco."
+    ))
+    story.append(p(
+        "La familia E5 exige prefijos distintos para consulta (<i>query:</i>) y "
+        "pasaje (<i>passage:</i>); omitirlos degrada la calidad silenciosamente. "
+        "Por eso la interfaz <i>Encoder</i> distingue codificacion asimetrica "
+        "(<i>encode_query</i> / <i>encode_passages</i>), y los encoders que no "
+        "los requieren heredan el comportamiento por defecto."
+    ))
+    story.append(p(
+        "Las listas se combinan con <b>Reciprocal Rank Fusion</b> (RRF, ecuacion 7, "
+        "con k0=60), elegido sobre CombSUM/CombMNZ porque opera sobre posiciones y "
+        "no sobre puntuaciones absolutas: es robusto a que dos encoders produzcan "
+        "similitudes en escalas distintas. El grafo de conocimiento se incorpora "
+        "como una lista adicional a fusionar, tal como sugiere la sec. 8.5."
+    ))
+    story.append(p(
+        "<b>Invariante de correccion:</b> la fusion empareja fragmentos por "
+        "<i>chunk_id</i>, lo que solo es valido si todos los indices comparten los "
+        "mismos fragmentos. Como el presupuesto de chunking depende del tokenizer, "
+        "fragmentar por separado con cada encoder produciria <i>chunk_id</i> "
+        "colisionantes apuntando a textos distintos. Por eso el chunking se ejecuta "
+        "una unica vez y sus fragmentos se reutilizan para todos los encoders; "
+        "<i>generador.py</i> ademas verifica la coincidencia al cargar y aborta si "
+        "detecta indices desincronizados, en lugar de producir resultados "
+        "silenciosamente incorrectos."
+    ))
+    story.append(p(
+        "Dado que el <i>ground truth</i> no es publico durante el reto, no es "
+        "posible medir NDCG@10 ni F1@3 para decidir entre uno y dos encoders. Se "
+        "incluye <i>scripts/compare_encoders.py</i>, que cuantifica el solapamiento "
+        "entre ambos rankings: un solapamiento alto indica que fusionar no aportaria "
+        "y que conviene entregar un solo indice. La configuracion multi-encoder "
+        "queda por tanto detras de un flag, desactivada por defecto."
+    ))
+
     story.append(p(
         "No se emplea ningun modelo decoder/generativo en ninguna etapa de "
         "indexacion o recuperacion (sec. 4.2 y 8.3): en particular, se descarto "
