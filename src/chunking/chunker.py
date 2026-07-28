@@ -107,8 +107,19 @@ def _pack_sentences(
             )
             posicion += 1
             overlap = current[-overlap_sentences:] if overlap_sentences > 0 else []
+            overlap_tokens = count_tokens(" ".join(overlap)) if overlap else 0
+            if overlap and overlap_tokens + sent_tokens > token_budget:
+                # El overlap por si solo ya deja sin espacio a la siguiente
+                # oracion: sin este corte, el flush se repetiria para siempre
+                # con el mismo overlap (nunca avanza `i`) -- se descarta el
+                # overlap en este punto puntual para garantizar progreso.
+                # Reproducido con oraciones largas de informes tecnicos
+                # reales (ver corpus_real_ejemplo/), no aparecia con el
+                # corpus sintetico de oraciones mas cortas.
+                overlap = []
+                overlap_tokens = 0
             current = list(overlap)
-            current_tokens = count_tokens(" ".join(current)) if current else 0
+            current_tokens = overlap_tokens
             continue  # reintenta la misma oracion contra el chunk reiniciado
 
         current.append(sent)

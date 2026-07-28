@@ -112,3 +112,21 @@ def test_single_oversized_sentence_becomes_its_own_chunk():
     chunks = chunk_document(long_sentence, formato="html", lang="en", token_budget=3, overlap_sentences=0)
     assert len(chunks) == 1
     assert chunks[0].texto == long_sentence
+
+
+def test_oversized_sentence_after_overlap_does_not_hang():
+    """Regresion: si el overlap de la oracion anterior + la siguiente oracion
+    ya excede el presupuesto, el empaquetador debia entrar en un loop
+    infinito (nunca avanzaba `i`, seguia vaciando el mismo overlap para
+    siempre). Reproducido con oraciones largas de informes tecnicos reales
+    (ver corpus_real_ejemplo/); aqui se fuerza el mismo escenario con un
+    presupuesto pequeno para que el test corra rapido y sin red."""
+    texto = (
+        "First sentence sets up context. "
+        "Second sentence is deliberately long enough that even alone with the "
+        "one-sentence overlap from the previous chunk it still cannot possibly "
+        "fit inside the tiny token budget configured for this regression test."
+    )
+    chunks = chunk_document(texto, formato="html", lang="en", token_budget=5, overlap_sentences=1)
+    assert len(chunks) >= 1
+    assert sum(len(c.texto.split()) for c in chunks) >= len(texto.split())

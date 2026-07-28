@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CODEFEST Ad Astra 2026 — Encoders y Arquitectura</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f4f6fb;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e4e7ef;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6;
+    --series-2:       #eb6834;
+    --series-3:       #1baf7a;
+    --series-4:       #eda100;
+    --series-5:       #e87ba4;
+    --series-6:       #4a3aa7;
+    --seq-100:        #cde2fb;
+    --seq-700:        #0d366b;
+    --good:           #0ca30c;
+    --warning:        #c98500;
+    --critical:       #d03b3b;
+    --hero-grad-a:    #12234a;
+    --hero-grad-b:    #1c3f7a;
+    --hero-grad-c:    #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d10;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #98978f;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.12);
+      --series-1:       #3987e5;
+      --series-2:       #d95926;
+      --series-3:       #199e70;
+      --series-4:       #c98500;
+      --series-5:       #d55181;
+      --series-6:       #9085e9;
+      --seq-100:        #184f95;
+      --seq-700:        #cde2fb;
+      --good:           #0ca30c;
+      --warning:        #fab219;
+      --critical:       #e66767;
+      --hero-grad-a:    #050912;
+      --hero-grad-b:    #0d1f3f;
+      --hero-grad-c:    #1c5cab;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d10;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #98978f;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.12);
+    --series-1:       #3987e5;
+    --series-2:       #d95926;
+    --series-3:       #199e70;
+    --series-4:       #c98500;
+    --series-5:       #d55181;
+    --series-6:       #9085e9;
+    --seq-100:        #184f95;
+    --seq-700:        #cde2fb;
+    --good:           #0ca30c;
+    --warning:        #fab219;
+    --critical:       #e66767;
+    --hero-grad-a:    #050912;
+    --hero-grad-b:    #0d1f3f;
+    --hero-grad-c:    #1c5cab;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px 90px; }
+
+  .hero {
+    background: linear-gradient(135deg, var(--hero-grad-a), var(--hero-grad-b) 55%, var(--hero-grad-c));
+    color: #fff;
+    padding: 56px 20px 48px;
+    margin-bottom: 32px;
+  }
+  .hero-inner { max-width: 1000px; margin: 0 auto; }
+  .hero .eyebrow {
+    font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #9db8e8; margin: 0 0 10px; font-weight: 600;
+  }
+  .hero h1 { font-size: 2rem; margin: 0 0 12px; letter-spacing: -0.01em; }
+  .hero p { color: #cfe0f7; max-width: 640px; margin: 0; font-size: 0.98rem; }
+
+  h2.section-title {
+    font-size: 1.15rem; margin: 0 0 4px; display:flex; align-items:center; gap:10px;
+  }
+  .section-num {
+    display:inline-flex; align-items:center; justify-content:center;
+    width: 26px; height: 26px; border-radius: 8px; font-size: 0.8rem; font-weight: 700;
+    background: var(--seq-100); color: var(--seq-700); flex-shrink:0;
+  }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px 28px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .card .desc { color: var(--text-secondary); font-size: 0.87rem; margin: 6px 0 22px; max-width: 660px; }
+
+  /* bar chart */
+  .bars { display: flex; flex-direction: column; gap: 14px; min-width: 560px; }
+  .bar-row { display: grid; grid-template-columns: 210px 1fr 56px; align-items: center; gap: 12px; }
+  .bar-label { font-size: 0.83rem; text-align: right; }
+  .bar-label .sub { display:block; color: var(--text-muted); font-size: 0.71rem; font-weight: 400; }
+  .bar-track { position: relative; height: 22px; background: var(--gridline); border-radius: 5px; }
+  .bar-fill { position: absolute; left:0; top:0; height: 100%; border-radius: 5px; }
+  .bar-value { font-size: 0.83rem; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+  .axis-line { display:flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-muted); margin-top: -2px; padding-left: 222px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 0.83rem; min-width: 680px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--gridline); }
+  th { color: var(--text-muted); font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.recommended td:first-child { position: relative; padding-left: 22px; font-weight: 600; }
+  tr.recommended td:first-child::before { content: "★"; position: absolute; left: 0; color: var(--series-2); }
+  tr:last-child td { border-bottom: none; }
+
+  .pill { font-size: 0.72rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-secondary); white-space: nowrap; }
+  .pill.good { color: var(--good); border-color: var(--good); background: color-mix(in srgb, var(--good) 12%, transparent); }
+  .pill.warn { color: var(--warning); border-color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, transparent); }
+  .pill.bad  { color: var(--critical); border-color: var(--critical); background: color-mix(in srgb, var(--critical) 12%, transparent); }
+
+  .why-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .why-item {
+    border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px;
+    border-left: 4px solid var(--series-1);
+  }
+  .why-item.b { border-left-color: var(--series-2); }
+  .why-item.c { border-left-color: var(--series-3); }
+  .why-item h3 { margin: 0 0 6px; font-size: 0.95rem; }
+  .why-item p { margin: 0; font-size: 0.83rem; color: var(--text-secondary); }
+
+  .checklist { display: flex; flex-direction: column; gap: 10px; }
+  .check-row { display: flex; gap: 12px; align-items: flex-start; font-size: 0.86rem; }
+  .check-row .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--series-3); margin-top: 6px; flex-shrink: 0;
+  }
+  .check-row b { display:block; }
+  .check-row span.meta { color: var(--text-secondary); }
+
+  .flow-phase { margin-bottom: 22px; }
+  .flow-phase:last-child { margin-bottom: 0; }
+  .flow-phase-label {
+    font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--seq-700); background: var(--seq-100); display: inline-block;
+    padding: 3px 10px; border-radius: 999px; margin-bottom: 14px;
+  }
+  .flow-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 900px; }
+  .flow-box {
+    border: 1px solid var(--border); border-radius: 10px; background: var(--page);
+    padding: 10px 14px; font-size: 0.8rem; font-weight: 600; text-align: center;
+    min-width: 130px; flex-shrink: 0;
+  }
+  .flow-box span { display: block; font-weight: 400; color: var(--text-muted); font-size: 0.7rem; margin-top: 3px; }
+  .flow-box.highlight { border-color: var(--series-1); background: var(--seq-100); color: var(--seq-700); }
+  .flow-box.small { min-width: 150px; padding: 8px 12px; }
+  .flow-box.a { border-left: 3px solid var(--series-1); }
+  .flow-box.b { border-left: 3px solid var(--series-2); }
+  .flow-split { display: flex; flex-direction: column; gap: 8px; }
+  .flow-arrow { color: var(--text-muted); font-size: 1.1rem; flex-shrink: 0; }
+  .flow-side { font-size: 0.78rem; color: var(--text-secondary); margin-top: 10px; }
+
+  .note { font-size: 0.8rem; color: var(--text-muted); margin-top: 16px; line-height: 1.55; }
+
+  .banner {
+    margin-top: 40px;
+    padding: 52px 24px;
+    text-align: center;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--hero-grad-a), var(--hero-grad-b) 60%, var(--series-2));
+    color: #fff;
+  }
+  .banner .big {
+    font-size: clamp(2rem, 6vw, 3.4rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.25);
+  }
+  .banner .small { margin-top: 10px; color: #cfe0f7; font-size: 0.95rem; }
+
+  .foot { text-align: center; color: var(--text-muted); font-size: 0.75rem; margin-top: 28px; }
+</style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">CODEFEST Ad Astra 2026 · Etapa 1 · Base de conocimiento vectorial</p>
+      <h1>Encoders, arquitectura y qué necesita nuestro PC para correr esto</h1>
+      <p>Guía para el equipo: qué encoders usar (y por qué son buena opción), cómo se conecta todo el pipeline, y una estimación honesta de cuánto tardaría y qué requiere correrlo en el hardware que tenemos.</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="card">
+      <h2 class="section-title"><span class="section-num">1</span>Ranking por calidad — MTEB Multilingual (retrieval)</h2>
+      <p class="desc">Puntuación en el benchmark MTEB multilingüe (tareas de recuperación), sin ponderar por tamaño o velocidad — solo calidad de resultado.</p>
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-label">Qwen3-Embedding-8B<span class="sub">Alibaba · 8B params</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:94%; background:var(--series-1)"></div></div>
+          <div class="bar-value">70.6</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">Llama-Embed-Nemotron-8B<span class="sub">NVIDIA · 250+ idiomas</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:92%; background:var(--series-1)"></div></div>
+          <div class="bar-value">~69</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">gte-Qwen2-7B-instruct<span class="sub">Alibaba · 7B params</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:87%; background:var(--series-3)"></div></div>
+          <div class="bar-value">~67</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">BGE-M3<span class="sub">BAAI · dense+sparse+multi-vector</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:79%; background:var(--series-3)"></div></div>
+          <div class="bar-value">~63</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">multilingual-e5-large-instruct<span class="sub">Microsoft · 560M</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:74%; background:var(--text-muted)"></div></div>
+          <div class="bar-value">~62</div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-label">paraphrase-multilingual-mpnet<span class="sub">línea base notebooks ADL</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:55%; background:var(--text-muted)"></div></div>
+          <div class="bar-value">~50</div>
+        </div>
+        <div class="axis-line"><span>0</span><span>25</span><span>50</span><span>75</span><span>MTEB score</span></div>
+      </div>
+      <p class="note">Puntajes MTEB v2 multilingüe (2026), redondeados; varían según el subset de tareas evaluado. El baseline de los notebooks de ADL queda muy por debajo de las opciones actuales de mejor calidad — sirve solo para pruebas rápidas, no para la entrega final.</p>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title"><span class="section-num">2</span>¿Por qué estos dos encoders?</h2>
+      <p class="desc">La razón concreta detrás de cada elección, no solo el número de MTEB.</p>
+      <div class="why-grid">
+        <div class="why-item">
+          <h3>Qwen3-Embedding-8B</h3>
+          <p>Es el que mejor puntúa en el leaderboard multilingüe actual. Soporta más de 100 idiomas de forma nativa (incluye es/en/pt sin problema), acepta hasta 32k tokens de entrada (mucho margen sobre nuestros chunks) y tiene licencia Apache 2.0, así que no hay restricción de uso. Es nuestro encoder principal.</p>
+        </div>
+        <div class="why-item b">
+          <h3>Llama-Embed-Nemotron-8B</h3>
+          <p>Cubre más de 250 idiomas y está entrenado con foco específico en robustez multilingüe — complementa a Qwen3 en los casos donde el texto tenga giros regionales o mezcla de idiomas (portugués técnico, jerga local, etc.). Al ser un encoder distinto entrenado distinto, sus errores no son los mismos que los de Qwen3, así que combinarlos reduce puntos ciegos.</p>
+        </div>
+        <div class="why-item c">
+          <h3>BGE-M3 (plan B / extra)</h3>
+          <p>No es tan fuerte en el ranking puro, pero hace algo único: retrieval híbrido (denso + disperso + multi-vector) en un solo modelo, con licencia MIT. Si el tiempo alcanza, es la opción natural para un tercer encoder o para experimentar con búsqueda híbrida sin sumar otro modelo de 8B.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title"><span class="section-num">3</span>¿Cuánto tardaría esto en un PC como el nuestro?</h2>
+      <p class="desc">Aquí está la parte incómoda que no se ve en el ranking: son modelos de <b>8 mil millones de parámetros</b>. Estimaciones asumiendo un corpus mediano (~10,000–20,000 chunks) para la fase de indexación offline.</p>
+      <table>
+        <thead>
+          <tr><th>Escenario de hardware</th><th>VRAM / RAM</th><th>Factible en fp16</th><th>Tiempo estimado indexar corpus</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Laptop / PC sin GPU dedicada (solo CPU)</td>
+            <td class="num">16 GB RAM</td>
+            <td><span class="pill bad">No recomendado</span></td>
+            <td class="num">varias horas – puede no terminar en un día</td>
+          </tr>
+          <tr>
+            <td>GPU gamer de gama media (RTX 3060/4060, 8–12 GB)</td>
+            <td class="num">8–12 GB VRAM</td>
+            <td><span class="pill warn">Solo con cuantización (int8/4-bit)</span></td>
+            <td class="num">~1–3 horas por encoder</td>
+          </tr>
+          <tr>
+            <td>GPU gama alta (RTX 4090 / 3090, 24 GB)</td>
+            <td class="num">24 GB VRAM</td>
+            <td><span class="pill good">Sí, cómodo en fp16</span></td>
+            <td class="num">~20–40 min por encoder</td>
+          </tr>
+          <tr>
+            <td>GPU cloud rentada (Colab Pro / RunPod / similar)</td>
+            <td class="num">16–24 GB VRAM</td>
+            <td><span class="pill good">Sí</span></td>
+            <td class="num">~20–60 min por encoder, sin tocar nuestro PC</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note"><b>El detalle importante:</b> un modelo de 8B en fp16 pesa ~16 GB solo en parámetros, antes de contar activaciones. Eso <b>no cabe</b> en una GPU de 8–12 GB sin cuantizar (int8 o 4-bit, con librerías como <code>bitsandbytes</code>). Si nuestro PC tiene una GPU de gama media o ninguna, lo más realista es: (a) cuantizar los modelos de 8B, o (b) usar un plan B más liviano — <b>BGE-M3 (568M) o multilingual-e5-large-instruct (560M)</b> — que corren bien en una GPU de 8 GB o incluso en CPU en tiempos razonables (10–30 min para el mismo corpus), a cambio de ~7–8 puntos menos de MTEB. La búsqueda en FAISS en sí (fase online, por consulta) es rapidísima siempre — milisegundos — independientemente del encoder, porque ya son solo vectores precomputados.</p>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title"><span class="section-num">4</span>Qué más necesitamos para que esto corra</h2>
+      <div class="checklist">
+        <div class="check-row"><div class="dot"></div><div><b>Revisar la GPU real del equipo antes de comprometernos a los modelos de 8B.</b><span class="meta"> Si es de 8–12 GB, planear cuantización o usar Colab/una GPU rentada solo para la fase de indexado (una vez).</span></div></div>
+        <div class="check-row"><div class="dot"></div><div><b>Espacio en disco</b><span class="meta"> — los pesos de cada modelo de 8B ocupan ~16 GB descargados; con dos encoders son ~32 GB solo en modelos, más el corpus y los índices FAISS.</span></div></div>
+        <div class="check-row"><div class="dot"></div><div><b>Librerías clave</b><span class="meta"> — <code>sentence-transformers</code>, <code>faiss-cpu</code>, <code>transformers</code>, <code>torch</code> (con CUDA si hay GPU), <code>bitsandbytes</code> si cuantizamos.</span></div></div>
+        <div class="check-row"><div class="dot"></div><div><b>Correr la indexación una sola vez</b><span class="meta"> — es el único paso pesado. Una vez tenemos <code>index.faiss</code> + <code>metadata.jsonl</code> guardados, generar <code>resultados.jsonl</code> con <code>generador.py</code> es cuestión de segundos, sin importar el hardware.</span></div></div>
+        <div class="check-row"><div class="dot"></div><div><b>Plan de respaldo listo antes de empezar</b><span class="meta"> — decidir de una vez si vamos con los modelos de 8B (mejor calidad, más esfuerzo de infraestructura) o con BGE-M3 / e5-large (buena calidad, corre en cualquier laptop) para no perder tiempo a mitad de camino.</span></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title"><span class="section-num">5</span>Arquitectura propuesta — pipeline multi-encoder</h2>
+      <p class="desc">Fase offline (una vez) y fase online (por consulta), con dos encoders en paralelo y fusión de rankings sin modelos generativos.</p>
+      <div class="flow-phase">
+        <div class="flow-phase-label">FASE OFFLINE — una vez</div>
+        <div class="flow-row">
+          <div class="flow-box">Documentos ADL<span>PDF · HTML · JSON · CSV · XLSX</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Extracción<span>y limpieza</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Chunking<span>por oración + overlap</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-split">
+            <div class="flow-box small a">Encoder A<span>Qwen3-Embedding-8B</span></div>
+            <div class="flow-box small b">Encoder B<span>Llama-Embed-Nemotron-8B</span></div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-split">
+            <div class="flow-box small a">Índice FAISS<span>encoder_qwen3/</span></div>
+            <div class="flow-box small b">Índice FAISS<span>encoder_nemotron/</span></div>
+          </div>
+        </div>
+        <div class="flow-side">↳ en paralelo: <b>metadata.jsonl</b> (doc_id · chunk_id · fuente · texto)</div>
+      </div>
+
+      <div class="flow-phase">
+        <div class="flow-phase-label">FASE ONLINE — por consulta</div>
+        <div class="flow-row">
+          <div class="flow-box">Consulta<span>lenguaje natural</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-split">
+            <div class="flow-box small a">Encoder A<span>→ búsqueda índice A</span></div>
+            <div class="flow-box small b">Encoder B<span>→ búsqueda índice B</span></div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Fusión RRF<span>sin LLM</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Agregación<span>a nivel documento</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box highlight">resultados.jsonl<span>3 docs + 10 fragmentos</span></div>
+        </div>
+      </div>
+      <p class="note">La fusión ocurre solo sobre rankings y puntuaciones numéricas (Reciprocal Rank Fusion, Sección 8.4 del PDF) — nunca se combinan los vectores de los dos encoders en un mismo espacio, porque viven en dimensiones y geometrías distintas.</p>
+    </div>
+
+    <div class="foot">Boceto exploratorio para alinear al equipo — no representa aún resultados reales de evaluación (corpus pendiente de ADL).</div>
+
+    <div class="banner">
+      <p class="big">LOS QUIERO ALIENDEVS NWN</p>
+      <p class="small">vamos con toda con este reto 🛰️</p>
+    </div>
+
+  </div>
+
+</body>
+</html>
