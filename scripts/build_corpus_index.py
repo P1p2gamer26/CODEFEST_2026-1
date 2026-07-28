@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.config import CORPUS_DIR, ENCODER_PRIMARY_NAME, GRAFO_PATH  # noqa: E402
 from src.embedding.build_index import build_and_persist  # noqa: E402
 from src.embedding.encoders import get_encoder  # noqa: E402
+from src.ingestion.doc_id import load_doc_id_manifest  # noqa: E402
 from src.ingestion.pipeline import build_corpus_chunks, write_chunks_jsonl  # noqa: E402
 
 logger = logging.getLogger("build_corpus_index")
@@ -43,6 +44,15 @@ def main() -> None:
         "--with-graph",
         action="store_true",
         help="Ademas del indice vectorial, construye y exporta el grafo de conocimiento (bonus, sec. 7).",
+    )
+    parser.add_argument(
+        "--doc-id-manifest",
+        type=Path,
+        default=None,
+        help="Archivo (JSON/JSONL/CSV) con el mapeo {archivo: doc_id} que entregue ADL. "
+        "ADL aclaro que el ground truth se empareja por SU doc_id, no por uno propio: "
+        "pasar este archivo con el corpus real. Sin el, se usa un hash del contenido "
+        "(suficiente para el corpus de ejemplo, pero NO empareja con el ground truth).",
     )
     parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument(
@@ -65,7 +75,13 @@ def main() -> None:
         " [FAKE -- solo pruebas, no usar para la entrega final]" if args.use_fake_encoder else "",
     )
 
-    records = build_corpus_chunks(corpus_dir=args.corpus_dir, count_tokens=encoder.count_tokens)
+    doc_id_manifest = load_doc_id_manifest(args.doc_id_manifest) if args.doc_id_manifest else None
+
+    records = build_corpus_chunks(
+        corpus_dir=args.corpus_dir,
+        count_tokens=encoder.count_tokens,
+        doc_id_manifest=doc_id_manifest,
+    )
     if not records:
         logger.error("no se genero ningun chunk a partir de %s", args.corpus_dir)
         sys.exit(1)
