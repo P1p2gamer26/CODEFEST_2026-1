@@ -302,10 +302,17 @@ del reto). Para reiniciarlo, simplemente borrar ese archivo.
   las entrega). El formato exacto del archivo oficial de consultas tampoco
   se conoce todavía; el adaptador está aislado en `load_consultas()` dentro
   de `Entrega/generador.py`.
-- El campo `fuente` (clave real de emparejamiento con el ground truth a
-  nivel documento, sec. 10.2.1 de la especificación) se deriva hoy del
-  nombre de archivo o la URL detectada (`derive_fuente()` en
-  `src/ingestion/pipeline.py`) — ajustar ahí si ADL usa otra convención.
+- Los `doc_id` los suministra ADL junto con el corpus, y son la clave real
+  de emparejamiento con el ground truth (aclarado en la Q&A final; la
+  sec. 10.2.1 del PDF decía `fuente`, pero fue un error de versionamiento).
+  El pipeline ya lo soporta: pasar `--doc-id-manifest <archivo>` a
+  `scripts/build_corpus_index.py` con el mapeo que entregue ADL
+  (JSON/JSONL/CSV). Sin manifest se usa un hash del contenido, suficiente
+  para el corpus de ejemplo pero **no empareja con el ground truth**. Ver
+  `src/ingestion/doc_id.py`.
+- El campo `fuente` (Tabla 1, obligatorio) se deriva del nombre de archivo o
+  la URL detectada (`derive_fuente()` en `src/ingestion/pipeline.py`) y se
+  conserva como trazabilidad — ajustar ahí si ADL usa otra convención.
 
 **Reusable sin cambios:** todo `src/` (extraction, cleaning, chunking,
 embedding, retrieval, graph, ingestion), y la lógica central de

@@ -4,9 +4,15 @@ pasos 1-3 y 7). La construccion del indice FAISS (paso 4-6) vive en
 src/embedding/build_index.py, que consume la salida de este modulo.
 
 Este es el punto UNICO donde se resuelven `fenomeno` (sec. 2.3, por carpeta
-del corpus) y `fuente` (sec. 10.2.1, clave real de emparejamiento con el
-ground truth a nivel documento) -- ajustar aqui si cambia la organizacion o
+del corpus) y `fuente` (Tabla 1) -- ajustar aqui si cambia la organizacion o
 la convencion del corpus real de ADL.
+
+Nota sobre la clave de emparejamiento: ADL aclaro en la Q&A final que el
+ground truth a nivel documento se empareja por `doc_id` (suministrado por
+ellos), no por `fuente` como decia la sec. 10.2.1 del PDF -- esa frase fue
+un error de versionamiento. Ver `src/ingestion/doc_id.py` y
+`docs/Explicacion_reto_final.md`. `fuente` se sigue reportando porque es un
+campo obligatorio de la Tabla 1 y sirve de trazabilidad.
 """
 
 import json
@@ -18,7 +24,7 @@ from ..chunking import chunk_document
 from ..cleaning import clean_text, detect_language
 from ..config import CHUNKS_INTERMEDIOS_PATH, CORPUS_DIR, FENOMENO_DIR_MAP
 from ..extraction import extract_file
-from .doc_id import compute_doc_id
+from .doc_id import resolve_doc_id
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +68,11 @@ def resolve_fenomeno(path: Path, corpus_dir: Path = CORPUS_DIR) -> int | None:
 
 def derive_fuente(path: Path, raw_extra_metadata: dict) -> str:
     """Campo `fuente` (Tabla 1): nombre o URL del archivo original provisto
-    por ADL. Es la clave real de emparejamiento con el ground truth a nivel
-    documento (sec. 10.2.1) -- NO el doc_id arbitrario asignado por el
-    equipo. Se aisla en esta funcion para poder ajustarla en un solo lugar
-    cuando se conozca la convencion exacta que use ADL en su ground truth
-    (hoy: URL si el extractor la reporto -- caso HTML -- o nombre de archivo
-    en caso contrario)."""
+    por ADL. Campo obligatorio de metadata y clave de trazabilidad; el
+    emparejamiento con el ground truth lo hace `doc_id` (ver docstring del
+    modulo). Se aisla en esta funcion para poder ajustarla en un solo lugar
+    si ADL usa otra convencion (hoy: URL si el extractor la reporto -- caso
+    HTML -- o nombre de archivo en caso contrario)."""
     url = (raw_extra_metadata or {}).get("url")
     if url:
         return str(url)
@@ -92,7 +97,10 @@ def iter_corpus_files(corpus_dir: Path = CORPUS_DIR):
 
 
 def process_document(
-    path: Path, count_tokens=None, corpus_dir: Path = CORPUS_DIR
+    path: Path,
+    count_tokens=None,
+    corpus_dir: Path = CORPUS_DIR,
+    doc_id_manifest: dict[str, str] | None = None,
 ) -> list[ChunkRecord]:
     raw_doc = extract_file(path)
     texto_limpio = clean_text(raw_doc.texto_crudo)
@@ -101,7 +109,7 @@ def process_document(
         return []
 
     idioma = detect_language(texto_limpio)
-    doc_id = compute_doc_id(path)
+    doc_id = resolve_doc_id(path, doc_id_manifest)
     fenomeno = resolve_fenomeno(path, corpus_dir)
     fuente = derive_fuente(path, raw_doc.extra_metadata)
 
@@ -127,12 +135,19 @@ def process_document(
 
 
 def build_corpus_chunks(
-    corpus_dir: Path = CORPUS_DIR, count_tokens=None
+    corpus_dir: Path = CORPUS_DIR,
+    count_tokens=None,
+    doc_id_manifest: dict[str, str] | None = None,
 ) -> list[ChunkRecord]:
     all_records: list[ChunkRecord] = []
     for path in iter_corpus_files(corpus_dir):
         try:
-            records = process_document(path, count_tokens=count_tokens, corpus_dir=corpus_dir)
+            records = process_document(
+                path,
+                count_tokens=count_tokens,
+                corpus_dir=corpus_dir,
+                doc_id_manifest=doc_id_manifest,
+            )
         except Exception:
             logger.exception("fallo al procesar %s, se omite el archivo", path)
             continue
