@@ -25,7 +25,7 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]  # dev/scripts/ -> dev/ -> raiz del repo
 ENTREGA = ROOT / "Entrega"
 
 CAMPOS_METADATA_OBLIGATORIOS = {

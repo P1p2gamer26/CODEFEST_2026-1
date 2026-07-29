@@ -27,8 +27,7 @@ from ..ingestion.pipeline import iter_corpus_files, process_document, write_chun
 from ..retrieval.fusion import reciprocal_rank_fusion
 from ..retrieval.search import Hit, search
 
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-ENTREGA_DIR = ROOT_DIR / "Entrega"
+ENTREGA_DIR = Path(__file__).resolve().parents[3] / "Entrega"  # <raiz>/Entrega
 
 ProgressCallback = Optional[Callable[[dict], None]]
 

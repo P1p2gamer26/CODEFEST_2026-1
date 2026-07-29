@@ -21,7 +21,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]  # dev/scripts/ -> dev/ -> raiz del repo
 OUT_PATH = ROOT / "Entrega" / "informe_tecnico.pdf"
 
 styles = getSampleStyleSheet()

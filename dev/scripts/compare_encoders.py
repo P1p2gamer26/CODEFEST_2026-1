@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.config import (  # noqa: E402
     CONSULTAS_PRUEBA_PATH,
+    ROOT_DIR,
     ENCODER_PRIMARY_NAME,
     ENCODER_SECONDARY_NAME,
     N_FRAGMENTS_PER_QUERY,
@@ -38,7 +39,7 @@ from src.embedding.build_index import load_index  # noqa: E402
 from src.embedding.encoders import get_encoder  # noqa: E402
 from src.retrieval.search import search  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "Entrega"))
+sys.path.insert(0, str(ROOT_DIR / "Entrega"))
 from generador import load_consultas  # noqa: E402
 
 logger = logging.getLogger("compare_encoders")

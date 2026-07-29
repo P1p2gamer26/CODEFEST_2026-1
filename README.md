@@ -24,16 +24,33 @@ consultas en lenguaje natural. Especificación completa en
 
 ## 1. Qué hay en este repo
 
+La raíz tiene exactamente tres carpetas:
+
 | Carpeta | Contenido |
 |---|---|
-| `src/` | Código reusable del pipeline (extracción, limpieza, chunking, embeddings, retrieval, grafo, GUI). No depende del corpus concreto. |
-| `scripts/` | CLIs que orquestan `src/`: construir el índice, generar el corpus sintético, inspeccionar resultados, lanzar la GUI. |
-| `Entrega/` | Estructura oficial de entrega (Sección 1.4 de la especificación): `generador.py`, `resultados.jsonl`, `informe_tecnico.pdf`, `base_vectorial/`. |
-| `tests/` | Suite de pytest (31 pruebas) que valida la mecánica de cada etapa sin depender de red. |
-| `corpus_ejemplo/` | Corpus **sintético** provisional (ver sección 6). |
-| `consultas_prueba/` | Consultas de prueba **provisionales** (ver sección 6), no las oficiales q001–q050. |
-| `docs/` | Documentación adicional (arquitectura de encoders). |
-| `intermedios/` | Artefactos locales no versionados (historial de la GUI, índices de prueba). |
+| `Entrega/` | **Lo que se entrega, y nada más** (Sección 1.4 de la especificación): `generador.py`, `resultados.jsonl`, `informe_tecnico.pdf`, `base_vectorial/`. Es autocontenida: se puede copiar sola a otra máquina y correr. |
+| `dev/` | Todo el trabajo de desarrollo: `src/`, `scripts/`, `tests/`, `docs/`, corpus y consultas de prueba, artefactos intermedios. |
+| `Material de apoyo/` | La especificación del reto y el material entregado por ADL. |
+
+Dentro de `dev/`:
+
+| Carpeta | Contenido |
+|---|---|
+| `dev/src/` | Código reusable del pipeline (extracción, limpieza, chunking, embeddings, retrieval, grafo, GUI). No depende del corpus concreto. |
+| `dev/scripts/` | CLIs que orquestan `dev/src/`: construir el índice, generar el corpus sintético, inspeccionar resultados, validar la entrega, lanzar la GUI. |
+| `dev/tests/` | Suite de pytest que valida la mecánica de cada etapa sin depender de red. |
+| `dev/corpus_ejemplo/` | Corpus **sintético** provisional (ver sección 6). |
+| `dev/consultas_prueba/` | Consultas de prueba **provisionales** (ver sección 6), no las oficiales q001–q050. |
+| `dev/docs/` | Documentación adicional (arquitectura de encoders, Q&A con ADL). |
+| `dev/intermedios/` | Artefactos locales no versionados (historial de la GUI, índices de prueba). |
+
+> **`Entrega/generador.py` es autocontenido a propósito.** El evaluador recibe
+> solo la carpeta `Entrega/`, así que el script no importa nada de `dev/src/`:
+> es una copia **aplanada** del camino online (config, encoders, búsqueda,
+> agregación, truncado, RRF, grafo), con un comentario por sección indicando su
+> módulo de origen. Al cambiar cualquiera de esos módulos hay que re-aplanar el
+> cambio en `generador.py`; `dev/tests/test_retrieval_schema.py` lo corre desde
+> fuera del repo con `PYTHONPATH` vacío y falla si dejó de ser autónomo.
 
 Ver la [sección 8](#8-estructura-del-proyecto) para el detalle módulo por módulo.
 
@@ -113,7 +130,7 @@ source .venv/bin/activate
 
 **Importante:** repetir la activación en *cada* terminal nueva que abras. Si
 el prompt no muestra `(.venv)` al inicio, no estás en el entorno correcto y
-comandos como `pytest` o `python scripts/...` van a fallar con errores de
+comandos como `pytest` o `python dev/scripts/...` van a fallar con errores de
 "módulo no encontrado" aunque ya hayas instalado todo.
 
 ### 3.3 Instalar dependencias
@@ -133,10 +150,10 @@ normal a internet (PyPI); no funciona en entornos con proxy restringido.
 ### 3.4 Verificar que todo quedó bien instalado
 
 ```bash
-pytest tests/ -v
+pytest dev/tests -v
 ```
 
-Debería dar **`31 passed`**. Estos tests usan un encoder falso y determinista
+Debería dar **`48 passed`**. Estos tests usan un encoder falso y determinista
 (`HashingFakeEncoder`) solo para validar la mecánica del pipeline sin
 depender de red ni de calidad semántica real — es normal y esperado que
 corran sin conexión.
@@ -151,10 +168,10 @@ porque reutiliza el índice ya construido).
 ### Paso 1 — Construir el índice (fase OFFLINE)
 
 ```bash
-python scripts/build_corpus_index.py --with-graph
+python dev/scripts/build_corpus_index.py --with-graph
 ```
 
-Toma `corpus_ejemplo/` (o `--corpus-dir` apuntando al corpus real), extrae
+Toma `dev/corpus_ejemplo/` (o `--corpus-dir` apuntando al corpus real), extrae
 texto, limpia, fragmenta, codifica cada fragmento con el encoder real de
 HuggingFace (`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`,
 se descarga solo la primera vez) y escribe:
@@ -168,7 +185,7 @@ Se corre una sola vez por corpus. Volver a correrlo sobrescribe el índice.
 ### Paso 2 — Generar resultados (fase ONLINE)
 
 ```bash
-python Entrega/generador.py --consultas consultas_prueba/consultas_prueba.jsonl --use-graph
+python Entrega/generador.py --consultas dev/consultas_prueba/consultas_prueba.jsonl --use-graph
 ```
 
 Lee el índice ya construido, busca cada consulta, agrega a nivel documento,
@@ -184,8 +201,8 @@ Inspección cualitativa legible en consola (qué documentos/fragmentos trajo
 cada consulta):
 
 ```bash
-python scripts/inspect_results.py \
-  --consultas consultas_prueba/consultas_prueba.jsonl \
+python dev/scripts/inspect_results.py \
+  --consultas dev/consultas_prueba/consultas_prueba.jsonl \
   --resultados Entrega/resultados.jsonl \
   --index-dir Entrega/base_vectorial/encoder_paraphrase-multilingual-MiniLM-L12-v2
 ```
@@ -193,8 +210,8 @@ python scripts/inspect_results.py \
 **Antes de entregar, correr siempre el validador completo:**
 
 ```bash
-python scripts/validar_entrega.py                 # durante el desarrollo
-python scripts/validar_entrega.py --esperar-50    # antes de la entrega final
+python dev/scripts/validar_entrega.py                 # durante el desarrollo
+python dev/scripts/validar_entrega.py --esperar-50    # antes de la entrega final
 ```
 
 Verifica de una sola pasada todo lo que puede costar la evaluación:
@@ -230,7 +247,7 @@ soporta pasando varios `--encoder-name`:
 
 ```bash
 # OFFLINE: construye un índice por encoder, cada uno en su carpeta
-python scripts/build_corpus_index.py --with-graph \
+python dev/scripts/build_corpus_index.py --with-graph \
   --encoder-name paraphrase-multilingual-MiniLM-L12-v2 multilingual-e5-base
 
 # ONLINE: busca en ambos índices y fusiona los rankings con RRF
@@ -253,44 +270,44 @@ textos distintos y la fusión mezclaría fragmentos que no son el mismo.
 Para saber si el segundo encoder aporta algo antes de pagar su costo:
 
 ```bash
-python scripts/compare_encoders.py
+python dev/scripts/compare_encoders.py
 ```
 
 Reporta cuánto se solapan los rankings de ambos. Si son casi idénticos,
 fusionar no aporta y conviene entregar un solo encoder.
 
 > Al probar con `--use-fake-encoder` y varios encoders, pasar **siempre**
-> `--out-base intermedios/<algo>` (y `--index-base` en el generador) para no
+> `--out-base dev/intermedios/<algo>` (y `--index-base` en el generador) para no
 > escribir índices de prueba dentro de `Entrega/`.
 
 ### Paso 4 — Cuando cambien corpus/consultas (de sintéticos a los oficiales de ADL)
 
 Repetir solo los pasos 1 y 2, apuntando a los archivos reales — nada de
-`src/` necesita cambiar:
+`dev/src/` necesita cambiar:
 
 ```bash
-python scripts/build_corpus_index.py --with-graph --corpus-dir <corpus_real_de_ADL>
+python dev/scripts/build_corpus_index.py --with-graph --corpus-dir <corpus_real_de_ADL>
 python Entrega/generador.py --consultas <consultas_oficiales_q001-q050.jsonl> --use-graph
 ```
 
 ### Demo alternativa sin red (solo para depurar la mecánica, no usar para la entrega)
 
 ```bash
-python scripts/build_corpus_index.py --use-fake-encoder --with-graph \
-  --out-dir intermedios/demo_index_fake_encoder/encoder_paraphrase-multilingual-MiniLM-L12-v2 \
-  --graph-out-path intermedios/demo_index_fake_encoder/grafo.graphml
-python Entrega/generador.py --consultas consultas_prueba/consultas_prueba.jsonl \
+python dev/scripts/build_corpus_index.py --use-fake-encoder --with-graph \
+  --out-dir dev/intermedios/demo_index_fake_encoder/encoder_paraphrase-multilingual-MiniLM-L12-v2 \
+  --graph-out-path dev/intermedios/demo_index_fake_encoder/grafo.graphml
+python Entrega/generador.py --consultas dev/consultas_prueba/consultas_prueba.jsonl \
   --use-fake-encoder \
-  --index-dir intermedios/demo_index_fake_encoder/encoder_paraphrase-multilingual-MiniLM-L12-v2 \
-  --out intermedios/demo_index_fake_encoder/resultados_demo.jsonl
+  --index-dir dev/intermedios/demo_index_fake_encoder/encoder_paraphrase-multilingual-MiniLM-L12-v2 \
+  --out dev/intermedios/demo_index_fake_encoder/resultados_demo.jsonl
 ```
 
 ## 5. Interfaz gráfica (GUI)
 
 Alternativa a los comandos de arriba para quien prefiera no usar la
 terminal. Es una capa opcional sobre el mismo pipeline: llama exactamente a
-las mismas funciones de `src/` que usan `scripts/build_corpus_index.py` y
-`Entrega/generador.py` (ver `src/gui/runner.py`) — los comandos de CLI
+las mismas funciones de `dev/src/` que usan `dev/scripts/build_corpus_index.py` y
+`Entrega/generador.py` (ver `dev/src/gui/runner.py`) — los comandos de CLI
 documentados arriba siguen funcionando igual, uno no reemplaza al otro.
 
 Requiere el venv activado (secciones 3.2–3.3). Sin dependencias nuevas: usa
@@ -307,7 +324,7 @@ sudo dnf install python3-tkinter
 Lanzar la GUI (igual en las tres plataformas):
 
 ```bash
-python scripts/gui_app.py
+python dev/scripts/gui_app.py
 ```
 
 Es una interfaz tipo chat, no un panel de botones con ventanas emergentes:
@@ -324,11 +341,11 @@ consulta que escribas es casi instantánea, porque ya no recarga el modelo.
 La ventana está dividida en dos partes:
 
 - **Chat (izquierda)**: caja de texto + botones "Enviar" y "Correr las 50
-  consultas de prueba" (usa `consultas_prueba/consultas_50.jsonl`, cada una
+  consultas de prueba" (usa `dev/consultas_prueba/consultas_50.jsonl`, cada una
   aparece en el chat como si fuera una conversación). Cada respuesta muestra
   cuántos tokens procesó el encoder para esa consulta y cuánto tardó (no es
   costo de API/LLM — es el conteo de tokens de entrada del encoder,
-  `Encoder.count_tokens()` en `src/embedding/encoders.py`).
+  `Encoder.count_tokens()` en `dev/src/embedding/encoders.py`).
 - **Actividad (derecha)**: panel aparte, siempre visible (no una ventana que
   hay que abrir), que muestra en vivo qué está pasando: carga del modelo,
   cada consulta respondida, y el progreso documento por documento cuando se
@@ -340,21 +357,21 @@ sesión de chat al terminar) y **"Ver historial"**, con cada interacción
 anterior: preguntas sueltas del chat, corridas del lote de 50, y
 reconstrucciones del índice — fecha, encoder, detalle, tokens y duración.
 
-El historial se guarda en `intermedios/historial_ejecuciones.jsonl` (JSON
+El historial se guarda en `dev/intermedios/historial_ejecuciones.jsonl` (JSON
 Lines, gitignorado — es un registro local de cada máquina, no un entregable
 del reto). Para reiniciarlo, simplemente borrar ese archivo.
 
 ## 6. Qué es provisional vs. infraestructura reusable
 
-**Provisional (se reemplaza cuando ADL entregue lo oficial, sin tocar `src/`):**
+**Provisional (se reemplaza cuando ADL entregue lo oficial, sin tocar `dev/src/`):**
 
-- `corpus_ejemplo/`: 15 documentos **sintéticos** (PDF/HTML, ES/EN/PT),
-  redactados a mano con `scripts/gen_synthetic_corpus.py` porque el proxy de
+- `dev/corpus_ejemplo/`: 15 documentos **sintéticos** (PDF/HTML, ES/EN/PT),
+  redactados a mano con `dev/scripts/gen_synthetic_corpus.py` porque el proxy de
   salida de este entorno de desarrollo bloquea la descarga de documentos
   reales (ver `informe_tecnico.pdf`, sección de limitaciones, y
-  `corpus_ejemplo/fuentes.md`). **No son documentos reales, no citar como
+  `dev/corpus_ejemplo/fuentes.md`). **No son documentos reales, no citar como
   tales.**
-- `consultas_prueba/consultas_prueba.jsonl`: 15 consultas de prueba ES/EN/PT
+- `dev/consultas_prueba/consultas_prueba.jsonl`: 15 consultas de prueba ES/EN/PT
   escritas a mano, NO son las 50 consultas oficiales q001–q050 (ADL aún no
   las entrega). El formato exacto del archivo oficial de consultas tampoco
   se conoce todavía; el adaptador está aislado en `load_consultas()` dentro
@@ -363,19 +380,19 @@ del reto). Para reiniciarlo, simplemente borrar ese archivo.
   de emparejamiento con el ground truth (aclarado en la Q&A final; la
   sec. 10.2.1 del PDF decía `fuente`, pero fue un error de versionamiento).
   El pipeline ya lo soporta: pasar `--doc-id-manifest <archivo>` a
-  `scripts/build_corpus_index.py` con el mapeo que entregue ADL
+  `dev/scripts/build_corpus_index.py` con el mapeo que entregue ADL
   (JSON/JSONL/CSV). Sin manifest se usa un hash del contenido, suficiente
   para el corpus de ejemplo pero **no empareja con el ground truth**. Ver
-  `src/ingestion/doc_id.py`.
+  `dev/src/ingestion/doc_id.py`.
 - El campo `fuente` (Tabla 1, obligatorio) se deriva del nombre de archivo o
-  la URL detectada (`derive_fuente()` en `src/ingestion/pipeline.py`) y se
+  la URL detectada (`derive_fuente()` en `dev/src/ingestion/pipeline.py`) y se
   conserva como trazabilidad — ajustar ahí si ADL usa otra convención.
 
-**Reusable sin cambios:** todo `src/` (extraction, cleaning, chunking,
+**Reusable sin cambios:** todo `dev/src/` (extraction, cleaning, chunking,
 embedding, retrieval, graph, ingestion), y la lógica central de
 `Entrega/generador.py`. Para usar el corpus real: colocarlo donde hoy está
-`corpus_ejemplo/` (o apuntar `--corpus-dir` a otra carpeta) y volver a
-correr `scripts/build_corpus_index.py`.
+`dev/corpus_ejemplo/` (o apuntar `--corpus-dir` a otra carpeta) y volver a
+correr `dev/scripts/build_corpus_index.py`.
 
 ### Limitación de red de este entorno de desarrollo
 
@@ -391,7 +408,7 @@ fuentes documentales reales (sipri.org, esa.int, cepal.org, etc.) como
 Mitigación:
 
 - El encoder está detrás de una interfaz intercambiable
-  (`src/embedding/encoders.py`): `SentenceTransformerEncoder` (real,
+  (`dev/src/embedding/encoders.py`): `SentenceTransformerEncoder` (real,
   producción) y `HashingFakeEncoder` (determinista, sin red, solo para
   pruebas de mecánica — NO produce embeddings semánticamente válidos). El
   índice y `resultados.jsonl` que están hoy en `Entrega/` **sí fueron
@@ -406,7 +423,7 @@ Mitigación:
 acceso normal a internet:
 
 ```bash
-python scripts/build_corpus_index.py --with-graph --corpus-dir <corpus_real_de_ADL>
+python dev/scripts/build_corpus_index.py --with-graph --corpus-dir <corpus_real_de_ADL>
 python Entrega/generador.py --consultas <archivo_oficial_de_ADL> --use-graph
 ```
 
@@ -446,29 +463,49 @@ regenerar `Entrega/` con ellos antes de la entrega final (ver sección 6).
 ## 8. Estructura del proyecto
 
 ```
-src/                    codigo reusable del pipeline
-  extraction/           un extractor por formato de origen (pdf/html/json/csv-xlsx/imagen/pbf)
-  cleaning/              limpieza de texto + deteccion de idioma ES/EN/PT
-  chunking/              chunking hibrido: estructural -> por oracion -> por presupuesto de tokens (sec. 3)
-  embedding/             interfaz Encoder (real y fake) + construccion del indice FAISS
-  retrieval/             busqueda en FAISS, agregacion a documento, fusion multi-encoder/grafo, truncado a 250 palabras
-  graph/                 NER (spaCy) + relaciones + construccion y consulta del grafo (bonus, sec. 7)
-  gui/                   orquestacion de la GUI (misma logica de src/, sin llamadas nuevas)
-  ingestion/              pipeline por documento (extraccion+limpieza+chunking) y doc_id/fuente
-  config.py               constantes centrales (encoder por defecto, modelos spaCy, limites)
-corpus_ejemplo/         corpus de ejemplo SINTETICO (provisional, ver sec. 6)
-consultas_prueba/       consultas de prueba (provisional, ver sec. 6)
-scripts/
-  gen_synthetic_corpus.py   genera corpus_ejemplo/ (dev only, no es parte del pipeline)
-  build_corpus_index.py     OFFLINE: corpus -> indice FAISS + metadata + grafo
-  inspect_results.py        inspeccion cualitativa manual de resultados.jsonl
-  validar_entrega.py        valida Entrega/ contra la especificacion (correr antes de entregar)
-  compare_encoders.py       diagnostico: cuanto difieren dos encoders entre si
-  gui_app.py                 lanza la interfaz grafica (Tkinter)
-tests/                  pytest (31 pruebas, corren con HashingFakeEncoder, sin red)
-Entrega/                estructura oficial de entrega (ver sec. 1.4 de la especificacion)
-docs/                   documentacion adicional (arquitectura de encoders)
+README.md  requirements.txt  .gitignore
+
+Entrega/                    ESTRUCTURA OFICIAL DE ENTREGA (sec. 1.4). Autocontenida.
+  generador.py              ONLINE: consultas -> resultados.jsonl. Sin imports del repo.
+  resultados.jsonl          50 lineas, q001-q050, esquema estricto (sec. 9)
+  informe_tecnico.pdf       maximo 8 paginas
+  base_vectorial/
+    encoder_<nombre>/       index.faiss + metadata.jsonl (uno por encoder)
+    grafo/grafo.graphml     bonus (sec. 7)
+
+Material de apoyo/          especificacion del reto y material de ADL
+
+dev/                        todo el desarrollo (NO se entrega)
+  src/                      codigo reusable del pipeline
+    extraction/             un extractor por formato de origen (pdf/html/json/csv-xlsx/imagen/pbf)
+    cleaning/               limpieza de texto + deteccion de idioma ES/EN/PT
+    chunking/               chunking hibrido: estructural -> por oracion -> por presupuesto de tokens (sec. 3)
+    embedding/              interfaz Encoder (real y fake) + construccion del indice FAISS
+    retrieval/              busqueda en FAISS, agregacion a documento, fusion multi-encoder/grafo, truncado a 250 palabras
+    graph/                  NER (spaCy) + relaciones + construccion y consulta del grafo (bonus, sec. 7)
+    gui/                    orquestacion de la GUI (misma logica de src/, sin llamadas nuevas)
+    ingestion/              pipeline por documento (extraccion+limpieza+chunking) y doc_id/fuente
+    config.py               constantes centrales (encoder por defecto, modelos spaCy, limites, rutas)
+  scripts/
+    gen_synthetic_corpus.py   genera dev/corpus_ejemplo/ (dev only, no es parte del pipeline)
+    build_corpus_index.py     OFFLINE: corpus -> indice FAISS + metadata + grafo
+    inspect_results.py        inspeccion cualitativa manual de resultados.jsonl
+    validar_entrega.py        valida Entrega/ contra la especificacion (correr antes de entregar)
+    compare_encoders.py       diagnostico: cuanto difieren dos encoders entre si
+    gen_informe_tecnico.py    genera Entrega/informe_tecnico.pdf
+    gui_app.py                lanza la interfaz grafica (Tkinter)
+  tests/                    pytest (corren con HashingFakeEncoder, sin red)
+  corpus_ejemplo/           corpus de ejemplo SINTETICO (provisional, ver sec. 6)
+  corpus_real_ejemplo/      muestra del formato del corpus real
+  consultas_prueba/         consultas de prueba (provisional, ver sec. 6)
+  docs/                     documentacion adicional (arquitectura de encoders, Q&A con ADL)
+  intermedios/              artefactos locales no versionados
+  pytest.ini
 ```
+
+Las tres carpetas de la raíz son independientes en un solo sentido: `dev/`
+sabe de `Entrega/` (escribe el índice, valida la estructura, genera el
+informe), pero `Entrega/` **nunca** sabe de `dev/`.
 
 ## 9. Solución de problemas
 

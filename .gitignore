@@ -11,3 +11,6 @@ venv/
 intermedios/
 *.pytest_cache/
 .pytest_cache/
+
+# Renders del grafo generados con dev/scripts/ver_grafo.py --out
+/grafo.png

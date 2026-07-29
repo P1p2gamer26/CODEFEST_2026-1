@@ -6,11 +6,13 @@ haria que la entrega real fuera penalizada o descartada si fallara
 (sec. 9.3.2)."""
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+DEV_DIR = Path(__file__).resolve().parents[1]
+REPO_ROOT = DEV_DIR.parent
 GENERADOR_PATH = REPO_ROOT / "Entrega" / "generador.py"
 
 SAMPLE_TEXTS_BY_DOC = {
@@ -33,7 +35,7 @@ SAMPLE_TEXTS_BY_DOC = {
 
 
 def _build_tiny_index(index_dir: Path) -> None:
-    sys.path.insert(0, str(REPO_ROOT))
+    sys.path.insert(0, str(DEV_DIR))
     from src.embedding.build_index import build_and_persist
     from src.embedding.encoders import HashingFakeEncoder
     from src.ingestion.pipeline import ChunkRecord
@@ -85,7 +87,11 @@ def test_generador_produces_schema_exact_output(tmp_path):
             "--index-dir", str(index_dir),
             "--out", str(out_path),
         ],
-        cwd=REPO_ROOT,
+        # cwd fuera del repo y PYTHONPATH vacio: si generador.py dependiera de
+        # `src/` esto fallaria con ModuleNotFoundError, que es justamente lo que
+        # le pasaria al evaluador al recibir solo la carpeta Entrega/.
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": ""},
         capture_output=True,
         text=True,
         timeout=120,
@@ -115,3 +121,14 @@ def test_generador_produces_schema_exact_output(tmp_path):
             assert len(frag["text"].split()) <= 250, "limite de 250 palabras (sec. 9.2)"
 
     assert seen_query_ids == ["q001", "q002"], "orden de las consultas preservado"
+
+
+def test_generador_es_autocontenido():
+    """`Entrega/` se entrega SOLA: generador.py no puede importar nada de
+    `dev/src/` ni parchear sys.path para alcanzarlo. Es una copia aplanada del
+    camino online y debe mantenerse asi."""
+    codigo = GENERADOR_PATH.read_text(encoding="utf-8")
+    for prohibido in ("from src.", "import src", "sys.path"):
+        assert prohibido not in codigo, (
+            f"generador.py contiene {prohibido!r}: dejo de ser autocontenido"
+        )
