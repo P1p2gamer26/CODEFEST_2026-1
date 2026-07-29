@@ -32,8 +32,8 @@ from src.config import CORPUS_DIR, ENCODER_PRIMARY_NAME, GRAFO_PATH  # noqa: E40
 from src.gui.history import append_run, read_history  # noqa: E402
 from src.gui.runner import RunSummary, Session, run_offline  # noqa: E402
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-CONSULTAS_50_PATH = ROOT_DIR / "consultas_prueba" / "consultas_50.jsonl"
+DEV_DIR = Path(__file__).resolve().parent.parent
+CONSULTAS_50_PATH = DEV_DIR / "consultas_prueba" / "consultas_50.jsonl"
 
 MIN_SCORE_CONFIABLE = 0.35  # similitud coseno; por debajo de esto, la consulta probablemente
 # no tiene relacion con el corpus -- umbral elegido a ojo con paraphrase-multilingual-MiniLM,

@@ -4,6 +4,16 @@ Documento para explicar el proyecto de punta a punta (a un compañero de equipo,
 un jurado, o uno mismo dentro de un mes). No reemplaza el `README.md` (que es
 el manual de "cómo correrlo"): esto es el mapa de "qué hay y por qué".
 
+> **Rutas.** La raíz del repo tiene solo tres carpetas: `Entrega/` (lo que se
+> entrega), `Material de apoyo/` y `dev/` (todo el desarrollo). En este
+> documento las rutas como `src/...`, `scripts/...` o `tests/...` son relativas
+> a `dev/`; `Entrega/...` es relativa a la raíz.
+>
+> `Entrega/generador.py` es **autocontenido**: no importa nada de `dev/src/`,
+> es una copia aplanada del camino online descrito en la sección 2. Si se toca
+> un módulo online de `dev/src/`, hay que re-aplanar el cambio allí (lo vigila
+> `tests/test_retrieval_schema.py`).
+
 ## 1. Qué hace el proyecto
 
 Es la Etapa 1 del reto CODEFEST AD ASTRA 2026: construir una **base de

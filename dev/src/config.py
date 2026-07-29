@@ -6,11 +6,13 @@ no deberia ser necesario tocar el resto de `src/`.
 
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+# dev/src/config.py -> DEV_DIR = <raiz>/dev, ROOT_DIR = <raiz>.
+DEV_DIR = Path(__file__).resolve().parents[1]
+ROOT_DIR = DEV_DIR.parent
 
 # --- Corpus y consultas (PROVISIONAL: se reemplaza por lo oficial de ADL) ---
-CORPUS_DIR = ROOT_DIR / "corpus_ejemplo"
-CONSULTAS_PRUEBA_PATH = ROOT_DIR / "consultas_prueba" / "consultas_prueba.jsonl"
+CORPUS_DIR = DEV_DIR / "corpus_ejemplo"
+CONSULTAS_PRUEBA_PATH = DEV_DIR / "consultas_prueba" / "consultas_prueba.jsonl"
 
 # Carpeta de nivel superior dentro de CORPUS_DIR -> numero de fenomeno (1, 2 o 3).
 # El corpus real de ADL puede no venir organizado por carpeta de fenomeno; en ese
@@ -40,7 +42,7 @@ EXTENSION_TO_FORMATO = {
 }
 
 # --- Artefactos intermedios (gitignored, fuera de Entrega/) ---
-INTERMEDIOS_DIR = ROOT_DIR / "intermedios"
+INTERMEDIOS_DIR = DEV_DIR / "intermedios"
 CHUNKS_INTERMEDIOS_PATH = INTERMEDIOS_DIR / "chunks_intermedios.jsonl"
 
 # --- Entrega oficial ---
