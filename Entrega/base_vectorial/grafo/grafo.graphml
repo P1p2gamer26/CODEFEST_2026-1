@@ -1,0 +1,232 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"><key id="d4" for="edge" attr.name="weight" attr.type="long"/>
+<key id="d3" for="edge" attr.name="chunk_id" attr.type="string"/>
+<key id="d2" for="edge" attr.name="doc_id" attr.type="string"/>
+<key id="d1" for="edge" attr.name="relation" attr.type="string"/>
+<key id="d0" for="node" attr.name="label" attr.type="string"/>
+<graph edgedefault="directed"><node id="Observatorio Militar de Estudos Estrategicos">
+  <data key="d0">Observatorio Militar de Estudos Estrategicos</data>
+</node>
+<node id="Introducao">
+  <data key="d0">Introducao</data>
+</node>
+<node id="the Space Debris Environment: Technical Summary Interagency Debris Coordination Panel">
+  <data key="d0">the Space Debris Environment: Technical Summary Interagency Debris Coordination Panel</data>
+</node>
+<node id="IADC">
+  <data key="d0">IADC</data>
+</node>
+<node id="LEO Congestion Orbital Sustainability Office">
+  <data key="d0">LEO Congestion Orbital Sustainability Office</data>
+</node>
+<node id="ESA Space Debris Office">
+  <data key="d0">ESA Space Debris Office</data>
+</node>
+<node id="Earth">
+  <data key="d0">Earth</data>
+</node>
+<node id="La polarizacion politica">
+  <data key="d0">La polarizacion politica</data>
+</node>
+<node id="los Estados">
+  <data key="d0">los Estados</data>
+</node>
+<node id="Acuerdo de Paz">
+  <data key="d0">Acuerdo de Paz</data>
+</node>
+<node id="Colombia">
+  <data key="d0">Colombia</data>
+</node>
+<node id="Acuerdos de Paz">
+  <data key="d0">Acuerdos de Paz</data>
+</node>
+<node id="Instituto Kroc) Objetivo">
+  <data key="d0">Instituto Kroc) Objetivo</data>
+</node>
+<node id="Acuerdo Final">
+  <data key="d0">Acuerdo Final</data>
+</node>
+<node id="Paz">
+  <data key="d0">Paz</data>
+</node>
+<node id="Desafios persistentes">
+  <data key="d0">Desafios persistentes</data>
+</node>
+<node id="La violencia asociada a economias">
+  <data key="d0">La violencia asociada a economias</data>
+</node>
+<node id="Acuerdo">
+  <data key="d0">Acuerdo</data>
+</node>
+<node id="Conclusiones">
+  <data key="d0">Conclusiones</data>
+</node>
+<node id="Estado">
+  <data key="d0">Estado</data>
+</node>
+<node id="America">
+  <data key="d0">America</data>
+</node>
+<node id="Latina Nucleo de Estudos Territoriais Latino-Americanos">
+  <data key="d0">Latina Nucleo de Estudos Territoriais Latino-Americanos</data>
+</node>
+<node id="America Latina y el Caribe Comision Regional de Desarrollo Territorial">
+  <data key="d0">America Latina y el Caribe Comision Regional de Desarrollo Territorial</data>
+</node>
+<node id="CEPAL">
+  <data key="d0">CEPAL</data>
+</node>
+<node id="America Latina y el Caribe">
+  <data key="d0">America Latina y el Caribe</data>
+</node>
+<node id="Migracion">
+  <data key="d0">Migracion</data>
+</node>
+<node id="Los flujos migratorios internos">
+  <data key="d0">Los flujos migratorios internos</data>
+</node>
+<node id="Recomendaciones de politica">
+  <data key="d0">Recomendaciones de politica</data>
+</node>
+<node id="El fortalecimiento de las capacidades fiscales y de planificacion de los gobiernos subnacionales">
+  <data key="d0">El fortalecimiento de las capacidades fiscales y de planificacion de los gobiernos subnacionales</data>
+</node>
+<edge source="Observatorio Militar de Estudos Estrategicos" target="Introducao" id="0">
+  <data key="d1">publicacaor</data>
+  <data key="d2">1d7406d1f5b5a7d5</data>
+  <data key="d3">1d7406d1f5b5a7d5-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="the Space Debris Environment: Technical Summary Interagency Debris Coordination Panel" target="IADC" id="0">
+  <data key="d1">relacionado_con</data>
+  <data key="d2">8a7b6ac48397741d</data>
+  <data key="d3">8a7b6ac48397741d-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="LEO Congestion Orbital Sustainability Office" target="ESA Space Debris Office" id="0">
+  <data key="d1">relacionado_con</data>
+  <data key="d2">eadd17143def1549</data>
+  <data key="d3">eadd17143def1549-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="ESA Space Debris Office" target="Earth" id="0">
+  <data key="d1">track</data>
+  <data key="d2">eadd17143def1549</data>
+  <data key="d3">eadd17143def1549-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="La polarizacion politica" target="los Estados" id="0">
+  <data key="d1">identificar</data>
+  <data key="d2">57392608c8c4b84e</data>
+  <data key="d3">57392608c8c4b84e-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Acuerdo de Paz" target="Colombia" id="0">
+  <data key="d1">presentar</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Colombia" target="Acuerdos de Paz" id="0">
+  <data key="d1">presentar</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Acuerdos de Paz" target="Instituto Kroc) Objetivo" id="0">
+  <data key="d1">presentar</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Instituto Kroc) Objetivo" target="Acuerdo Final" id="0">
+  <data key="d1">presentar</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Acuerdo Final" target="Paz" id="0">
+  <data key="d1">presentar</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Paz" target="Colombia" id="0">
+  <data key="d1">presentar</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Desafios persistentes" target="La violencia asociada a economias" id="0">
+  <data key="d1">seguir</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="La violencia asociada a economias" target="Acuerdo" id="0">
+  <data key="d1">seguir</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="La violencia asociada a economias" target="Acuerdo" id="1">
+  <data key="d1">seguir</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0001</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Acuerdo" target="Estado" id="0">
+  <data key="d1">subrayar</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0001</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Conclusiones" target="Acuerdo" id="0">
+  <data key="d1">relacionado_con</data>
+  <data key="d2">9afd63b40c7de192</data>
+  <data key="d3">9afd63b40c7de192-c0001</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="America" target="Latina Nucleo de Estudos Territoriais Latino-Americanos" id="0">
+  <data key="d1">relacionado_con</data>
+  <data key="d2">951ffc64cdc7cb6c</data>
+  <data key="d3">951ffc64cdc7cb6c-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="America" target="Estado" id="0">
+  <data key="d1">permanecer</data>
+  <data key="d2">951ffc64cdc7cb6c</data>
+  <data key="d3">951ffc64cdc7cb6c-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Latina Nucleo de Estudos Territoriais Latino-Americanos" target="Introducao" id="0">
+  <data key="d1">relacionado_con</data>
+  <data key="d2">951ffc64cdc7cb6c</data>
+  <data key="d3">951ffc64cdc7cb6c-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="America Latina y el Caribe Comision Regional de Desarrollo Territorial" target="CEPAL" id="0">
+  <data key="d1">seguir</data>
+  <data key="d2">18106af87b6bebe3</data>
+  <data key="d3">18106af87b6bebe3-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="CEPAL" target="America Latina y el Caribe" id="0">
+  <data key="d1">seguir</data>
+  <data key="d2">18106af87b6bebe3</data>
+  <data key="d3">18106af87b6bebe3-c0000</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Migracion" target="Los flujos migratorios internos" id="0">
+  <data key="d1">transformar</data>
+  <data key="d2">18106af87b6bebe3</data>
+  <data key="d3">18106af87b6bebe3-c0001</data>
+  <data key="d4">1</data>
+</edge>
+<edge source="Recomendaciones de politica" target="El fortalecimiento de las capacidades fiscales y de planificacion de los gobiernos subnacionales" id="0">
+  <data key="d1">aparecer</data>
+  <data key="d2">18106af87b6bebe3</data>
+  <data key="d3">18106af87b6bebe3-c0001</data>
+  <data key="d4">1</data>
+</edge>
+</graph></graphml>
