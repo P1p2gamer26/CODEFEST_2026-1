@@ -44,6 +44,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--encoder-name", default=ENCODER_PRIMARY_NAME)
     parser.add_argument("--index-dir", type=Path, default=None)
+    parser.add_argument(
+        "--sin-pooling",
+        action="store_true",
+        help="Solo consultas anotadas de forma independiente. OBLIGATORIO para calibrar "
+        "k_pool: las anotadas por pooling salieron de un k_pool concreto "
+        "(anotar_candidatos.K_POOL), asi que favorecen a ese valor.",
+    )
     args = parser.parse_args()
 
     gt = {}
@@ -51,6 +58,8 @@ def main() -> None:
         for linea in f:
             if linea.strip():
                 fila = json.loads(linea)
+                if args.sin_pooling and fila.get("pool"):
+                    continue
                 gt[fila["query_id"]] = set(fila["docs_relevantes"])
 
     consultas = {}

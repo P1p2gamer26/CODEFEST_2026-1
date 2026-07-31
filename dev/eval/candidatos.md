@@ -582,7 +582,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-CSIS-157` &mdash; CSIS_bingen-earth-uchu-japanese-0120025final.pdf
       ▪ ミサイル探知・追尾: 米国のデータ共有に関するポリシーを更新し、改訂された 宇宙機密指定ガイダンスの実施を加速させることで、迅速に結果を出し勢いを つけることができる。防衛省と米国宇宙開発局が、拡散型戦闘宇宙アーキテク チャの追尾及び輸送能力を中心に連携することは、段階的な協力関係を構築す る魅力的な方法であり、全体的な能力とレジリエンスの向上に貢献する。日本 における PWSA 地上局の配備とデータ共有、共同技術・生産実証プログラ ム、モジュール設計と一括調達・打上げに関するベストプラクティスの交換、 地上アーキテクチャの提携は、産業基盤の能力と任務遂行能力を総合的に向上 させる方法を提...
 
-- [ ] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
+- [x] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
       It may be possible to use any of these RPO satellites as a potential weapon. The onboard tracking and guidance systems used for rendezvous could be used to try and physically collide with another satellite to damage or destroy it. However, the approach would have to involve much higher relative velo...
 
 - [ ] `F2-SWF-080` &mdash; SWF_69d000e653a0667bf9cf7a6f-2020-global-counterspace-capabilities-an-open-source-assessme.pdf
@@ -591,13 +591,13 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-SWF-034` &mdash; SWF_2020-full-report-english.pdf
       Satellites travel in repeated, predictable orbits and observations of the satellite can be used to predict its future position. While the launch of a ballistic missile may occur with little or no advanced notice, an anti-satellite attack could be planned in advance to be under the most convenient co...
 
-- [ ] `F2-CSIS-142` &mdash; CSIS_250425-swope-space-threat.pdf
+- [x] `F2-CSIS-142` &mdash; CSIS_250425-swope-space-threat.pdf
       Additionally, in March and April 2024, SY-24C-03 and SJ-6-05A conducted rendez￾vous and proximity operations (RPO), with each satellite maneuvering and the closest approach distance less than 1 km—essen￾tially face-to-face for satellites traveling at around 17,000 mph—on April 22, 2024, according to...
 
 - [ ] `F2-SWF-122` &mdash; SWF_global-counterspace-capabilities-2024.pdf
       However, it would be difficult to predict the ability of creating such effects against military satellites, particularly since many US military satellites are hardened against radiation and EMP effects. Electronic Warfare On numerous occasions, North Korea has demonstrated the capability to interfer...
 
-- [ ] `F2-SWF-121` &mdash; SWF_global-counterspace-capabilities-2022-rev2.pdf
+- [x] `F2-SWF-121` &mdash; SWF_global-counterspace-capabilities-2022-rev2.pdf
       SECURE WORLD FOUNDATION 04/2022 03-10 15 The onboard tracking and guidance systems used for rendezvous could be used to try and physically collide with another satellite to damage or destroy it. However, the approach would have to involve much higher relative velocities than what the Chinese RPO sat...
 
 - [ ] `F2-SWF-082` &mdash; SWF_69d0054fcf51801d46c919e7-2023-global-counterspace-capabilities-an-open-source-assessme.pdf
@@ -620,7 +620,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-SIPRI-078` &mdash; SIPRI_9781954445024.pdf
       Given the utility of space for military operations, space systems may become targets for attacks themselves. There are several counterspace measures and weapons which can have both temporary and reversible as well as permanent and irreversible effects (Bingen et al., 2023). Some of the more common t...
 
-- [ ] `F2-SWF-119` &mdash; SWF_gcsr-2026-execsum-rus.pdf
+- [x] `F2-SWF-119` &mdash; SWF_gcsr-2026-execsum-rus.pdf
       Отсутствуют общедоступные свидетельства того, что США обладают оружием направленной энергии (ОНЭ) космического базирования. Агентство по противоракетной обороне (MDA) планирует провести исследование возможности применения ОНЭ космического базирования для обороны против баллистических ракет, а Военно...
 
 - [ ] `F2-SWF-118` &mdash; SWF_gcsr-2026-execsum-por.pdf
@@ -629,13 +629,13 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-SWF-083` &mdash; SWF_69d00cb41bf6510b78f7de95-2017-french-handbook-for-new-actors.pdf
       | 35 L’utilisation de sources d’énergie nucléaires dans l’espace La propulsion d’un engin spatial dans les conditions difficiles de l’espace extra￾atmosphérique exige de recourir à des techniques et des technologies toujours plus perfectionnées. Des sources d’énergie nucléaires ont été utilisées sur...
 
-- [ ] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
+- [x] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
       It is much more likely that an EW counterspace weapon would degrade military space capabilities rather than completely deny them. 3.4 — CHINESE DIRECTED ENERGY WEAPONS Assessment / China is likely to be developing directed energy weapons (DEW) for counterspace use, although public details are scarce...
 
 - [ ] `F2-CSIS-002` &mdash; CSIS_032321-harrisonjohnsonyoung-defenseagainstdarkartsinspace-report-update-compressed.pdf
       23 HARRISON, JOHNSON, YOUNG SPACE DEFENSES APPLIED with limited terrestrial infrastructure. For these reasons, as nations seek to project power over longer distances, they may become increasingly reliant on space-based remote sensing and communications to close the sen￾sor-to-shooter kill chain. If ...
 
-- [ ] `F2-SWF-039` &mdash; SWF_2025-executive-summary-arabic.pdf
+- [x] `F2-SWF-039` &mdash; SWF_2025-executive-summary-arabic.pdf
       ال توجد أدلة عامة تشير إىل أن الواليات المتحدة األمريكية لديها أسلحة الطاقة الموجهة الفضائية. وتخطط وكالة الدفاع الصاروخي بإجراء بحوث حول جدوى استخدام أسلحة الطاقة الموجهة للدفاع ضد الصواريخ الباليستية، وقدت أبدت .ً إذا القوات الفضائية األمريكية اهتماماً بالمعمار الموجه للطاقة بشكل عام، وليس بالضرور...
 
 
@@ -643,34 +643,34 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 > ¿Cuáles son las principales vulnerabilidades cibernéticas de la infraestructura satelital?
 
-- [ ] `F2-SWF-124` &mdash; SWF_global-counterspace-capabilities-2026-hr.pdf
+- [x] `F2-SWF-124` &mdash; SWF_global-counterspace-capabilities-2026-hr.pdf
       The researcher also showed how an attacker can take advantage of the high latency of satellite internet links to hijack a connection. In 2022, researchers demonstrated the ability to broadcast a signal through the unused portion of a commercial satellite being decommissioned in GEO, highlighting the...
 
-- [ ] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
+- [x] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
       14-09 that commercial satellite developers were unaware of common cyber security practices.68 Most leading subject matter experts maintain that across each of these areas, despite some increase in awareness of the threat in recent years, the state of cybersecurity for satellite infrastructure remain...
 
-- [ ] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
       assets in the cyber domain: the supply chain, the extended land-based infrastructure that sustains space-based assets—including ground stations, terminals, related companies, and end-users—and the satellites themselves.761 Successful penetration of any one of these may be sufficient to produce the d...
 
-- [ ] `F2-SWF-080` &mdash; SWF_69d000e653a0667bf9cf7a6f-2020-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-080` &mdash; SWF_69d000e653a0667bf9cf7a6f-2020-global-counterspace-capabilities-an-open-source-assessme.pdf
       While development and launch of next-generation satellite networks including Iridium NEXT should assist somewhat, this highlights the severity of the threat posed by reliance on legacy infrastructure, and the insecurity of satellite architectures generally. Other techniques, including the use of ran...
 
-- [ ] `F2-SWF-034` &mdash; SWF_2020-full-report-english.pdf
+- [x] `F2-SWF-034` &mdash; SWF_2020-full-report-english.pdf
       While development and launch of next-generation satellite networks including Iridium NEXT should assist somewhat, this highlights the severity of the threat posed by reliance on legacy infrastructure, and the insecurity of satellite architectures generally. Other techniques, including the use of ran...
 
-- [ ] `F2-SWF-121` &mdash; SWF_global-counterspace-capabilities-2022-rev2.pdf
+- [x] `F2-SWF-121` &mdash; SWF_global-counterspace-capabilities-2022-rev2.pdf
       A related category, not strictly “counterspace” but nevertheless an important consideration in the context of cyberattacks on space assets, is the exploitation of satellite links to facilitate the hacking of other targets. This recently made headlines when Kaspersky Labs discovered that Russian crim...
 
-- [ ] `F2-SWF-078` &mdash; SWF_69cffa84a1834078d6f9fe5e-2018-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-078` &mdash; SWF_69cffa84a1834078d6f9fe5e-2018-global-counterspace-capabilities-an-open-source-assessme.pdf
       375 Lele, “India’s Strategic Space Programme,” p. 191. Global Counterspace Capabilities: An Open Source Assessment 7-1 7 – CYBER COUNTERSPACE CAPABILITIES Assessment Multiple counties likely possess cyber capabilities that could be used against space systems; however actual evidence of cyber attacks...
 
-- [ ] `F2-SWF-122` &mdash; SWF_global-counterspace-capabilities-2024.pdf
+- [x] `F2-SWF-122` &mdash; SWF_global-counterspace-capabilities-2024.pdf
       Most leading subject matter experts maintain that across each of these areas, despite some increase in awareness of the threat in recent years, the state of cybersecurity for satellite infrastructure remains dismal.65 This, in turn, provides both state and non-state actors with a back door into a wi...
 
-- [ ] `F2-SWF-079` &mdash; SWF_69cffd06bb49a754a728c08d-2019-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-079` &mdash; SWF_69cffd06bb49a754a728c08d-2019-global-counterspace-capabilities-an-open-source-assessme.pdf
       484 Ibid. 485 Mark Holmes, “Cybersecurity Expert Assesses Potential Threats to Satellites,” Via Satellite, February,21, 2017, http://www.satellitetoday.com/technology/2017/02/21/cybersecurity-expert-assess-potential-threats-satellites/ 486 Ruben Santamarta, “A Wake-Up Call for SATCOM Security”; Offi...
 
-- [ ] `F2-SWF-082` &mdash; SWF_69d0054fcf51801d46c919e7-2023-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-082` &mdash; SWF_69d0054fcf51801d46c919e7-2023-global-counterspace-capabilities-an-open-source-assessme.pdf
       While development and launch of next-generation satellite networks including Iridium NEXT should assist somewhat, this highlights the severity of the threat posed by reliance on legacy infrastructure, and the insecurity of satellite architectures 33 Matt Burgess, “A mysterious satellite hack has vic...
 
 
@@ -690,19 +690,19 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-CSIS-204` &mdash; CSIS_rumsfeldcommission.pdf
       Opportunities in space are not limited to the United States. Many countries either conduct or participate in space programs dedicated to a variety of tasks, including communications and remote sensing. The U.S. will be tested over time by competing programs or attempts to restrict U.S. space activit...
 
-- [ ] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
       Solid state and fiber lasers would be more appropriate for space basing but require large inputs of electrical energy. Although admittedly a great oversimplification, a number of essential technological building blocks are required to be developed in order to field a high-power laser that will have ...
 
-- [ ] `F2-SWF-079` &mdash; SWF_69cffd06bb49a754a728c08d-2019-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-079` &mdash; SWF_69cffd06bb49a754a728c08d-2019-global-counterspace-capabilities-an-open-source-assessme.pdf
       Space￾based systems, on the other hand may be effective at lower power but are severely restricted in size and power availability. For example, ground-based chemical lasers can generate high power but would be difficult to implement in space due to their size and the disturbance torques that may be ...
 
-- [ ] `F2-SWF-041` &mdash; SWF_2025-executive-summary-french.pdf
+- [x] `F2-SWF-041` &mdash; SWF_2025-executive-summary-french.pdf
       Le programme progresse mais rien n’indique qu’une capacité opérationnelle ait déjà été atteinte. Bien que ce ne soit pas leur objectif principal, des installations russes au sol de télémétrie laser sur satellite pourraient éventuellement être utilisées pour éblouir les capteurs de satellites d’image...
 
 - [ ] `F2-UNOOSA-013` &mdash; UNOOSA_st-space-088a.pdf
       وفي إطار هذا النظام، تزدهر أنشطة الفضاء اخلارجي التي تقوم بها الدول واملنظمات احلكومية الدولية والكيانات غير احلكومية، ونتيجة لذلك، أصبحت علوم وتكنولوجيا ا ال حدود له في الفضاء وتطبيقاتها تسهم إسهام النمو االقتصادي وفي حتسني نوعية احلياة في جميع أنحاء العالم. -10 نعاود التأكيد على ما تضطلع به اللجنة...
 
-- [ ] `F2-SWF-117` &mdash; SWF_gcsr-2026-execsum-fre.pdf
+- [x] `F2-SWF-117` &mdash; SWF_gcsr-2026-execsum-fre.pdf
       Le programme progresse mais rien n’indique qu’une capacité opérationnelle ait déjà été atteinte. Bien que ce ne soit pas leur objectif principal, des installations russes au sol de télémétrie laser sur satellite pourraient éventuellement être utilisées pour éblouir les capteurs de satellites d’image...
 
 - [ ] `F2-UNOOSA-030` &mdash; UNOOSA_st-space-61rev03s.pdf
@@ -716,7 +716,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-UNOOSA-028` &mdash; UNOOSA_st-space-61rev03f.pdf
       2. Réacteurs nucléaires a) Les réacteurs nucléaires peuvent être utilisés : i) Dans le cas de missions interplanétaires ; ii) Sur des orbites suffisamment hautes, telles que définies à l’alinéa b) du paragraphe 2 ; iii) Sur des orbites terrestres basses à condition qu’ils soient garés sur une orbite...
 
-- [ ] `F1-CSET-074` &mdash; CSET_center-for-security-and-emerging-technology-4.pdf
+- [x] `F1-CSET-074` &mdash; CSET_center-for-security-and-emerging-technology-4.pdf
       64 Isotropic nuclear weapons concealed aboard satellites used as ‘‘space mines” could attack without warning and would pose a greater threat+ because reactive countermeasures could not be used for protection. Nuclear space mines could be lethal against satellites as hard as any now operational at su...
 
 - [ ] `F2-UNOOSA-030` &mdash; UNOOSA_st-space-61rev03s.pdf
@@ -737,7 +737,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-CSIS-004` &mdash; CSIS_130223-mv-spacenuclearanalysis.pdf
       These effects could be amplified in a conflict scenario where U.S. forces are under attack. If an adversary were looking to undermine U.S. nuclear security, these qualities would make the space-based NC3 segment an attractive target. Military satellites can be entangled systems, meaning that some fu...
 
-- [ ] `F2-CSIS-144` &mdash; CSIS_2kaitlyn-a-balance-of-instability.pdf
+- [x] `F2-CSIS-144` &mdash; CSIS_2kaitlyn-a-balance-of-instability.pdf
       The Space and Nuclear Nexus The space and nuclear domains have been intertwined since the early 1960s. For example, in 1962, shortly after the first ASAT test, the United States conducted the largest nuclear weapons test in space to further understand the effects of radiation in high altitudes. The ...
 
 - [ ] `F2-CSIS-156` &mdash; CSIS_bills-115hr2810eh.pdf
