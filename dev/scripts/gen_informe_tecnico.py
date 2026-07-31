@@ -61,11 +61,22 @@ def build_story() -> list:
     story.append(p("CODEFEST AD ASTRA 2026", "TitlePage"))
     story.append(p("Documento tecnico &mdash; Etapa 1: Base de Conocimiento Vectorial", "Subtitle"))
 
-    story.append(h1("1. Preprocesamiento y extraccion de texto"))
+    story.append(h1("1. El corpus y su preprocesamiento"))
+    story.append(p(
+        "El corpus entregado por ADL son <b>1826 documentos</b> (3 GB) de 21 "
+        "observatorios repartidos en los tres fenomenos: 760 PDF, 964 JSON, 26 CSV, "
+        "73 PBF, 8 imagenes, 6 XLSX y 1 TXT. La heterogeneidad es el primer problema "
+        "de ingenieria del reto: un mismo indice tiene que absorber informes de 400 "
+        "paginas de SIPRI o del AI Index, articulos web serializados en JSON, "
+        "datasets bibliograficos de decenas de MB y teselas de mapas vectoriales. "
+        "De los 1826 documentos, <b>1818 aportan texto</b>; los 8 restantes son 5 "
+        "imagenes sin texto legible, un JSON vacio y dos archivos con extension "
+        "<i>.pdf</i> que en realidad son paginas HTML de error de la descarga."
+    ))
     story.append(p(
         "Cada formato de origen tiene un extractor dedicado que produce un objeto comun "
         "(<i>RawDocument</i>) con el texto crudo y metadata auxiliar: <b>PDF</b> "
-        "(pdfplumber, preservando el orden de lectura por pagina y con deteccion "
+        "(pypdfium2, preservando el orden de lectura por pagina y con deteccion "
         "heuristica de boilerplate &mdash; lineas identicas repetidas en >=30% de las "
         "paginas de un documento de 3 o mas paginas se descartan como cabecera/pie de "
         "pagina), <b>HTML</b> (trafilatura, que separa el contenido principal del "
@@ -75,11 +86,55 @@ def build_story() -> list:
         "para esquemas no anticipados), <b>CSV/XLSX</b> (cada fila se convierte en "
         "pares <i>columna: valor</i> y se trata como unidad atomica de fragmentacion) "
         "e <b>imagenes</b> (OCR opcional via pytesseract, con degradacion controlada "
-        "si el binario de tesseract no esta disponible). La limpieza posterior "
+        "si el binario de tesseract no esta disponible). Tres decisiones merecen "
+        "justificacion explicita porque las impuso el corpus real:"
+    ))
+    story.append(bullets([
+        "<b>pypdfium2 en vez de pdfplumber</b> para los PDF. Con 760 PDF y del orden "
+        "de 30.000 paginas, el costo de extraccion deja de ser irrelevante: medido "
+        "sobre este corpus, pypdfium2 lee unas 3.000 paginas en 4,5 s, mientras que "
+        "pdfplumber es dos ordenes de magnitud mas lento y convierte la fase offline "
+        "de minutos en horas. Para texto plano de informes la calidad extraida es "
+        "equivalente.",
+        "<b>OCR selectivo.</b> Cerca del 5% de los PDF &mdash; casi todos los "
+        "informes de riesgo de la Defensoria del Pueblo &mdash; son escaneos sin capa "
+        "de texto. Cuando un documento rinde menos de 200 caracteres por pagina se "
+        "asume escaneo y se rasteriza para pasarlo por tesseract, con un tope de 60 "
+        "paginas por documento: sin ese tope un puñado de escaneos largos domina el "
+        "tiempo total de la corrida.",
+        "<b>Los .pbf no son OpenStreetMap.</b> Las 73 teselas de Amazon Underworld "
+        "son <i>Mapbox Vector Tiles</i>, no el formato Protocol Buffer de OSM, asi "
+        "que las librerias habituales (pyosmium, pyrosm) no las leen. Se decodifican "
+        "con <i>mapbox-vector-tile</i>, se recorren las capas leyendo los atributos "
+        "de cada elemento como pares <i>atributo: valor</i>, y se deduplican los "
+        "elementos repetidos entre niveles de zoom, tal como indica la sec. 2.1.",
+    ]))
+    story.append(p(
+        "Los CSV/XLSX llevan un tope de 500 filas por archivo. Los datasets del AI "
+        "Index son volcados bibliograficos de PubMed de hasta 35 MB, ajenos a las "
+        "consultas del reto: sin tope aportarian mas de 100.000 fragmentos de ruido "
+        "que dominarian el espacio vectorial. Con tope, el documento sigue indexado "
+        "y puede recuperarse a nivel documento, pero no ahoga al resto del corpus. "
+        "La limpieza posterior "
         "(normalizacion Unicode NFC, remocion de caracteres de control, deteccion de "
         "idioma) es deliberadamente conservadora sobre el contenido &mdash; sin "
         "lowercasing ni stemming &mdash; porque la evaluacion compara el campo "
         "<i>text</i> de forma textual contra el ground truth."
+    ))
+    story.append(h2("1.1 Identificacion de documentos (doc_id)"))
+    story.append(p(
+        "El emparejamiento a nivel documento se hace con el <b>DOC_ID que suministra "
+        "ADL</b> en el inventario del corpus (formato <i>F1-AIINDEX-001</i>), no con "
+        "un identificador propio. El manifest se indexa por <b>ruta relativa</b> y no "
+        "por nombre de archivo: 59 nombres del inventario aparecen en dos carpetas "
+        "distintas con DOC_ID distintos &mdash; los informes de CSET bajo "
+        "<i>pdfs/Reports</i> y <i>pdfs/Translation</i>, y las teselas que se repiten "
+        "por nivel de zoom &mdash; de modo que indexar por nombre le habria asignado "
+        "el identificador equivocado a 127 documentos y anulado su aporte al F1@3. "
+        "Once archivos presentes en el corpus no figuran en el inventario de ADL "
+        "(catalogos y registros del proceso de descarga); al no tener DOC_ID no "
+        "pueden aparecer en el ground truth, y se excluyen del indice para que no "
+        "ocupen uno de los tres cupos de documento por consulta."
     ))
 
     story.append(h1("2. Estrategia de chunking y justificacion"))
@@ -220,6 +275,17 @@ def build_story() -> list:
         "<i>src/config.py</i> centraliza el punto donde migrar a un indice "
         "aproximado sin tocar el resto del pipeline."
     ))
+    story.append(p(
+        "La decision se verifico empiricamente antes de fijarla. Con vectores de "
+        "384 dimensiones y k=120 sobre CPU, una busqueda exacta tarda 1,9 ms "
+        "(mediana) con 20.000 vectores, 5,7 ms con 50.000 (9,8 ms en el percentil "
+        "99) y 13,2 ms con 100.000. El corpus real produce <b>128.526 fragmentos</b>, "
+        "es decir del orden de 15 ms por consulta: irrelevante frente a los ~27 ms "
+        "que cuesta vectorizar la consulta y los ~19 s de carga del encoder. "
+        "Migrar a IVFFlat o HNSW habria cambiado busqueda exacta por busqueda "
+        "aproximada &mdash; perdiendo recall, que es justamente lo que mide la "
+        "evaluacion &mdash; a cambio de ahorrar milisegundos que nadie percibe."
+    ))
 
     story.append(h1("5. Grafo de conocimiento (componente bonus)"))
     story.append(p(
@@ -272,35 +338,25 @@ def build_story() -> list:
 
     story.append(h1("7. Limitaciones conocidas y decisiones documentadas"))
     story.append(bullets([
-        "<b>Corpus de ejemplo sintetico:</b> el entorno de desarrollo usado para "
-        "construir este pipeline bloquea (proxy de salida, politica 403) la "
-        "descarga de documentos reales de observatorios/centros de pensamiento. "
-        "El corpus en <i>corpus_ejemplo/</i> (15 documentos, PDF/HTML, ES/EN/PT) fue "
-        "redactado a mano, tematicamente inspirado en fuentes reales conocidas "
-        "(SIPRI, ESA Space Debris Office, CEPAL, Instituto Kroc, entre otras) pero "
-        "NO es una copia ni cita textual de ningun documento real. Se reemplaza "
-        "integramente por el corpus oficial de ADL sin cambios en <i>src/</i>.",
-        "<b>huggingface.co tambien bloqueado</b> en el mismo entorno: no fue posible "
-        "descargar los pesos reales del encoder ni el modelo de NER de "
-        "HuggingFace originalmente considerado para el grafo. El encoder esta "
-        "detras de una interfaz intercambiable "
-        "(<i>SentenceTransformerEncoder</i> real vs. <i>HashingFakeEncoder</i> "
-        "determinista de pruebas); toda la suite de tests y las corridas de "
-        "demostracion de este documento usan el encoder de pruebas, que valida la "
-        "mecanica de indexacion/recuperacion/formato de salida pero NO la calidad "
-        "semantica de la recuperacion. El indice con embeddings reales debe "
-        "generarse corriendo <i>scripts/build_corpus_index.py</i> en un entorno con "
-        "acceso normal a internet antes de la entrega final.",
-        "<b>PBF (mapas):</b> no implementado en esta iteracion; es un formato nicho "
-        "que requiere una libreria dedicada (osmium/pyrosm) y no se considero "
-        "razonable fabricar datos geoespaciales sinteticos. La interfaz del "
-        "extractor esta lista para completarse cuando el equipo tenga archivos PBF "
-        "reales con los que validar el parseo.",
-        "<b>Campo <i>fuente</i>:</b> se deriva hoy del nombre de archivo o la URL "
-        "detectada por el extractor HTML. Es la clave real de emparejamiento con el "
-        "ground truth a nivel documento (sec. 10.2.1), y esta aislada en una unica "
-        "funcion (<i>derive_fuente()</i>) para ajustarla facilmente si ADL usa otra "
-        "convencion.",
+        "<b>No hay forma de medir la metrica oficial.</b> ADL no publica el ground "
+        "truth, asi que NDCG@10 y F1@3 no se pueden calcular durante el desarrollo. "
+        "Para no decidir a ciegas entre configuraciones se anoto a mano un ground "
+        "truth reducido (10 de las 50 consultas, repartidas en los tres fenomenos) "
+        "que permite comparar alternativas entre si. Sus numeros son una cota "
+        "inferior y no una estimacion de la nota: la anotacion es parcial, de modo "
+        "que un documento relevante no anotado cuenta como error.",
+        "<b>Documentos sin texto recuperable:</b> 8 de los 1826. Cinco son imagenes "
+        "(una de ellas en formato AVIF, que Pillow no lee sin plugin adicional), una "
+        "es un JSON de 0 bytes y dos son paginas HTML de error guardadas con "
+        "extension .pdf. Estos ultimos se detectan por contenido y se procesan como "
+        "HTML, pero su texto es una pagina de error y no aporta nada. Estos "
+        "documentos quedan en el corpus sin posibilidad de ser recuperados.",
+        "<b>Campo <i>fuente</i>:</b> se reporta siempre el nombre de archivo "
+        "estandarizado del inventario de ADL, nunca la URL de origen (que se "
+        "conserva aparte, en un campo <i>url</i> adicional). La sec. 10.2.1 sugeria "
+        "<i>fuente</i> como clave de emparejamiento y la aclaracion posterior de ADL "
+        "indico <i>doc_id</i>; reportar el nombre de archivo hace que el sistema "
+        "funcione bajo cualquiera de las dos lecturas.",
         "<b>Fusion de chunks cortos adyacentes</b> (sec. 9.2.1, mencionada como "
         "posible, no obligatoria) no esta implementada: solo se implemento la "
         "division obligatoria de chunks que exceden 250 palabras.",

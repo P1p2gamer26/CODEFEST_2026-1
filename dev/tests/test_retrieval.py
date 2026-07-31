@@ -85,6 +85,21 @@ def test_enforce_word_limit_splits_oversized_chunk_on_sentence_boundaries():
         assert sent in reconstructed or sent in texto
 
 
+def test_enforce_word_limit_corta_oracion_unica_gigante():
+    """Texto de OCR sin puntuacion: el splitter devuelve UNA sola oracion de
+    mas de 250 palabras. Antes se emitia entera y violaba la sec. 9.3.2."""
+    texto = " ".join(f"palabra{i}" for i in range(400))  # sin un solo punto
+    hits = [_hit("c1", "d1", 0.9, texto=texto, idioma="es")]
+
+    fragments = enforce_word_limit(hits, max_fragments=10, max_words=250)
+
+    assert len(fragments) == 2
+    for frag in fragments:
+        assert len(frag["text"].split()) <= 250
+    # no se pierde ni se duplica texto
+    assert " ".join(f["text"] for f in fragments) == texto
+
+
 def test_enforce_word_limit_stops_at_max_fragments():
     hits = [_hit(f"c{i}", f"d{i}", 1.0 - i * 0.01) for i in range(20)]
     fragments = enforce_word_limit(hits, max_fragments=10, max_words=250)

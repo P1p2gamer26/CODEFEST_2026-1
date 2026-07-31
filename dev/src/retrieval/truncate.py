@@ -18,6 +18,23 @@ def _split_oversized(hit: Hit, max_words: int) -> list[dict]:
     if not sentences:
         sentences = [hit.texto]
 
+    # Una sola "oracion" puede superar por si sola el limite: pasa con texto
+    # de OCR o de PDF mal extraido, donde no queda puntuacion aprovechable y
+    # el splitter devuelve un bloque entero. Ahi el corte por palabras es la
+    # unica salida; sin esto el fragmento sale con mas de 250 palabras y la
+    # sec. 9.3.2 lo penaliza o lo descarta.
+    trozos: list[str] = []
+    for sent in sentences:
+        palabras = sent.split()
+        if len(palabras) > max_words:
+            trozos += [
+                " ".join(palabras[i : i + max_words])
+                for i in range(0, len(palabras), max_words)
+            ]
+        else:
+            trozos.append(sent)
+    sentences = trozos
+
     sub_fragments: list[dict] = []
     current: list[str] = []
     current_words = 0

@@ -22,8 +22,12 @@ Uso:
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
+
+# doc_id de respaldo generado por src/ingestion/doc_id.py::compute_doc_id().
+_ES_HASH_CONTENIDO = re.compile(r"[0-9a-f]{16}")
 
 ROOT = Path(__file__).resolve().parents[2]  # dev/scripts/ -> dev/ -> raiz del repo
 ENTREGA = ROOT / "Entrega"
@@ -101,6 +105,20 @@ def validar_metadata(encoder_dir: Path, filas: list[dict]) -> None:
     ids = [f.get("chunk_id") for f in filas]
     if len(set(ids)) != len(ids):
         fallo(f"{encoder_dir.name}/metadata.jsonl: hay chunk_id duplicados")
+
+    # Cobertura del manifest de ADL: un doc_id con forma de hash de contenido
+    # significa que ese documento NO estaba en el manifest y por tanto no puede
+    # emparejar con el ground truth (F1@3 = 0 para ese documento).
+    docs = {f.get("doc_id") for f in filas}
+    hashes = {d for d in docs if d and _ES_HASH_CONTENIDO.fullmatch(d)}
+    if hashes:
+        fallo(
+            f"{encoder_dir.name}: {len(hashes)} de {len(docs)} doc_id son hashes de "
+            f"contenido, no doc_id de ADL (p. ej. {sorted(hashes)[0]}). Falta pasar "
+            f"--doc-id-manifest o el manifest no cubre esos archivos; no puntuan en F1@3."
+        )
+    else:
+        print(f"  {encoder_dir.name}: {len(docs)} documentos, todos con doc_id de ADL")
 
     try:
         import faiss

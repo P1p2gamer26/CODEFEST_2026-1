@@ -345,6 +345,31 @@ para no perder consistencia.
 | Usar la extensión real del archivo (minúsculas) en `formato`, no solo pdf/html/md | ✅ Ya se hace así: `html`, `json`, `pdf`, `csv`/`xlsx`, `img` (ver `src/extraction/*_extractor.py`) |
 | Múltiples encoders, cada uno con su carpeta y su `metadata.jsonl` (sec. 4.4) | ✅ Soportado: `--encoder-name A B` crea `encoder_A/` y `encoder_B/`, y los rankings se fusionan con RRF. Detrás de flag hasta poder medir su impacto. |
 
+### Insumo pendiente de ADL: el corpus y las 50 consultas (al 28 de julio de 2026)
+
+A esta fecha **ADL todavía no ha entregado el corpus oficial (~1826 archivos),
+los `doc_id` asociados ni las 50 consultas q001–q050**. Es un insumo externo:
+no hay forma de sustituirlo desde el repo. Lo que hay hoy es corpus sintético
+(`dev/corpus_ejemplo/`, 15 documentos escritos a mano) y consultas inventadas
+(`dev/consultas_prueba/`), útiles solo para probar la mecánica.
+
+Lo que queda bloqueado hasta que llegue:
+
+- **Emparejamiento por `doc_id` real.** El código ya acepta el manifest de ADL
+  (`--doc-id-manifest`, JSON/JSONL/CSV) y cae a hash de contenido si no hay.
+  Sin el manifest real, el F1@3 contra el ground truth daría cero.
+- **Calibrar el chunking** sobre documentos reales (PDFs de SIPRI/NASA/Banco
+  Mundial), que pegan directo al NDCG@10.
+- **Decidir con datos si se entrega con uno o dos encoders**
+  (`scripts/compare_encoders.py` necesita corpus real para ser informativo).
+- **Implementar `pbf_extractor.py`**: no se sabe aún si el corpus trae `.pbf`.
+- **Generar el `resultados.jsonl` definitivo** con las 50 consultas oficiales.
+
+Lo que **no** está bloqueado y ya se resolvió: el pipeline completo end-to-end,
+el esquema de entrega validado, el grafo bonus, el multi-encoder con fusión RRF
+y el dimensionamiento del índice (medido con vectores sintéticos: 50k vectores
+→ 5.7 ms p50 por consulta, `IndexFlatIP` sobra a la escala esperada).
+
 ### Lo que hay que mejorar / vigilar de aquí a que llegue el corpus real
 
 Ordenado por impacto sobre las métricas (NDCG@10 + F1@3), que es lo único

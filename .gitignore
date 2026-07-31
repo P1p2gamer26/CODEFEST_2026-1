@@ -12,5 +12,13 @@ intermedios/
 *.pytest_cache/
 .pytest_cache/
 
+# Corpus real de ADL (pesado, no se versiona)
+dev/corpus/
+
+# Los ZIP originales que entrego ADL (3 GB). El Indice_Datos_Codefest.xlsx y
+# el PDF de preguntas de la misma carpeta SI se versionan: pesan KB y de ellos
+# sale el manifest de doc_id.
+dev/corpus_meta/*.zip
+
 # Renders del grafo generados con dev/scripts/ver_grafo.py --out
 /grafo.png
