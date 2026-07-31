@@ -843,6 +843,10 @@ def main() -> None:
     if args.use_graph:
         import networkx as nx
 
+        # --use-graph es opcional (bonus): si el grafo no esta, conviene decirlo
+        # en una linea y no con un traceback de networkx.
+        if not args.graph_path.is_file():
+            parser.exit(2, f"error: no existe el grafo {args.graph_path}; correr sin --use-graph\n")
         graph = nx.read_graphml(args.graph_path)
         logger.info(
             "grafo cargado: %d nodos, %d aristas",
