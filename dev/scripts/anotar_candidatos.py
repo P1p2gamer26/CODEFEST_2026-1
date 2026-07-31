@@ -132,7 +132,15 @@ def recolectar(args: argparse.Namespace) -> None:
     por_qid = {f["query_id"]: f for f in existentes}
     for qid, docs in marcados.items():
         # Re-anotar una consulta ya anotada la reemplaza, no la duplica.
-        por_qid[qid] = {"query_id": qid, "nota": "anotado con --recolectar", "docs_relevantes": docs}
+        # `pool` deja registrado de que encoder salieron los candidatos: una
+        # consulta anotada sobre el pool de X favorece a X, asi que NO sirve
+        # para comparar X contra otro encoder. eval_mini puede filtrarlas.
+        por_qid[qid] = {
+            "query_id": qid,
+            "nota": "anotado por pooling con --recolectar",
+            "pool": args.encoder_name if args else None,
+            "docs_relevantes": docs,
+        }
 
     with GROUND_TRUTH_PATH.open("w", encoding="utf-8") as f:
         for qid in sorted(por_qid):

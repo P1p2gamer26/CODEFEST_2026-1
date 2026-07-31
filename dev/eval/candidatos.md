@@ -121,7 +121,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F1-CSET-100` &mdash; CSET_center-for-security-and-emerging-technology-50.pdf
       If capable AI is widely distributed and easily accessible, then observing or interfering would be more challenging. Limitations or guardrails built into models are not currently promising for restricting malicious users. Further, the capabilities that might be needed for defense such as vulnerabilit...
 
-- [ ] `F1-DAIO-009` &mdash; DAIO_study2307-2.pdf
+- [x] `F1-DAIO-009` &mdash; DAIO_study2307-2.pdf
       143 “JAIC partners with USSOCOM to deliver AI-enabled predictive maintenance capabilities.” 144 Stone, “Army logistics integrating new AI, cloud capabilities.” WWW.DEFENSEAI.EU 39 7 Training for Defense AI 40 RISKY INCREMENTALISM One of the most widespread, recurring points of concern about U.S. def...
 
 - [ ] `F3-SIPRI-002` &mdash; SIPRI_0226-milai-procurement-kr.pdf
@@ -130,7 +130,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F1-DAIO-018` &mdash; DAIO_study2316-cautious-data-driven-evolution-sami-jaervinen.pdf
       Potential AI applications will need to be assessed across a wide spectrum of areas, ranging from logistics to ISTAR, from decision-making and C2 to management of big data. Consequently, also the NDU’s Department of Military Technology ranks autonomy, robotics, AI and machine learning as one of their...
 
-- [ ] `F1-DAIO-025` &mdash; DAIO_study2424-intelligent-national-defense-amid-strategic-ambiguity-kitsch-liao.pdf
+- [x] `F1-DAIO-025` &mdash; DAIO_study2424-intelligent-national-defense-amid-strategic-ambiguity-kitsch-liao.pdf
       Systematic training on the conceptual employment of AI in the defense realm seemed to be lacking, other than the occasional conferences and workshops, predominantly focused on the intersection between digitization, cyber, and AI, targeting senior-level officers,66 with occasional forays into issue a...
 
 - [ ] `F3-SIPRI-012` &mdash; SIPRI_1125-civilian-ai.pdf
@@ -156,10 +156,10 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-SIPRI-002` &mdash; SIPRI_0226-milai-procurement-kr.pdf
       이러한 구분은 거버넌스 측면 에서 중요합니다. 작전 목적의 군사 AI 역량은 대부분의 군사 지원 또는 기업 기능에는 적용되지 않 는 국제법상의 특정 우려 사항을 제기하기 때문입니다. ( 참고: Persi Paoli, G. 및 Afina, Y., '군사 영역에서의 AI: 국가를 위한 브리핑 노트', UNIDIR, 2025년 3월 10일, 7-8쪽) 2 군사 인공지능의 책임 있는 조달 박스 1.2. 군사 조달 조달은 군대 또는 국방 당국이 작전 요구 사항을 충족하는 데 필요한 재화와 용역을 획득하는 과정 입니다. 군사 조달은 모든 국방...
 
-- [ ] `F3-SIPRI-100` &mdash; SIPRI_ko-laws-v.pdf
+- [x] `F3-SIPRI-100` &mdash; SIPRI_ko-laws-v.pdf
       1. 기술적 중립성: 자율무기체계에 대한 다자간 정책 노력은 인간 개입 없이 표적을 식별·선택·교전할 수 있는 무기에 대한 우려를 기반으로 하여 기술적 으로 중립적 접근을 유지하고 있습니다. 반면 인공 지능 기반 의사결정지원체계에 대한 논의는 군사 적 응용을 넘어, 인공지능 자체 기술의 확산과 윤리 적 함의에 대한 우려의 맥락에서 제기됩니다. 2. 적용 범위: 자율무기체계는 군사 표적 선정에 한정 되지만, 인공지능 기반 의사결정지원체계는 군사· 민간을 아우르는 광범위한 응용 분야를 가지며, 이 에 따라 더 포괄적인 정책 고려가 요구...
 
-- [ ] `F3-SIPRI-001` &mdash; SIPRI_0226-milai-procurement-260216.pdf
+- [x] `F3-SIPRI-001` &mdash; SIPRI_0226-milai-procurement-260216.pdf
       When it comes to AI in the military domain, militaries face the need to ensure fidelity to obligations under international law as well as principles of responsible development and use of AI adopted at the national or international level that, taken together, form the landscape of ‘responsible milita...
 
 - [ ] `F3-SIPRI-016` &mdash; SIPRI_20240212113627.pdf
@@ -171,7 +171,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F1-DAIO-019` &mdash; DAIO_study2317-a-winding-road-before-scaling-up-kevin-martin-lucie-liversain.pdf
       Directorate of Military Intelligence infrastructure and premises, with no Internet connection and no remote intervention in the event of a problem. Preligens transformed its solution in iterations, bringing it into line with the necessary software and operational requirements. Moreover, the end-user...
 
-- [ ] `F3-SIPRI-081` &mdash; SIPRI_autopractices-map-web.pdf
+- [x] `F3-SIPRI-081` &mdash; SIPRI_autopractices-map-web.pdf
       A reduced form of human agency in military targeting raises ethical, legal, security, and operational concerns which are insufficiently addressed by sets of broad and often ambiguous principles featuring in current top-down frameworks.4 Considering this global challenge, the purpose of the European ...
 
 - [ ] `F1-DAIO-031` &mdash; DAIO_study2530-bonds-that-separate-heiko-borchert.pdf
@@ -276,16 +276,16 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F1-DAIO-019` &mdash; DAIO_study2317-a-winding-road-before-scaling-up-kevin-martin-lucie-liversain.pdf
       The move towards high-intensity conflict, with battlefield robotization, AI integration, data/sensor fusion, and the quest to saturate the battlefield through mass effect, have all guided defense technology development in recent years. This applies both to the launch of the latest major multi-applic...
 
-- [ ] `F1-DAIO-015` &mdash; DAIO_study2313-overtaking-on-the-curve-john-lee.pdf
+- [x] `F1-DAIO-015` &mdash; DAIO_study2313-overtaking-on-the-curve-john-lee.pdf
       Claims made by Chinese commentators for the potential of “intelligentized warfare” reflect those once made by US advo￾cates of the Revolution in Military Affairs: for example, that small-scale precision operations will achieve effects that previously required large-scale war making.33 This core conc...
 
-- [ ] `F1-DAIO-006` &mdash; DAIO_study2204-2.pdf
+- [x] `F1-DAIO-006` &mdash; DAIO_study2204-2.pdf
       6.1 The Army Accordingly, the Army’s Futures Directorate is considering the implications of AI and uncrewed systems for land warfare. The Directorate’s short paper on the Army’s Approach to Robotics and Autonomous Systems sketches some ideas for concept development, arguing that autonomous and remot...
 
-- [ ] `F1-CSET-103` &mdash; CSET_center-for-security-and-emerging-technology-53.pdf
+- [x] `F1-CSET-103` &mdash; CSET_center-for-security-and-emerging-technology-53.pdf
       Center for Security and Emerging Technology | 5 Introduction Artificial intelligence promises to help military commanders make sense of vast amounts of data at superhuman speeds. The military has a strong motivation to take advantage of AI, and among the most interested within the armed forces are c...
 
-- [ ] `F1-DAIO-018` &mdash; DAIO_study2316-cautious-data-driven-evolution-sami-jaervinen.pdf
+- [x] `F1-DAIO-018` &mdash; DAIO_study2316-cautious-data-driven-evolution-sami-jaervinen.pdf
       In cases where the amount of data exceeds human processing capacity or where the situation requires superhuman reaction speeds, automated or AI systems can help. Moreover, systems with increasing autonomous capacities may prove to be the next revolution in military affairs, enabling completely new c...
 
 
@@ -305,7 +305,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F1-DAIO-006` &mdash; DAIO_study2204-2.pdf
       Certainly, many peoples’ vision of AI in national security is of an uncrewed lethal drone. In reality, however, AI will make more of an immediate contribution to other aspects of air power, invariably as part of data-processing and decision-making systems that involve humans – not least because of e...
 
-- [ ] `F1-DAIO-018` &mdash; DAIO_study2316-cautious-data-driven-evolution-sami-jaervinen.pdf
+- [x] `F1-DAIO-018` &mdash; DAIO_study2316-cautious-data-driven-evolution-sami-jaervinen.pdf
       WWW.DEFENSEAI.EU 27 Force Protection and Engagement: More military-specific applications of AI include force protection and engagement. Protection can be enhanced by AI application via improved detection and identification of threats and auto￾mation of countermeasures on the one hand, and via improv...
 
 - [ ] `F1-DAIO-029` &mdash; DAIO_study2528-an-underdeveloped-strategic-necessity-umaima-ali.pdf
@@ -1407,4 +1407,3 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 - [ ] `F3-MAPPOEA-028` &mdash; MAPPOEA_xxiii-informe-esp.pdf
       2. MONITOREO A LOS CONTEXTOS DE CONFLICTO ARMADO Y CRIMINALIDAD La SG/OEA resalta el compromiso del Gobierno colombiano de continuar con una estrategia sostenida para enfrentar el fenómeno del crimen organizado, particularmente haciendo frente a aquellos grupos categorizados institucionalmente como ...
-

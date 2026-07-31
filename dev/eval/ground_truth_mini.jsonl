@@ -1,4 +1,8 @@
+{"query_id": "q004", "nota": "anotado por pooling con --recolectar (juicio del asistente, revisar)", "docs_relevantes": ["F1-DAIO-009", "F1-DAIO-025"], "pool": "paraphrase-multilingual-MiniLM-L12-v2"}
 {"query_id": "q005", "nota": "dependencia de tecnologias extranjeras de IA", "docs_relevantes": ["F1-ATLCOUNCIL-165", "F1-ATLCOUNCIL-005", "F1-CSET-076", "F1-ILIA-009"]}
+{"query_id": "q006", "nota": "anotado por pooling con --recolectar (juicio del asistente, revisar)", "docs_relevantes": ["F3-SIPRI-100", "F3-SIPRI-001", "F3-SIPRI-081"], "pool": "paraphrase-multilingual-MiniLM-L12-v2"}
+{"query_id": "q009", "nota": "anotado por pooling con --recolectar (juicio del asistente, revisar)", "docs_relevantes": ["F1-DAIO-015", "F1-DAIO-006", "F1-CSET-103", "F1-DAIO-018"], "pool": "paraphrase-multilingual-MiniLM-L12-v2"}
+{"query_id": "q010", "nota": "anotado por pooling con --recolectar (juicio del asistente, revisar)", "docs_relevantes": ["F1-DAIO-018"], "pool": "paraphrase-multilingual-MiniLM-L12-v2"}
 {"query_id": "q014", "nota": "infraestructura de computo avanzado", "docs_relevantes": ["F1-AIINDEX-023", "F1-AIINDEX-022", "F1-CSET-066", "F1-CSET-076", "F1-CSET-019"]}
 {"query_id": "q017", "nota": "derecho internacional del espacio y armas", "docs_relevantes": ["F2-UNOOSA-027", "F2-SWF-099", "F2-SWF-126", "F2-CSIS-203", "F2-CSIS-177"]}
 {"query_id": "q020", "nota": "spoofing de servicios satelitales", "docs_relevantes": ["F2-CSIS-142", "F2-CSIS-049", "F2-CSIS-136", "F2-SWF-124", "F2-SWF-123"]}

@@ -58,6 +58,14 @@ def main() -> None:
     parser.add_argument("--resultados", type=Path, default=RESULTADOS_PATH)
     parser.add_argument("--ground-truth", type=Path, default=GROUND_TRUTH_MINI_PATH)
     parser.add_argument("--k", type=int, default=N_DOCUMENTS_PER_QUERY)
+    parser.add_argument(
+        "--sin-pooling",
+        action="store_true",
+        help="Usa solo las consultas anotadas de forma independiente (sin campo 'pool'). "
+        "OBLIGATORIO al comparar dos encoders entre si: una consulta anotada sobre los "
+        "candidatos que propuso el encoder X favorece a X, porque los documentos que X "
+        "nunca recupero jamas pudieron marcarse como relevantes.",
+    )
     args = parser.parse_args()
 
     if not args.ground_truth.exists():
@@ -66,6 +74,11 @@ def main() -> None:
 
     resultados = {r["query_id"]: r for r in cargar_jsonl(args.resultados)}
     gt = cargar_jsonl(args.ground_truth)
+
+    if args.sin_pooling:
+        antes = len(gt)
+        gt = [f for f in gt if not f.get("pool")]
+        print(f"solo anotacion independiente: {len(gt)} de {antes} consultas\n")
 
     suma = 0.0
     print(f"{'consulta':10s} {'P':>6s} {'R':>6s} {'F1':>6s}  aciertos")
