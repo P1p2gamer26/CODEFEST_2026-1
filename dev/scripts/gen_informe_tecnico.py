@@ -340,6 +340,18 @@ def build_story() -> list:
         "una unica \"oracion\" de mas de 250 palabras, que respetar el limite "
         "oracional dejaria pasar entera. En ese caso &mdash; y solo en ese &mdash; "
         "el corte se hace por palabras.",
+        "<b>Supresion de fragmentos con texto repetido.</b> El corpus contiene "
+        "documentos duplicados (el mismo informe de CSIS bajo dos <i>doc_id</i>, "
+        "series que reeditan capitulos completos), de modo que dos fragmentos "
+        "distintos del indice pueden tener texto identico. Entregar el mismo texto "
+        "dos veces no puede aportar ganancia en NDCG@10 &mdash; el ranking ideal no "
+        "lo contiene &mdash; y ademas desplaza fuera del top-10 a un candidato que si "
+        "podria aportarla. Sobre las 50 consultas oficiales, 17 de los 500 "
+        "fragmentos entregados eran duplicados exactos; suprimirlos y completar el "
+        "cupo con el siguiente candidato recupera esos 17 espacios. La comparacion "
+        "es de texto exacto (normalizando solo espacios y mayusculas) y no de "
+        "similitud aproximada, que podria descartar fragmentos legitimamente "
+        "distintos que comparten un parrafo.",
     ]))
     story.append(p(
         "Ninguna etapa de recuperacion usa un modelo generativo: solo vectores, "

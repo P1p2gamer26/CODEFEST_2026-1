@@ -100,8 +100,40 @@ def test_enforce_word_limit_corta_oracion_unica_gigante():
     assert " ".join(f["text"] for f in fragments) == texto
 
 
+def test_enforce_word_limit_descarta_texto_duplicado():
+    """El corpus trae el mismo informe bajo dos doc_id, asi que dos chunks
+    distintos pueden tener texto identico. Repetirlo no suma en NDCG@10 y
+    ademas desplaza a un candidato que si podria sumar."""
+    hits = [
+        _hit("c1", "d1", 0.9, texto="El mismo parrafo repetido."),
+        _hit("c2", "d2", 0.8, texto="  EL MISMO   parrafo REPETIDO.  "),  # solo cambia formato
+        _hit("c3", "d3", 0.7, texto="Un parrafo distinto."),
+    ]
+
+    fragments = enforce_word_limit(hits, max_fragments=10, max_words=250)
+
+    assert len(fragments) == 2
+    assert [f["doc_id"] for f in fragments] == ["d1", "d3"]  # se conserva el mejor rankeado
+    assert [f["rank"] for f in fragments] == [1, 2]
+
+
+def test_enforce_word_limit_rellena_el_cupo_tras_descartar_duplicados():
+    """Descartar un duplicado no puede dejar la lista corta: hay que tomar el
+    siguiente candidato del pool, que es justamente la ganancia buscada."""
+    hits = [_hit("c1", "d1", 0.9, texto="Repetido.")]
+    hits += [_hit("c2", "d2", 0.8, texto="Repetido.")]  # duplicado, se descarta
+    hits += [_hit(f"c{i}", f"d{i}", 0.5, texto=f"Fragmento distinto numero {i}.") for i in range(3, 14)]
+
+    fragments = enforce_word_limit(hits, max_fragments=10, max_words=250)
+
+    assert len(fragments) == 10  # el cupo se completa igual
+    assert len({f["text"].lower() for f in fragments}) == 10
+
+
 def test_enforce_word_limit_stops_at_max_fragments():
-    hits = [_hit(f"c{i}", f"d{i}", 1.0 - i * 0.01) for i in range(20)]
+    # Textos distintos a proposito: con el texto por defecto todos serian el
+    # mismo fragmento y el dedup los colapsaria, tapando lo que prueba el caso.
+    hits = [_hit(f"c{i}", f"d{i}", 1.0 - i * 0.01, texto=f"Fragmento numero {i}.") for i in range(20)]
     fragments = enforce_word_limit(hits, max_fragments=10, max_words=250)
     assert len(fragments) == 10
     assert [f["rank"] for f in fragments] == list(range(1, 11))
