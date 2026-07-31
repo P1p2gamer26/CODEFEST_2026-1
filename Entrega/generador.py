@@ -353,10 +353,14 @@ class DocumentHit:
 
 
 def aggregate_documents(
-    hits: list[Hit], top_n: int = N_DOCUMENTS_PER_QUERY, strategy: str = "max"
+    hits: list[Hit], top_n: int = N_DOCUMENTS_PER_QUERY, strategy: str = "sum"
 ) -> list[DocumentHit]:
     """Agrega las puntuaciones de los fragmentos por documento (sec. 8.6).
-    Solo aritmetica sobre los scores de FAISS."""
+    Solo aritmetica sobre los scores de FAISS.
+
+    Por defecto "sum", no "max": un documento relevante suele tener VARIOS
+    pasajes relevantes, mientras que "max" premia al que tiene un unico chunk
+    afortunado. Medido sobre dev/eval/ (k_pool=60): 0.200 -> 0.300 de F1@3."""
     scores_by_doc: dict[str, list[float]] = defaultdict(list)
     for hit in hits:
         scores_by_doc[hit.doc_id].append(hit.score)
@@ -448,6 +452,23 @@ def _split_oversized(hit: Hit, max_words: int) -> list[dict]:
     sentences = split_sentences(hit.texto, hit.idioma)
     if not sentences:
         sentences = [hit.texto]
+
+    # Una sola "oracion" puede superar por si sola el limite: pasa con texto
+    # de OCR o de PDF mal extraido, donde no queda puntuacion aprovechable y
+    # el splitter devuelve un bloque entero. Ahi el corte por palabras es la
+    # unica salida; sin esto el fragmento sale con mas de 250 palabras y la
+    # sec. 9.3.2 lo penaliza o lo descarta.
+    trozos: list[str] = []
+    for sent in sentences:
+        palabras = sent.split()
+        if len(palabras) > max_words:
+            trozos += [
+                " ".join(palabras[i : i + max_words])
+                for i in range(0, len(palabras), max_words)
+            ]
+        else:
+            trozos.append(sent)
+    sentences = trozos
 
     sub_fragments: list[dict] = []
     current: list[str] = []
@@ -663,7 +684,7 @@ def graph_search(query: str, graph, lang: str | None = None, k: int = 10) -> lis
 # CLI
 # ---------------------------------------------------------------------------
 
-DEFAULT_K_POOL = 30  # candidatos usados para agregar a nivel documento (sec. 8.6);
+DEFAULT_K_POOL = 60  # candidatos usados para agregar a nivel documento (sec. 8.6);
 # mayor que los 10 fragmentos que se devuelven, para que la relevancia de un
 # documento no dependa solo de si su mejor chunk entro en el top-10 mostrado.
 
@@ -747,7 +768,7 @@ def main() -> None:
     parser.add_argument("--formato", default=None)
     parser.add_argument("--idioma", default=None)
     parser.add_argument("--min-score", type=float, default=None)
-    parser.add_argument("--agg-strategy", default="max", choices=["max", "sum", "mean"])
+    parser.add_argument("--agg-strategy", default="sum", choices=["max", "sum", "mean"])
     parser.add_argument(
         "--use-graph",
         action="store_true",

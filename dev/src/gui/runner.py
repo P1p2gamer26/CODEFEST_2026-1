@@ -190,7 +190,7 @@ def run_online(
     index_dir: Path | None = None,
     graph_path: Path = GRAFO_PATH,
     out_path: Path = RESULTADOS_PATH,
-    k_pool: int = 30,
+    k_pool: int = 60,
     progress_cb: ProgressCallback = None,
 ) -> RunSummary:
     generador = _load_generador_module()
@@ -259,7 +259,7 @@ class Session:
         use_graph: bool = False,
         index_dir: Path | None = None,
         graph_path: Path = GRAFO_PATH,
-        k_pool: int = 30,
+        k_pool: int = 60,
     ):
         self.generador = _load_generador_module()
         self.encoder = get_encoder(name=encoder_name, use_fake=use_fake_encoder)

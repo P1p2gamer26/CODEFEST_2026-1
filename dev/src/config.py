@@ -10,17 +10,23 @@ from pathlib import Path
 DEV_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = DEV_DIR.parent
 
-# --- Corpus y consultas (PROVISIONAL: se reemplaza por lo oficial de ADL) ---
-CORPUS_DIR = DEV_DIR / "corpus_ejemplo"
+# --- Corpus y consultas ---
+# dev/corpus/ es el corpus real de ADL, ya descomprimido (gitignoreado por peso).
+# dev/corpus_meta/ guarda los ZIP originales, el indice xlsx y el PDF de
+# preguntas: son metadatos SOBRE el corpus, no documentos, y por eso viven
+# fuera del arbol que recorre `iter_corpus_files()`.
+CORPUS_DIR = DEV_DIR / "corpus"
+CORPUS_META_DIR = DEV_DIR / "corpus_meta"
+INDICE_DATOS_XLSX_PATH = CORPUS_META_DIR / "Indice_Datos_Codefest.xlsx"
 CONSULTAS_PRUEBA_PATH = DEV_DIR / "consultas_prueba" / "consultas_prueba.jsonl"
+CONSULTAS_OFICIALES_PATH = DEV_DIR / "consultas_prueba" / "consultas_50_oficiales.jsonl"
 
 # Carpeta de nivel superior dentro de CORPUS_DIR -> numero de fenomeno (1, 2 o 3).
-# El corpus real de ADL puede no venir organizado por carpeta de fenomeno; en ese
-# caso ajustar unicamente `resolve_fenomeno()` en src/ingestion/pipeline.py.
+# Son los nombres de las tres carpetas raiz de los ZIP de ADL.
 FENOMENO_DIR_MAP = {
-    "fenomeno_1_ia_defensa": 1,
-    "fenomeno_2_leo_espacial": 2,
-    "fenomeno_3_dinamicas_territoriales": 3,
+    "F1_IA_y_Capacidades_Estrategicas": 1,
+    "F2_Seguridad_Entorno_Espacial": 2,
+    "F3_Dinamicas_Territoriales": 3,
 }
 
 # Formatos de archivo soportados por extension -> nombre de formato normalizado
@@ -44,6 +50,9 @@ EXTENSION_TO_FORMATO = {
 # --- Artefactos intermedios (gitignored, fuera de Entrega/) ---
 INTERMEDIOS_DIR = DEV_DIR / "intermedios"
 CHUNKS_INTERMEDIOS_PATH = INTERMEDIOS_DIR / "chunks_intermedios.jsonl"
+# Manifest {ruta, nombre, doc_id} derivado del xlsx de ADL
+# (scripts/manifest_desde_xlsx.py).
+DOC_ID_MANIFEST_PATH = INTERMEDIOS_DIR / "doc_id_manifest.csv"
 
 # --- Entrega oficial ---
 ENTREGA_DIR = ROOT_DIR / "Entrega"
@@ -81,6 +90,12 @@ def encoder_dir(encoder_name: str) -> Path:
 # encoders en uso (hoy 512 en ambos). 280 deja margen de sobra aunque los
 # tokenizers difieran entre si.
 CHUNK_TOKEN_BUDGET = 280
+# Tope de filas por CSV/XLSX. El corpus real trae datasets bibliograficos del
+# AI Index de hasta 35 MB (registros de PubMed) que no responden a ninguna de
+# las 50 consultas: sin tope aportarian mas de 100.000 chunks de ruido, que
+# inflan la entrega y bajan la precision. Con tope el documento sigue en el
+# indice y puede ganar F1@3, solo que no domina el espacio vectorial.
+MAX_FILAS_TABULARES = 500
 CHUNK_OVERLAP_SENTENCES = 1
 
 # --- Formato de salida (resultados.jsonl) ---

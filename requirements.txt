@@ -3,11 +3,13 @@
 # Versiones congeladas del entorno de desarrollo (pip freeze) para reproducibilidad.
 
 # Extraccion
-pdfplumber==0.11.10
+pypdfium2==5.12.1        # extractor de PDF principal (760 PDFs, ~30k paginas)
+pdfplumber==0.11.10      # diagnostico de layout; no se usa en la fase offline
 trafilatura==2.1.0
 pandas==3.0.5
 openpyxl==3.1.5
-pytesseract==0.3.13
+mapbox-vector-tile==2.2.0  # los .pbf del corpus son Mapbox Vector Tiles, no OSM
+pytesseract==0.3.13      # requiere ademas el binario tesseract con spa+eng+por
 pillow==12.3.0
 
 # Limpieza
@@ -25,6 +27,9 @@ torch==2.13.0
 # Grafo de conocimiento (bonus)
 transformers==5.14.1
 networkx==3.6.1
+
+# Informe tecnico (scripts/gen_informe_tecnico.py)
+reportlab==5.0.0
 
 # Utilidades / testing
 tqdm==4.69.1

@@ -1,0 +1,2 @@
+Entrega/base_vectorial/**/*.faiss filter=lfs diff=lfs merge=lfs -text
+Entrega/base_vectorial/**/*.jsonl filter=lfs diff=lfs merge=lfs -text

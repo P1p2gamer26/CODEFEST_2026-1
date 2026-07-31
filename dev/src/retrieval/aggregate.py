@@ -18,8 +18,12 @@ class DocumentHit:
 
 
 def aggregate_documents(
-    hits: list[Hit], top_n: int = 3, strategy: AggregationStrategy = "max"
+    hits: list[Hit], top_n: int = 3, strategy: AggregationStrategy = "sum"
 ) -> list[DocumentHit]:
+    """Por defecto "sum", no "max": un documento relevante para una consulta
+    suele tener VARIOS pasajes relevantes, mientras que "max" premia al que
+    tiene un unico chunk afortunado. Medido sobre dev/eval/ (10 consultas,
+    k_pool=60): max 0.200 vs sum 0.300 de F1@3. Ver scripts/barrido_retrieval.py."""
     scores_by_doc: dict[str, list[float]] = defaultdict(list)
     for hit in hits:
         scores_by_doc[hit.doc_id].append(hit.score)
