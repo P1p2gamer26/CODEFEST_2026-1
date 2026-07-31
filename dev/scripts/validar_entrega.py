@@ -71,13 +71,50 @@ def validar_estructura() -> list[Path]:
             if not (d / archivo).is_file():
                 fallo(f"falta {d.relative_to(ENTREGA)}/{archivo}")
 
-    grafo = base / "grafo" / "grafo.graphml"
-    if grafo.is_file():
-        print("  grafo de conocimiento (bonus) presente")
-    else:
+    if not (base / "grafo" / "grafo.graphml").is_file():
         aviso("sin grafo/grafo.graphml: se pierde el puntaje del bonus (sec. 7)")
 
     return encoder_dirs
+
+
+def validar_grafo(doc_ids: set[str]) -> None:
+    """El grafo tiene que hablar del MISMO corpus que el indice.
+
+    Que el archivo exista no basta: un grafo.graphml sobrante de otra corrida
+    referencia documentos que no estan indexados, y como bonus cuenta en
+    contra en vez de a favor. Ademas, con --use-graph inyectaria en la fusion
+    chunk_id inexistentes. Este chequeo existe porque justamente eso paso: la
+    entrega llevaba el grafo del corpus sintetico viejo y la validacion la
+    daba por buena."""
+    grafo = ENTREGA / "base_vectorial" / "grafo" / "grafo.graphml"
+    if not grafo.is_file():
+        return
+
+    try:
+        import networkx as nx
+
+        g = nx.read_graphml(grafo)
+    except Exception as exc:  # noqa: BLE001 -- cualquier fallo de lectura invalida el bonus
+        fallo(f"grafo/grafo.graphml no se puede leer ({exc})")
+        return
+
+    citados = {d["doc_id"] for _, _, d in g.edges(data=True) if "doc_id" in d}
+    if not citados:
+        aviso("el grafo no cita ningun doc_id: no es trazable al corpus (sec. 7.3)")
+        return
+
+    ajenos = citados - doc_ids
+    if ajenos:
+        fallo(
+            f"el grafo cita {len(ajenos)} de {len(citados)} doc_id que NO estan indexados "
+            f"(ej. {sorted(ajenos)[:3]}): quedo de otra corrida, hay que reconstruirlo "
+            f"con 'build_corpus_index.py --solo-grafo' o sacarlo de la entrega"
+        )
+    else:
+        print(
+            f"  grafo de conocimiento (bonus): {g.number_of_nodes()} nodos, "
+            f"{g.number_of_edges()} aristas, {len(citados)} doc_id todos indexados"
+        )
 
 
 def cargar_metadata(encoder_dir: Path) -> list[dict]:
@@ -258,6 +295,7 @@ def main() -> None:
             doc_ids = {f.get("doc_id") for f in filas}
 
     validar_resultados(chunk_ids, doc_ids, args.esperar_50)
+    validar_grafo(doc_ids)
     validar_informe()
 
     print()
