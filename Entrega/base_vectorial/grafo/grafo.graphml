@@ -1,228 +1,808 @@
-<?xml version='1.0' encoding='utf-8'?>
-<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"><key id="d6" for="edge" attr.name="weight" attr.type="long"/>
-<key id="d5" for="edge" attr.name="chunk_ids" attr.type="string"/>
-<key id="d4" for="edge" attr.name="chunk_id" attr.type="string"/>
-<key id="d3" for="edge" attr.name="doc_id" attr.type="string"/>
-<key id="d2" for="edge" attr.name="relation" attr.type="string"/>
-<key id="d1" for="node" attr.name="tipo" attr.type="string"/>
-<key id="d0" for="node" attr.name="label" attr.type="string"/>
-<graph edgedefault="directed"><node id="Observatorio Militar de Estudos Estrategicos">
-  <data key="d0">Observatorio Militar de Estudos Estrategicos</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Introducao">
-  <data key="d0">Introducao</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="IADC">
-  <data key="d0">IADC</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="LEO Congestion Orbital Sustainability Office">
-  <data key="d0">LEO Congestion Orbital Sustainability Office</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="ESA Space Debris Office">
-  <data key="d0">ESA Space Debris Office</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Earth">
-  <data key="d0">Earth</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="La polarizacion politica">
-  <data key="d0">La polarizacion politica</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="los Estados">
-  <data key="d0">los Estados</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Acuerdo de Paz">
-  <data key="d0">Acuerdo de Paz</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Colombia">
-  <data key="d0">Colombia</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Acuerdos de Paz">
-  <data key="d0">Acuerdos de Paz</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Acuerdo Final">
-  <data key="d0">Acuerdo Final</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Paz">
-  <data key="d0">Paz</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Desafios persistentes">
-  <data key="d0">Desafios persistentes</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="La violencia asociada a economias">
-  <data key="d0">La violencia asociada a economias</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Acuerdo">
-  <data key="d0">Acuerdo</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Conclusiones">
-  <data key="d0">Conclusiones</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Estado">
-  <data key="d0">Estado</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="America">
-  <data key="d0">America</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Latina Nucleo de Estudos Territoriais Latino-Americanos">
-  <data key="d0">Latina Nucleo de Estudos Territoriais Latino-Americanos</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="CEPAL">
-  <data key="d0">CEPAL</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="America Latina y el Caribe">
-  <data key="d0">America Latina y el Caribe</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Migracion">
-  <data key="d0">Migracion</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Los flujos migratorios internos">
-  <data key="d0">Los flujos migratorios internos</data>
-  <data key="d1">MISC</data>
-</node>
-<node id="Recomendaciones de politica">
-  <data key="d0">Recomendaciones de politica</data>
-  <data key="d1">MISC</data>
-</node>
-<edge source="Observatorio Militar de Estudos Estrategicos" target="Introducao" id="0">
-  <data key="d2">publicacaor</data>
-  <data key="d3">1d7406d1f5b5a7d5</data>
-  <data key="d4">1d7406d1f5b5a7d5-c0000</data>
-  <data key="d5">1d7406d1f5b5a7d5/1d7406d1f5b5a7d5-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="LEO Congestion Orbital Sustainability Office" target="ESA Space Debris Office" id="0">
-  <data key="d2">relacionado_con</data>
-  <data key="d3">eadd17143def1549</data>
-  <data key="d4">eadd17143def1549-c0000</data>
-  <data key="d5">eadd17143def1549/eadd17143def1549-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="ESA Space Debris Office" target="Earth" id="0">
-  <data key="d2">track</data>
-  <data key="d3">eadd17143def1549</data>
-  <data key="d4">eadd17143def1549-c0000</data>
-  <data key="d5">eadd17143def1549/eadd17143def1549-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="La polarizacion politica" target="los Estados" id="0">
-  <data key="d2">identificar</data>
-  <data key="d3">57392608c8c4b84e</data>
-  <data key="d4">57392608c8c4b84e-c0000</data>
-  <data key="d5">57392608c8c4b84e/57392608c8c4b84e-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="Acuerdo de Paz" target="Colombia" id="0">
-  <data key="d2">presentar</data>
-  <data key="d3">9afd63b40c7de192</data>
-  <data key="d4">9afd63b40c7de192-c0000</data>
-  <data key="d5">9afd63b40c7de192/9afd63b40c7de192-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="Colombia" target="Acuerdos de Paz" id="0">
-  <data key="d2">presentar</data>
-  <data key="d3">9afd63b40c7de192</data>
-  <data key="d4">9afd63b40c7de192-c0000</data>
-  <data key="d5">9afd63b40c7de192/9afd63b40c7de192-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="Acuerdo Final" target="Paz" id="0">
-  <data key="d2">presentar</data>
-  <data key="d3">9afd63b40c7de192</data>
-  <data key="d4">9afd63b40c7de192-c0000</data>
-  <data key="d5">9afd63b40c7de192/9afd63b40c7de192-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="Paz" target="Colombia" id="0">
-  <data key="d2">presentar</data>
-  <data key="d3">9afd63b40c7de192</data>
-  <data key="d4">9afd63b40c7de192-c0000</data>
-  <data key="d5">9afd63b40c7de192/9afd63b40c7de192-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="Desafios persistentes" target="La violencia asociada a economias" id="0">
-  <data key="d2">seguir</data>
-  <data key="d3">9afd63b40c7de192</data>
-  <data key="d4">9afd63b40c7de192-c0000</data>
-  <data key="d5">9afd63b40c7de192/9afd63b40c7de192-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="La violencia asociada a economias" target="Acuerdo" id="0">
-  <data key="d2">seguir</data>
-  <data key="d3">9afd63b40c7de192</data>
-  <data key="d4">9afd63b40c7de192-c0000</data>
-  <data key="d5">9afd63b40c7de192/9afd63b40c7de192-c0000;9afd63b40c7de192/9afd63b40c7de192-c0001</data>
-  <data key="d6">2</data>
-</edge>
-<edge source="Acuerdo" target="Estado" id="0">
-  <data key="d2">subrayar</data>
-  <data key="d3">9afd63b40c7de192</data>
-  <data key="d4">9afd63b40c7de192-c0001</data>
-  <data key="d5">9afd63b40c7de192/9afd63b40c7de192-c0001</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="Conclusiones" target="Acuerdo" id="0">
-  <data key="d2">relacionado_con</data>
-  <data key="d3">9afd63b40c7de192</data>
-  <data key="d4">9afd63b40c7de192-c0001</data>
-  <data key="d5">9afd63b40c7de192/9afd63b40c7de192-c0001</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="America" target="Latina Nucleo de Estudos Territoriais Latino-Americanos" id="0">
-  <data key="d2">relacionado_con</data>
-  <data key="d3">951ffc64cdc7cb6c</data>
-  <data key="d4">951ffc64cdc7cb6c-c0000</data>
-  <data key="d5">951ffc64cdc7cb6c/951ffc64cdc7cb6c-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="America" target="Estado" id="0">
-  <data key="d2">permanecer</data>
-  <data key="d3">951ffc64cdc7cb6c</data>
-  <data key="d4">951ffc64cdc7cb6c-c0000</data>
-  <data key="d5">951ffc64cdc7cb6c/951ffc64cdc7cb6c-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="Latina Nucleo de Estudos Territoriais Latino-Americanos" target="Introducao" id="0">
-  <data key="d2">relacionado_con</data>
-  <data key="d3">951ffc64cdc7cb6c</data>
-  <data key="d4">951ffc64cdc7cb6c-c0000</data>
-  <data key="d5">951ffc64cdc7cb6c/951ffc64cdc7cb6c-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="CEPAL" target="America Latina y el Caribe" id="0">
-  <data key="d2">seguir</data>
-  <data key="d3">18106af87b6bebe3</data>
-  <data key="d4">18106af87b6bebe3-c0000</data>
-  <data key="d5">18106af87b6bebe3/18106af87b6bebe3-c0000</data>
-  <data key="d6">1</data>
-</edge>
-<edge source="Migracion" target="Los flujos migratorios internos" id="0">
-  <data key="d2">transformar</data>
-  <data key="d3">18106af87b6bebe3</data>
-  <data key="d4">18106af87b6bebe3-c0001</data>
-  <data key="d5">18106af87b6bebe3/18106af87b6bebe3-c0001</data>
-  <data key="d6">1</data>
-</edge>
-</graph></graphml>
+<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:y="http://www.yworks.com/xml/graphml"
+         xmlns:yed="http://www.yworks.com/xml/yed/3"
+         xmlns:yfiles="http://www.yworks.com/xml/yfiles/3.0"
+         xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
+                             http://www.yworks.com/xml/schema/graphml/1.1/ygraphml.xsd">
+  <key id="d0" for="node" attr.name="label" attr.type="string"/>
+  <key id="d1" for="node" attr.name="tipo" attr.type="string"/>
+  <key id="d2" for="node" attr.name="degree" attr.type="int"/>
+  <key id="d3" for="node" attr.name="x" attr.type="double"/>
+  <key id="d4" for="node" attr.name="y" attr.type="double"/>
+  <key id="d5" for="node" yfiles.type="nodegraphics"/>
+  <key id="d6" for="edge" attr.name="relation" attr.type="string"/>
+  <key id="d7" for="edge" attr.name="doc_id" attr.type="string"/>
+  <key id="d8" for="edge" attr.name="chunk_id" attr.type="string"/>
+  <key id="d9" for="edge" attr.name="weight" attr.type="int"/>
+  <key id="d10" for="edge" yfiles.type="edgegraphics"/>
+  <graph id="G" edgedefault="directed">
+  <node id="Observatorio Militar de Estudos Estrategicos">
+    <data key="d0">Observatorio Militar de Estudos Estrategicos</data>
+    <data key="d1">ORG</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-76.4" y="1878.6"/>
+        <y:Fill color="#4C78A8" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Observatorio Militar de Estudos Estrategicos</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">43.6</data>
+    <data key="d4">1895.6</data>
+  </node>
+  <node id="Introducao">
+    <data key="d0">Introducao</data>
+    <data key="d1">LOC</data>
+    <data key="d2">2</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="124.0" x="-18.1" y="814.3"/>
+        <y:Fill color="#54A24B" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Introducao</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">43.9</data>
+    <data key="d4">831.3</data>
+  </node>
+  <node id="the Space Debris Environment: Technical Summary Interagency Debris Coordination Panel">
+    <data key="d0">the Space Debris Environment: Technical Summary Interagency Debris Coordination Panel</data>
+    <data key="d1">ORG</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-79.8" y="167.5"/>
+        <y:Fill color="#4C78A8" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">the Space Debris Environment: Technical Summary Interagency Debris Coordination Panel</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">40.2</data>
+    <data key="d4">184.5</data>
+  </node>
+  <node id="IADC">
+    <data key="d0">IADC</data>
+    <data key="d1">ORG</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="70.0" x="5.0" y="236.1"/>
+        <y:Fill color="#4C78A8" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">IADC</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">40.0</data>
+    <data key="d4">253.1</data>
+  </node>
+  <node id="LEO Congestion Orbital Sustainability Office">
+    <data key="d0">LEO Congestion Orbital Sustainability Office</data>
+    <data key="d1">ORG</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-77.4" y="1514.9"/>
+        <y:Fill color="#4C78A8" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">LEO Congestion Orbital Sustainability Office</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">42.6</data>
+    <data key="d4">1531.9</data>
+  </node>
+  <node id="ESA Space Debris Office">
+    <data key="d0">ESA Space Debris Office</data>
+    <data key="d1">ORG</data>
+    <data key="d2">2</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-77.1" y="452.6"/>
+        <y:Fill color="#4C78A8" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">ESA Space Debris Office</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">42.9</data>
+    <data key="d4">469.6</data>
+  </node>
+  <node id="Earth">
+    <data key="d0">Earth</data>
+    <data key="d1">LOC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="79.0" x="3.6" y="1025.2"/>
+        <y:Fill color="#54A24B" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Earth</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">43.1</data>
+    <data key="d4">1042.2</data>
+  </node>
+  <node id="La polarizacion politica">
+    <data key="d0">La polarizacion politica</data>
+    <data key="d1">LOC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-79.1" y="879.3"/>
+        <y:Fill color="#54A24B" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">La polarizacion politica</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">40.9</data>
+    <data key="d4">896.3</data>
+  </node>
+  <node id="los Estados">
+    <data key="d0">los Estados</data>
+    <data key="d1">LOC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="133.0" x="-25.8" y="2023.0"/>
+        <y:Fill color="#54A24B" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">los Estados</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">40.7</data>
+    <data key="d4">2040.0</data>
+  </node>
+  <node id="Acuerdo de Paz">
+    <data key="d0">Acuerdo de Paz</data>
+    <data key="d1">LOC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="160.0" x="-38.6" y="23.0"/>
+        <y:Fill color="#54A24B" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Acuerdo de Paz</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">41.4</data>
+    <data key="d4">40.0</data>
+  </node>
+  <node id="Colombia">
+    <data key="d0">Colombia</data>
+    <data key="d1">LOC</data>
+    <data key="d2">3</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="106.0" x="-11.4" y="1447.8"/>
+        <y:Fill color="#54A24B" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Colombia</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">41.6</data>
+    <data key="d4">1464.8</data>
+  </node>
+  <node id="Acuerdos de Paz">
+    <data key="d0">Acuerdos de Paz</data>
+    <data key="d1">MISC</data>
+    <data key="d2">2</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="169.0" x="-42.9" y="1662.5"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Acuerdos de Paz</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">41.6</data>
+    <data key="d4">1679.5</data>
+  </node>
+  <node id="Instituto Kroc) Objetivo">
+    <data key="d0">Instituto Kroc) Objetivo</data>
+    <data key="d1">ORG</data>
+    <data key="d2">2</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-78.6" y="1230.4"/>
+        <y:Fill color="#4C78A8" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Instituto Kroc) Objetivo</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">41.4</data>
+    <data key="d4">1247.4</data>
+  </node>
+  <node id="Acuerdo Final">
+    <data key="d0">Acuerdo Final</data>
+    <data key="d1">MISC</data>
+    <data key="d2">2</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="151.0" x="-34.2" y="308.3"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Acuerdo Final</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">41.3</data>
+    <data key="d4">325.3</data>
+  </node>
+  <node id="Paz">
+    <data key="d0">Paz</data>
+    <data key="d1">PER</data>
+    <data key="d2">2</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="70.0" x="6.5" y="1586.8"/>
+        <y:Fill color="#F58518" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Paz</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">41.5</data>
+    <data key="d4">1603.8</data>
+  </node>
+  <node id="Desafios persistentes">
+    <data key="d0">Desafios persistentes</data>
+    <data key="d1">MISC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="223.0" x="-68.5" y="671.8"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Desafios persistentes</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">43.0</data>
+    <data key="d4">688.8</data>
+  </node>
+  <node id="La violencia asociada a economias">
+    <data key="d0">La violencia asociada a economias</data>
+    <data key="d1">MISC</data>
+    <data key="d2">3</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-76.8" y="1806.4"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">La violencia asociada a economias</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">43.2</data>
+    <data key="d4">1823.4</data>
+  </node>
+  <node id="Acuerdo">
+    <data key="d0">Acuerdo</data>
+    <data key="d1">LOC</data>
+    <data key="d2">4</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="97.0" x="-5.1" y="1089.7"/>
+        <y:Fill color="#54A24B" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Acuerdo</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">43.4</data>
+    <data key="d4">1106.7</data>
+  </node>
+  <node id="Conclusiones">
+    <data key="d0">Conclusiones</data>
+    <data key="d1">MISC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="142.0" x="-27.6" y="1165.4"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Conclusiones</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">43.4</data>
+    <data key="d4">1182.4</data>
+  </node>
+  <node id="Estado">
+    <data key="d0">Estado</data>
+    <data key="d1">LOC</data>
+    <data key="d2">2</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="88.0" x="-0.4" y="384.0"/>
+        <y:Fill color="#54A24B" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Estado</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">43.6</data>
+    <data key="d4">401.0</data>
+  </node>
+  <node id="America">
+    <data key="d0">America</data>
+    <data key="d1">LOC</data>
+    <data key="d2">2</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="97.0" x="-5.2" y="743.3"/>
+        <y:Fill color="#54A24B" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">America</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">43.3</data>
+    <data key="d4">760.3</data>
+  </node>
+  <node id="Latina Nucleo de Estudos Territoriais Latino-Americanos">
+    <data key="d0">Latina Nucleo de Estudos Territoriais Latino-Americanos</data>
+    <data key="d1">PER</data>
+    <data key="d2">2</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-76.6" y="1376.9"/>
+        <y:Fill color="#F58518" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Latina Nucleo de Estudos Territoriais Latino-Americanos</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">43.4</data>
+    <data key="d4">1393.9</data>
+  </node>
+  <node id="America Latina y el Caribe Comision Regional de Desarrollo Territorial">
+    <data key="d0">America Latina y el Caribe Comision Regional de Desarrollo Territorial</data>
+    <data key="d1">MISC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-78.1" y="955.0"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">America Latina y el Caribe Comision Regional de Desarrollo Territorial</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">41.9</data>
+    <data key="d4">972.0</data>
+  </node>
+  <node id="CEPAL">
+    <data key="d0">CEPAL</data>
+    <data key="d1">ORG</data>
+    <data key="d2">2</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="79.0" x="2.2" y="524.3"/>
+        <y:Fill color="#4C78A8" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">CEPAL</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">41.7</data>
+    <data key="d4">541.3</data>
+  </node>
+  <node id="America Latina y el Caribe">
+    <data key="d0">America Latina y el Caribe</data>
+    <data key="d1">MISC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-78.4" y="1950.8"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">America Latina y el Caribe</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">41.6</data>
+    <data key="d4">1967.8</data>
+  </node>
+  <node id="Migracion">
+    <data key="d0">Migracion</data>
+    <data key="d1">MISC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="115.0" x="-14.9" y="95.3"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Migracion</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">42.6</data>
+    <data key="d4">112.3</data>
+  </node>
+  <node id="Los flujos migratorios internos">
+    <data key="d0">Los flujos migratorios internos</data>
+    <data key="d1">MISC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-77.4" y="600.0"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Los flujos migratorios internos</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">42.6</data>
+    <data key="d4">617.0</data>
+  </node>
+  <node id="Recomendaciones de politica">
+    <data key="d0">Recomendaciones de politica</data>
+    <data key="d1">MISC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-79.6" y="1301.2"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">Recomendaciones de politica</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">40.4</data>
+    <data key="d4">1318.2</data>
+  </node>
+  <node id="El fortalecimiento de las capacidades fiscales y de planificacion de los gobiernos subnacionales">
+    <data key="d0">El fortalecimiento de las capacidades fiscales y de planificacion de los gobiernos subnacionales</data>
+    <data key="d1">MISC</data>
+    <data key="d2">1</data>
+    <data key="d5">
+      <y:ShapeNode>
+        <y:Geometry height="34.0" width="240.0" x="-80.0" y="1734.3"/>
+        <y:Fill color="#B279A2" transparent="false"/>
+        <y:BorderStyle color="#2F2F2F" type="line" width="1.0"/>
+        <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="Dialog" fontSize="11" fontStyle="plain" hasBackgroundColor="false" hasLineColor="false" modelName="internal" modelPosition="c" textColor="#FFFFFF" visible="true">El fortalecimiento de las capacidades fiscales y de planificacion de los gobiernos subnacionales</y:NodeLabel>
+        <y:Shape type="rectangle"/>
+      </y:ShapeNode>
+    </data>
+    <data key="d3">40.0</data>
+    <data key="d4">1751.3</data>
+  </node>
+  <edge id="e0" source="Observatorio Militar de Estudos Estrategicos" target="Introducao" directed="true">
+    <data key="d6">publicacaor</data>
+    <data key="d7">1d7406d1f5b5a7d5</data>
+    <data key="d8">1d7406d1f5b5a7d5-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">publicacaor</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e1" source="the Space Debris Environment: Technical Summary Interagency Debris Coordination Panel" target="IADC" directed="true">
+    <data key="d6">relacionado_con</data>
+    <data key="d7">8a7b6ac48397741d</data>
+    <data key="d8">8a7b6ac48397741d-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">relacionado_con</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e2" source="LEO Congestion Orbital Sustainability Office" target="ESA Space Debris Office" directed="true">
+    <data key="d6">relacionado_con</data>
+    <data key="d7">eadd17143def1549</data>
+    <data key="d8">eadd17143def1549-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">relacionado_con</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e3" source="ESA Space Debris Office" target="Earth" directed="true">
+    <data key="d6">track</data>
+    <data key="d7">eadd17143def1549</data>
+    <data key="d8">eadd17143def1549-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">track</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e4" source="La polarizacion politica" target="los Estados" directed="true">
+    <data key="d6">identificar</data>
+    <data key="d7">47838f788b0cb0c4</data>
+    <data key="d8">47838f788b0cb0c4-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">identificar</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e5" source="Acuerdo de Paz" target="Colombia" directed="true">
+    <data key="d6">presentar</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">presentar</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e6" source="Colombia" target="Acuerdos de Paz" directed="true">
+    <data key="d6">presentar</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">presentar</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e7" source="Acuerdos de Paz" target="Instituto Kroc) Objetivo" directed="true">
+    <data key="d6">presentar</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">presentar</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e8" source="Instituto Kroc) Objetivo" target="Acuerdo Final" directed="true">
+    <data key="d6">presentar</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">presentar</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e9" source="Acuerdo Final" target="Paz" directed="true">
+    <data key="d6">presentar</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">presentar</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e10" source="Paz" target="Colombia" directed="true">
+    <data key="d6">presentar</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">presentar</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e11" source="Desafios persistentes" target="La violencia asociada a economias" directed="true">
+    <data key="d6">seguir</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">seguir</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e12" source="La violencia asociada a economias" target="Acuerdo" directed="true">
+    <data key="d6">seguir</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">seguir</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e13" source="La violencia asociada a economias" target="Acuerdo" directed="true">
+    <data key="d6">seguir</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0001</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">seguir</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e14" source="Acuerdo" target="Estado" directed="true">
+    <data key="d6">subrayar</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0001</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">subrayar</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e15" source="Conclusiones" target="Acuerdo" directed="true">
+    <data key="d6">relacionado_con</data>
+    <data key="d7">9afd63b40c7de192</data>
+    <data key="d8">9afd63b40c7de192-c0001</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">relacionado_con</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e16" source="America" target="Latina Nucleo de Estudos Territoriais Latino-Americanos" directed="true">
+    <data key="d6">relacionado_con</data>
+    <data key="d7">951ffc64cdc7cb6c</data>
+    <data key="d8">951ffc64cdc7cb6c-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">relacionado_con</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e17" source="America" target="Estado" directed="true">
+    <data key="d6">permanecer</data>
+    <data key="d7">951ffc64cdc7cb6c</data>
+    <data key="d8">951ffc64cdc7cb6c-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">permanecer</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e18" source="Latina Nucleo de Estudos Territoriais Latino-Americanos" target="Introducao" directed="true">
+    <data key="d6">relacionado_con</data>
+    <data key="d7">951ffc64cdc7cb6c</data>
+    <data key="d8">951ffc64cdc7cb6c-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">relacionado_con</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e19" source="America Latina y el Caribe Comision Regional de Desarrollo Territorial" target="CEPAL" directed="true">
+    <data key="d6">seguir</data>
+    <data key="d7">18106af87b6bebe3</data>
+    <data key="d8">18106af87b6bebe3-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">seguir</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e20" source="CEPAL" target="America Latina y el Caribe" directed="true">
+    <data key="d6">seguir</data>
+    <data key="d7">18106af87b6bebe3</data>
+    <data key="d8">18106af87b6bebe3-c0000</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">seguir</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e21" source="Migracion" target="Los flujos migratorios internos" directed="true">
+    <data key="d6">transformar</data>
+    <data key="d7">18106af87b6bebe3</data>
+    <data key="d8">18106af87b6bebe3-c0001</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">transformar</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  <edge id="e22" source="Recomendaciones de politica" target="El fortalecimiento de las capacidades fiscales y de planificacion de los gobiernos subnacionales" directed="true">
+    <data key="d6">aparecer</data>
+    <data key="d7">18106af87b6bebe3</data>
+    <data key="d8">18106af87b6bebe3-c0001</data>
+    <data key="d9">1</data>
+    <data key="d10">
+      <y:PolyLineEdge>
+        <y:LineStyle color="#8A8A8A" type="line" width="1.0"/>
+        <y:Arrows source="none" target="standard"/>
+        <y:EdgeLabel alignment="center" backgroundColor="#F2F2F2" fontFamily="Dialog" fontSize="9" fontStyle="plain" hasLineColor="false" modelName="centered" textColor="#333333" visible="true">aparecer</y:EdgeLabel>
+        <y:BendStyle smoothed="true"/>
+      </y:PolyLineEdge>
+    </data>
+  </edge>
+  </graph>
+</graphml>
