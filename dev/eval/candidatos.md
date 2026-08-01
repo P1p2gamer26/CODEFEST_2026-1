@@ -888,7 +888,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 > ¿Qué cambios doctrinales han fortalecido el empleo militar de las capacidades espaciales de Corea del Norte?
 
-- [ ] `F2-CSIS-049` &mdash; CSIS_2020-03-30-space-threat-assessment-2020.json
+- [x] `F2-CSIS-049` &mdash; CSIS_2020-03-30-space-threat-assessment-2020.json
       Like many other spacefaring nations around the globe, North Korea’s space capabilities are closely tied to its ballistic missile development. A North Korean law journal referenced the close relationship between space capabilities and ballistic missiles, stating “it is an undeniable truth that satell...
 
 - [ ] `F2-SWF-124` &mdash; SWF_global-counterspace-capabilities-2026-hr.pdf
@@ -897,7 +897,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-CSIS-214` &mdash; CSIS_wilson-wood-southkorea-20230802.pdf
       JUNE 2023 2 CENTER FOR SPACE POLICY AND STRATEGY Regulatory and Policy Context South Korea’s capabilities in space have historically been limited by regulatory and policy constraints. In the late 1970s, the United States and South Korea agreed to a memorandum of understanding that granted South Kore...
 
-- [ ] `F2-CSIS-035` &mdash; CSIS_2019-04-04-space-threat-assessment-2019.json
+- [x] `F2-CSIS-035` &mdash; CSIS_2019-04-04-space-threat-assessment-2019.json
       There is little indication that North Korea is making substantial efforts to build or sustain a space industrial base, but its missile program is growing and many believe that it is aided by technology from China, Iran, and Pakistan.41 Disassembling a Spaceport Although North Korea has successfully ...
 
 - [ ] `F2-SWF-082` &mdash; SWF_69d0054fcf51801d46c919e7-2023-global-counterspace-capabilities-an-open-source-assessme.pdf
@@ -906,13 +906,13 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-SWF-121` &mdash; SWF_global-counterspace-capabilities-2022-rev2.pdf
       11 — SOUTH KOREA Over the last several years, South Korea has had a growing focus on military space capabilities. It is working to enhance the space capabilities of its Air Force through the establishment of a Space Operations Center, cooperating with the United States on sharing SSA capabilities, d...
 
-- [ ] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
       ”758 POTENTIAL MILITARY UTILITY North Korea likely possess very limited military counterspace capabilities. Its lack of SSA capabilities, HTK, and RPO capabilities and very limited space launch capabilities very likely limits it to broad area attacks, such as NUDETs in LEO that could damage large nu...
 
-- [ ] `F2-CSIS-208` &mdash; CSIS_spacethreatassessment2019-compressed.pdf
+- [x] `F2-CSIS-208` &mdash; CSIS_spacethreatassessment2019-compressed.pdf
       It has been noted that the absence of discus￾sion about counterspace capabilities that could threaten the U.S. military is curious given the aggressive rhetoric used by the regime in touting its nuclear and missile programs.281 In March 2009, North Korea became a sig￾natory to two United Nations spa...
 
-- [ ] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
+- [x] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
       North Korean state media clarified in April 2020 that “The purpose of the republic’s space development is to adhere to the interests of the state and to use science and technology to solve scientific and technological problems essential to economic construction and people’s lives.” 58 In November 20...
 
 - [ ] `F2-SWF-122` &mdash; SWF_global-counterspace-capabilities-2024.pdf
@@ -923,7 +923,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 > ¿Qué lecciones ha dejado el conflicto entre Rusia y Ucrania sobre el empleo militar del dominio espacial?
 
-- [ ] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
       Russian objectives in space, however, face significant challenges over the near term primarily from industry shortcomings.377 The Ukraine conflict and the subsequent sanctions placed on the Russian Federation brought to light several Russian industrial and technological deficiencies in its space pro...
 
 - [ ] `F2-SWF-079` &mdash; SWF_69cffd06bb49a754a728c08d-2019-global-counterspace-capabilities-an-open-source-assessme.pdf
@@ -935,19 +935,19 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-SWF-034` &mdash; SWF_2020-full-report-english.pdf
       2.6 – RUSSIAN COUNTERSPACE POLICY, DOCTRINE, AND ORGANIZATION Russian Military Thought and Initiatives on Space and Conflict Having observed the U.S. way of war during the past several decades, the Russian political and military leadership have come to see the military aspect of space as essential t...
 
-- [ ] `F2-SWF-124` &mdash; SWF_global-counterspace-capabilities-2026-hr.pdf
+- [x] `F2-SWF-124` &mdash; SWF_global-counterspace-capabilities-2026-hr.pdf
       390 Connell, Bendett, and Lennox, “The Role of Space in Russia’s Operations in Ukraine,” ibid. SECURE WORLD FOUNDATION 04/2026 1702-46 that its own space-based capabilities are a vulnerability that must be mitigated through both offensive means and retaining key capabilities and knowledge that is no...
 
-- [ ] `F2-CSIS-136` &mdash; CSIS_240417-swope-spacethreatassessment-2024.pdf
+- [x] `F2-CSIS-136` &mdash; CSIS_240417-swope-spacethreatassessment-2024.pdf
       48 SPACE THREAT ASSESSMENT 2024 77 Michael Connell, The Role of Space in Russia’s Operations in Ukraine (Arlington, CA: Center for Naval Analyses, November 2023), https://www.cna.org/reports/2023/11/role-of-space￾in-russia-operations-in-ukraine. 78 Timothy L. Thomas, Russian Military Thought: Concep...
 
-- [ ] `F2-CSIS-135` &mdash; CSIS_240417-swope-space-threat-0.pdf
+- [x] `F2-CSIS-135` &mdash; CSIS_240417-swope-space-threat-0.pdf
       48 SPACE THREAT ASSESSMENT 2024 77 Michael Connell, The Role of Space in Russia’s Operations in Ukraine (Arlington, CA: Center for Naval Analyses, November 2023), https://www.cna.org/reports/2023/11/role-of-space￾in-russia-operations-in-ukraine. 78 Timothy L. Thomas, Russian Military Thought: Concep...
 
-- [ ] `F2-CSIS-133` &mdash; CSIS_230414-bingen-spacethreatassessment-2023-updated-min.pdf
+- [x] `F2-CSIS-133` &mdash; CSIS_230414-bingen-spacethreatassessment-2023-updated-min.pdf
       This featured analysis details Russian employment of electronic warfare and cyberattacks against space systems, uncertainty on Russian use of laser weapons, and unusual behavior by a Russian inspector satellite in GEO. While the space lessons learned in Ukraine are still to be written, there may be ...
 
-- [ ] `F2-CSIS-132` &mdash; CSIS_230414-bingen-space-assessment.pdf
+- [x] `F2-CSIS-132` &mdash; CSIS_230414-bingen-space-assessment.pdf
       This featured analysis details Russian employment of electronic warfare and cyberattacks against space systems, uncertainty on Russian use of laser weapons, and unusual behavior by a Russian inspector satellite in GEO. While the space lessons learned in Ukraine are still to be written, there may be ...
 
 - [ ] `F2-SWF-078` &mdash; SWF_69cffa84a1834078d6f9fe5e-2018-global-counterspace-capabilities-an-open-source-assessme.pdf
@@ -1142,10 +1142,10 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-RESDAL-092` &mdash; RESDAL_atlas-2024-esp.pdf
       Administración del adiestramiento e intensificación de la preparación de los Ejérci￾tos en guerra revolucionaria. Cooperación del Ejército con las organizaciones del Gobierno para la mayor supera- ción en el orden social del pueblo, y organización y adiestramiento del Ejército para seguridad interna...
 
-- [ ] `F3-RESDAL-095` &mdash; RESDAL_atlas-completo2010-ingles.pdf
+- [x] `F3-RESDAL-095` &mdash; RESDAL_atlas-completo2010-ingles.pdf
       The tactical capability contributed by Joint Commands and Task Forces should be noted, where the best of each service is committed to common strategic objec￾tives. The Army has reduced the illegal groups’ strate￾gic mobilization corridors, from its rearguard area in the south of the country, to the ...
 
-- [ ] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
+- [x] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
       Por otro lado, se percibe que para consolidar objetivos económicos, maximizan el conocimiento del antiguo grupo armado, sobre redes, rutas y estrategia militar; estos casos se han presentado con mayor evidencia en los departamentos del Cauca, Antioquia, Norte de Santander y Arauca, entre otros. A pe...
 
 - [ ] `F3-RESDAL-033` &mdash; RESDAL_atlas-2012-ing-completo.pdf
@@ -1320,7 +1320,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-SWF-083` &mdash; SWF_69d00cb41bf6510b78f7de95-2017-french-handbook-for-new-actors.pdf
       Pour ce faire, il encourage la transparence et une responsabilité accrue concernant le transfert d’armement conventionnel et de biens et technologies à double usage, afin de prévenir toute accumulation déstabilisatrice. Les États participants contrôlent les éléments inscrits sur la liste des biens e...
 
-- [ ] `F3-MAPPOEA-032` &mdash; MAPPOEA_xxvii-informe-semestral-espanol.pdf
+- [x] `F3-MAPPOEA-032` &mdash; MAPPOEA_xxvii-informe-semestral-espanol.pdf
       Para el caso de la franja fronteriza con Ecuador, al sur del departamento de Nariño, se percibe un incremento del control territorial por parte del ELN para el paso de armamento, explosivos, y el control de rutas para el narcotráfico. En los límites fronterizos con Panamá, particularmente en el muni...
 
 - [ ] `F3-MAPPOEA-023` &mdash; MAPPOEA_informe-xxxiv-esp-1.pdf
@@ -1335,7 +1335,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-RESDAL-093` &mdash; RESDAL_atlas-completo-2.pdf
       -Proteger el tráfico, industrias marítima legales, haciendo respetar sus intereses y pabellones. -Combatir la piratería, la contravención a las leyes, disposiciones sobre navegación, comercio y pesca y los tratados internacionales. Fuerza Aérea Funciones comunes a las tres fuerzas. -Mantener el orde...
 
-- [ ] `F3-RESDAL-091` &mdash; RESDAL_atlas-2016-ing-completo.pdf
+- [x] `F3-RESDAL-091` &mdash; RESDAL_atlas-2016-ing-completo.pdf
       *From January to July. Narcotics production infrastructure destroyed Immobilization and seizure of drug traffi cking aircraft Immobilization and seizure of drug traffi cking ships Immobilization and seizure of drug traffi cking vehicle 2008 3,675 55 436 624 2010 2,610 239 522 580 2016* 3,443 36 153 ...
 
 
