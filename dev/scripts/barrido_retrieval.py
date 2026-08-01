@@ -31,7 +31,7 @@ from src.retrieval.aggregate import aggregate_documents  # noqa: E402
 from src.retrieval.search import search  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from eval_mini import f1  # noqa: E402
+from eval_mini import f1, veredicto_signos  # noqa: E402
 
 CONSULTAS_PATH = DEV_DIR / "consultas_prueba" / "consultas_50_oficiales.jsonl"
 GROUND_TRUTH_PATH = DEV_DIR / "eval" / "ground_truth_mini.jsonl"
@@ -138,13 +138,8 @@ def main() -> None:
                 gana_a += 1
             else:
                 gana_b += 1
-        difieren = gana_a + gana_b
         print(f"\nk_pool={a} gana en {gana_a}, k_pool={b} gana en {gana_b}, empatan {empate}")
-        if difieren and abs(gana_a - gana_b) <= max(1, difieren // 3):
-            print(
-                f"  -> reparto {gana_a}-{gana_b} sobre {difieren} consultas que difieren: "
-                f"indistinguible del azar, NO cambiar la configuracion por esto"
-            )
+        print(veredicto_signos(f"k_pool={a}", gana_a, f"k_pool={b}", gana_b))
 
 
 if __name__ == "__main__":

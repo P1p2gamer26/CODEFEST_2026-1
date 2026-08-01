@@ -59,6 +59,30 @@ def f1(recuperados: list[str], relevantes: set[str]) -> tuple[float, float, floa
     return p, r, 2 * p * r / (p + r)
 
 
+def veredicto_signos(nombre_a: str, gana_a: int, nombre_b: str, gana_b: int) -> str:
+    """Prueba de signos sobre las consultas en que dos configuraciones difieren.
+
+    Bajo la hipotesis de que son equivalentes, cada consulta que difiere es una
+    moneda al aire, asi que p es la probabilidad de ver un reparto al menos tan
+    desigual por azar. Existe para que todas las herramientas den el MISMO
+    veredicto sobre los mismos datos: antes eval_mini usaba la binomial exacta
+    y barrido_retrieval un umbral ad-hoc que ademas callaba cuando la
+    diferencia si era significativa.
+    """
+    difieren = gana_a + gana_b
+    if difieren == 0:
+        return "  -> las dos configuraciones dan exactamente lo mismo"
+    ganador, mayor = (nombre_a, gana_a) if gana_a > gana_b else (nombre_b, gana_b)
+    p = min(1.0, 2 * sum(math.comb(difieren, i) for i in range(mayor, difieren + 1)) / 2**difieren)
+    linea = f"  prueba de signos sobre las {difieren} que difieren: p = {p:.3f}\n"
+    if p > 0.05:
+        return linea + (
+            "  -> NO concluyente. Entregar la configuracion mas simple, y no "
+            "cambiarla apoyandose en la diferencia de promedios."
+        )
+    return linea + f"  -> {ganador} gana de forma consistente, no solo en promedio"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--resultados", type=Path, default=RESULTADOS_PATH)
@@ -133,24 +157,7 @@ def main() -> None:
                 gana_b += 1
         print(f"\n{b}: F1@{args.k} promedio {suma_b / len(gt):.3f}")
         print(f"\n{a} gana en {gana_a}, {b} gana en {gana_b}, empatan {empate}")
-        difieren = gana_a + gana_b
-        if difieren == 0:
-            print("  -> las dos configuraciones dan exactamente lo mismo")
-            return
-        # Prueba de signos: bajo la hipotesis de que las dos configuraciones son
-        # equivalentes, cada consulta que difiere es una moneda al aire. p es la
-        # probabilidad de ver un reparto al menos tan desigual por puro azar.
-        ganador, mayor = (a, gana_a) if gana_a > gana_b else (b, gana_b)
-        p = 2 * sum(math.comb(difieren, i) for i in range(mayor, difieren + 1)) / 2**difieren
-        p = min(1.0, p)
-        print(f"  prueba de signos sobre las {difieren} que difieren: p = {p:.3f}")
-        if p > 0.05:
-            print(
-                f"  -> NO concluyente. Entregar la configuracion mas simple, y no "
-                f"cambiarla apoyandose en la diferencia de promedios."
-            )
-        else:
-            print(f"  -> {ganador} gana de forma consistente, no solo en promedio")
+        print(veredicto_signos(a, gana_a, b, gana_b))
 
 
 if __name__ == "__main__":
