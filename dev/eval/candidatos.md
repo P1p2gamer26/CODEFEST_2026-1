@@ -766,7 +766,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-SWF-128` &mdash; SWF_investimento-respons-vel-no-setor-espacial.pdf
       No entanto, os atores do setor espacial privado estão introduzindo uma série de novas aplicações, serviços e abordagens para as ativi￾dades espaciais. Isso inclui novos serviços diretos ao consumidor e entre empresas nas áreas de sensoriamento remoto e comunicações; novas atividades em serviços de m...
 
-- [ ] `F1-CSET-065` &mdash; CSET_center-for-security-and-emerging-technology-36.pdf
+- [x] `F1-CSET-065` &mdash; CSET_center-for-security-and-emerging-technology-36.pdf
       Issue Brief June 2025 AI on the Edge of Space Securing Space Superiority and Avoiding Surprise in Orbit Author Christopher Huynh Center for Security and Emerging Technology | 1 Executive Summary The U.S. Space Force faces growing threats from near-peer adversaries capable of targeting U.S. satellite...
 
 - [ ] `F2-UNOOSA-029` &mdash; UNOOSA_st-space-61rev03r.pdf
@@ -818,28 +818,28 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 > ¿Qué capacidades operacionales evidencian las maniobras realizadas recientemente por satélites rusos en órbita GEO?
 
-- [ ] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
       Documents from Russian industry indicate links to a military satellite communications program, and possible heritage to the Luch series of relay satellites. The on-orbit behavior of Luch indicates a potential mission to intercept broadcasts aimed at other GEO satellites, and possibly also to inspect...
 
 - [ ] `F2-SWF-079` &mdash; SWF_69cffd06bb49a754a728c08d-2019-global-counterspace-capabilities-an-open-source-assessme.pdf
       Data collected by the ISON space surveillance network, managed by the Russian Academy of Sciences, indicates that the GSSAP satellites have conducted hundreds of maneuvers since 2014 and have conducted close approaches or proximity operations of more than a dozen operational satellites in GEO, as su...
 
-- [ ] `F2-SWF-121` &mdash; SWF_global-counterspace-capabilities-2022-rev2.pdf
+- [x] `F2-SWF-121` &mdash; SWF_global-counterspace-capabilities-2022-rev2.pdf
       Since 2013, Russia has launched several satellites into LEO and GEO that have demonstrated the ability to rendezvous with other space objects, and in some cases do so after periods of dormancy. 248 Pavel Podvig, “Is China Repeating the Old Sovi￾et and U.S. Mistakes?”, Russian Strategic Nuclear Force...
 
-- [ ] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
+- [x] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
       topic=48521.msg2007320#msg2007320. 42 Bart Hendrickx, “Russia develops co-orbital anti-satellite capability,” Jane’s Intelligence Review, September 27, 2018, https://www.janes. com/images/assets/463/83463/Russia_devel￾ops_co-orbital_anti-satellite_capability.pdf. 43 Bart Hendrickx, posting on the NA...
 
-- [ ] `F2-SWF-124` &mdash; SWF_global-counterspace-capabilities-2026-hr.pdf
+- [x] `F2-SWF-124` &mdash; SWF_global-counterspace-capabilities-2026-hr.pdf
       topic=48521.msg2007320#msg2007320. 42 Bart Hendrickx, “Russia develops co-orbital anti-satellite capability,” Jane’s Intelligence Review, September 27, 2018, https://www.janes. com/images/assets/463/83463/Russia_devel￾ops_co-orbital_anti-satellite_capability.pdf. 43 Bart Hendrickx, posting on the NA...
 
 - [ ] `F2-SWF-078` &mdash; SWF_69cffa84a1834078d6f9fe5e-2018-global-counterspace-capabilities-an-open-source-assessme.pdf
       171 Ibid. 172 Andrius Genys, “S-500,” Military Today, April 5, 2017, http://www.military-today.com/missiles/s500.htm. Global Counterspace Capabilities: An Open Source Assessment 2-20 To date, there is no public evidence suggesting Russia is experimenting with or developing DA￾ASAT capabilities again...
 
-- [ ] `F2-CSIS-178` &mdash; CSIS_harrison-spacethreatassessment20-web-final-min.pdf
+- [x] `F2-CSIS-178` &mdash; CSIS_harrison-spacethreatassessment20-web-final-min.pdf
       In February 2020, Chief of Space Operations of the U.S. Space Force General John Ray￾mond appeared to refer to one of these three satellites when he said that Russian inspector satellites have “exhibited char￾acteristics of a weapon.”177 Analysis published in Jane’s Intelligence Review used Russian ...
 
-- [ ] `F2-SWF-082` &mdash; SWF_69d0054fcf51801d46c919e7-2023-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-082` &mdash; SWF_69d0054fcf51801d46c919e7-2023-global-counterspace-capabilities-an-open-source-assessme.pdf
       Since 2013, Russia has launched several satellites into LEO and GEO that have demonstrated the ability to rendezvous with other space objects, and in some cases do so after periods of dormancy. 12 Pavel Podvig, “Is China Repeating the Old Sovi￾et and U.S. Mistakes?”, Russian Strategic Nuclear Forces...
 
 - [ ] `F2-SWF-080` &mdash; SWF_69d000e653a0667bf9cf7a6f-2020-global-counterspace-capabilities-an-open-source-assessme.pdf
@@ -868,7 +868,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-SWF-124` &mdash; SWF_global-counterspace-capabilities-2026-hr.pdf
       13 Spatial : l’Agence de l’innovation de défense noti￾fie à U-Space la réalisation d’une démonstration d’actions en orbite basse au profit du Comman￾dement de l’espace, ibid. 14 Avis no. 527 de la commission de la défense nationale et des forces armées sur le projet de loi de finances pour 2025 (n°3...
 
-- [ ] `F2-SWF-121` &mdash; SWF_global-counterspace-capabilities-2022-rev2.pdf
+- [x] `F2-SWF-121` &mdash; SWF_global-counterspace-capabilities-2022-rev2.pdf
       The United States has started a major reorganization of its military space capabilities under the leadership of its emerging Space Force. The following sections summarize U.S. counterspace development across co-orbital, direct ascent, directed energy, electronic warfare, and space situational awaren...
 
 - [ ] `F2-UNOOSA-013` &mdash; UNOOSA_st-space-088a.pdf
@@ -877,7 +877,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-UNOOSA-028` &mdash; UNOOSA_st-space-61rev03f.pdf
       V.24-22756 3/106 Droit international de l’espace : Instruments des Nations Unies Nations Unies New York, 2017 4/106 V.24-22756 Avant-propos Le droit international de l’espace et le Bureau des affaires spatiales des Nations Unies L’année 1967 a marqué une étape décisive dans l’histoire de l’espace, a...
 
-- [ ] `F2-SWF-122` &mdash; SWF_global-counterspace-capabilities-2024.pdf
+- [x] `F2-SWF-122` &mdash; SWF_global-counterspace-capabilities-2024.pdf
       The United States has reorganized its military space activities as part of a renewed focus on space as a warfighting domain. Since 2014, US policymakers have placed increased focus on space security, and have increasingly talked publicly about preparing for a potential “war in space.” This rhetoric ...
 
 - [ ] `F2-CSIS-203` &mdash; CSIS_regional-perspectives-on-norms-of-behaviour-for-outer-space-activities-en-622.pdf
@@ -970,7 +970,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-RESDAL-033` &mdash; RESDAL_atlas-2012-ing-completo.pdf
       This implies the need to improve the defensive capabilities and operational prepare￾dness of the Armed Force and the Territorial Militia. • Legal area: foster new laws and tailor existing ones to the new threats and the concept of the Nation’s integral defence. • Leadership area: make the planning a...
 
-- [ ] `F3-RESDAL-095` &mdash; RESDAL_atlas-completo2010-ingles.pdf
+- [x] `F3-RESDAL-095` &mdash; RESDAL_atlas-completo2010-ingles.pdf
       The tactical capability contributed by Joint Commands and Task Forces should be noted, where the best of each service is committed to common strategic objec￾tives. The Army has reduced the illegal groups’ strate￾gic mobilization corridors, from its rearguard area in the south of the country, to the ...
 
 - [ ] `F3-MAPPOEA-032` &mdash; MAPPOEA_xxvii-informe-semestral-espanol.pdf
@@ -996,7 +996,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-RESDAL-093` &mdash; RESDAL_atlas-completo-2.pdf
       Así es como se debe continuar el camino de descongelamiento de las relaciones cívico-militares en América Latina, contribuyendo positivamente a la construcción de sistemas políticos democráticos. El reto se centra en proveer a las Fuerzas Armadas de la región con los recursos necesarios para que pue...
 
-- [ ] `F3-MAPPOEA-034` &mdash; MAPPOEA_xxx-informe-semestral.pdf
+- [x] `F3-MAPPOEA-034` &mdash; MAPPOEA_xxx-informe-semestral.pdf
       La crisis económica refuerza lógicas ilegales como el contrabando, el tráfico de migrantes y el narcotráfico en comunidades fronterizas de Arauca, La Guajira, Nariño, Norte de Santander y Putumayo. Adicionalmente, se han presentado reconfiguraciones de economías ilegales, que se expresan en el incre...
 
 - [ ] `F3-MAPPOEA-032` &mdash; MAPPOEA_xxvii-informe-semestral-espanol.pdf
@@ -1011,7 +1011,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-MAPPOEA-033` &mdash; MAPPOEA_xxviii-informe-semestral-espanol.pdf
       Adicionalmente, persisten amenazas por parte de los grupos armados ilegales sobre la instalación de nuevas trampas explosivas en las vías terciarias que conectan a estas veredas. 32Estas afectaciones han ocurrido, mayormente, en el sector rural ocasionadas por grupos armados ilegales o actores que n...
 
-- [ ] `F3-MAPPOEA-016` &mdash; MAPPOEA_cp51877scp-1.pdf
+- [x] `F3-MAPPOEA-016` &mdash; MAPPOEA_cp51877scp-1.pdf
       El accionar de los grupos armados siguió causando afectaciones ambientales en ecosistemas estratégicos. La deforestación, la contaminación de fuentes hídricas por la extracción ilícita de yacimiento mineros y el vertimiento de hidrocarburos y químicos usados en el procesamiento de pasta base de coca...
 
 - [ ] `F1-ILIA-009` &mdash; ILIA_documento-ilia-2025.pdf
@@ -1028,31 +1028,31 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 > ¿Qué actividades económicas ilegales convergen con la explotación de recursos naturales en zonas de conflicto?
 
-- [ ] `F3-MAPPOEA-018` &mdash; MAPPOEA_informe-mappoea-35.pdf
+- [x] `F3-MAPPOEA-018` &mdash; MAPPOEA_informe-mappoea-35.pdf
       Paz ambiental Las disputas por el control y la explotación de recursos naturales, así como las rentas que estos generan, han sido causa y consecuencia del conflicto armado. El uso y la tenencia de la tierra, la presencia de cultivos ilícitos, las economías extractivas de oro y madera, la praderizaci...
 
 - [ ] `F3-MAPPOEA-033` &mdash; MAPPOEA_xxviii-informe-semestral-espanol.pdf
       Adicionalmente, persisten amenazas por parte de los grupos armados ilegales sobre la instalación de nuevas trampas explosivas en las vías terciarias que conectan a estas veredas. 32Estas afectaciones han ocurrido, mayormente, en el sector rural ocasionadas por grupos armados ilegales o actores que n...
 
-- [ ] `F3-MAPPOEA-016` &mdash; MAPPOEA_cp51877scp-1.pdf
+- [x] `F3-MAPPOEA-016` &mdash; MAPPOEA_cp51877scp-1.pdf
       El accionar de los grupos armados siguió causando afectaciones ambientales en ecosistemas estratégicos. La deforestación, la contaminación de fuentes hídricas por la extracción ilícita de yacimiento mineros y el vertimiento de hidrocarburos y químicos usados en el procesamiento de pasta base de coca...
 
-- [ ] `F3-MAPPOEA-034` &mdash; MAPPOEA_xxx-informe-semestral.pdf
+- [x] `F3-MAPPOEA-034` &mdash; MAPPOEA_xxx-informe-semestral.pdf
       La crisis económica refuerza lógicas ilegales como el contrabando, el tráfico de migrantes y el narcotráfico en comunidades fronterizas de Arauca, La Guajira, Nariño, Norte de Santander y Putumayo. Adicionalmente, se han presentado reconfiguraciones de economías ilegales, que se expresan en el incre...
 
-- [ ] `F3-MAPPOEA-032` &mdash; MAPPOEA_xxvii-informe-semestral-espanol.pdf
+- [x] `F3-MAPPOEA-032` &mdash; MAPPOEA_xxvii-informe-semestral-espanol.pdf
       Entre las múltiples causas asociadas a este fenómeno se reconoce que el cultivo de uso ilícito sigue presentando ventajas económicas en materia de comercialización y entrega réditos que otros productos no tienen, ante la existencia de necesidades socioeconómicas no atendidas; por otro lado, los grup...
 
-- [ ] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
+- [x] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
       Impactos de la Política Pública de Reducción de Cultivos Ilícitos Se ha evidenciado un incremento en las tensiones territoriales relacionadas con la política de reducción de cultivos de uso ilícito, siendo este un escenario de particular atención en materia de conflictividad social, dado los impacto...
 
-- [ ] `F3-MAPPOEA-028` &mdash; MAPPOEA_xxiii-informe-esp.pdf
+- [x] `F3-MAPPOEA-028` &mdash; MAPPOEA_xxiii-informe-esp.pdf
       Por su parte, en diversos consejos comunitarios ubicados en el pacífico colombiano, en donde se adelantan actividades de minería ilegal en conjunto con minería de origen ancestral y artesanal, se evidencia un incremento en las tensiones entre las comunidades y nuevos actores armados con intenciones ...
 
-- [ ] `F3-MAPPOEA-023` &mdash; MAPPOEA_informe-xxxiv-esp-1.pdf
+- [x] `F3-MAPPOEA-023` &mdash; MAPPOEA_informe-xxxiv-esp-1.pdf
       MEDIOAMBIENTE PARA LA PAZ La MAPP/OEA ha identificado, a lo largo de su trayectoria, que el acceso y uso de los recursos naturales en contextos de ilegalidad y de violencia impacta en las lógicas socioeconómicas territoriales y al estado del medioambiente, biodiversidad y recursos hídricos. La Misió...
 
-- [ ] `F3-MAPPOEA-014` &mdash; MAPPOEA_cp-informe-mappoea-39-esp.pdf
+- [x] `F3-MAPPOEA-014` &mdash; MAPPOEA_cp-informe-mappoea-39-esp.pdf
       4 pasta base de coca (PBC), la ganadería extensiva y la deforestación para el acaparamiento de tierras en áreas ambientalmente protegidas. A través del programa RenHacemos en Cauca, Chocó, Nariño, Norte de Santander y Putumayo el Gobierno colombiano busca sustituir los ingresos asociados a la econom...
 
 - [ ] `F3-MAPPOEA-035` &mdash; MAPPOEA_xxxi-informe-semestral-mappoea.pdf
@@ -1072,13 +1072,13 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-MAPPOEA-028` &mdash; MAPPOEA_xxiii-informe-esp.pdf
       2. MONITOREO A LOS CONTEXTOS DE CONFLICTO ARMADO Y CRIMINALIDAD La SG/OEA resalta el compromiso del Gobierno colombiano de continuar con una estrategia sostenida para enfrentar el fenómeno del crimen organizado, particularmente haciendo frente a aquellos grupos categorizados institucionalmente como ...
 
-- [ ] `F3-MAPPOEA-031` &mdash; MAPPOEA_xxvi-informe-semestral-mappoea.pdf
+- [x] `F3-MAPPOEA-031` &mdash; MAPPOEA_xxvi-informe-semestral-mappoea.pdf
       En algunos casos excepcionales, y cuando dentro de sus prioridades no está el control de la población, deciden que dichos delitos sean llevados a la institucionalidad o a la justicia comunitaria, y son precisamente los GAOR quienes orientan a la comunidad hacia donde remitirse. El departamento del C...
 
 - [ ] `F3-ALERTAS-381` &mdash; ALERTAS_informes018.pdf
       a) Grupos Armados Posdesmovilizacion de alcance nacional que trabajan en asocio con estructuras de criminalidad organizada locales y regionales quienes desde el proceso de desmovilizacion de los grupos paramilitares han estado en constante reconfiguración y mutación, lo que desencadena disputas y re...
 
-- [ ] `F3-MAPPOEA-003` &mdash; MAPPOEA_2008-una-experiencia-de-justicia-comunitaria-conciliemos.pdf
+- [x] `F3-MAPPOEA-003` &mdash; MAPPOEA_2008-una-experiencia-de-justicia-comunitaria-conciliemos.pdf
       En los lugares en donde la institucionalidad por parte del Estado tradicionalmente ha sido nula, y la administración de justicia ha sido reemplazada por mecanismos particulares impuestos por el grupo armado que controla la zona, el empoderamiento de los civiles en la apropiación de una nueva institu...
 
 - [ ] `F3-MAPPOEA-032` &mdash; MAPPOEA_xxvii-informe-semestral-espanol.pdf

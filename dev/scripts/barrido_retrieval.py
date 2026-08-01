@@ -51,6 +51,16 @@ def main() -> None:
         "k_pool: las anotadas por pooling salieron de un k_pool concreto "
         "(anotar_candidatos.K_POOL), asi que favorecen a ese valor.",
     )
+    parser.add_argument(
+        "--comparar",
+        nargs=2,
+        type=int,
+        metavar=("A", "B"),
+        default=None,
+        help="Dos valores de k_pool: cuenta en cuantas consultas gana cada uno. Un "
+        "promedio mas alto puede venir de dos consultas que cambiaron de lado por azar; "
+        "el reparto de victorias dice si la diferencia es real.",
+    )
     args = parser.parse_args()
 
     gt = {}
@@ -105,6 +115,36 @@ def main() -> None:
         print(f"{k_pool:7d} " + " ".join(f"{v:7.3f}" for v in fila))
 
     print(f"\nmejor: k_pool={mejor[1][0]} agg={mejor[1][1]} -> F1@3 = {mejor[0]:.3f}")
+
+    if args.comparar:
+        a, b = args.comparar
+        # El promedio engana: con ~25 consultas cada una pesa 0.04, asi que dos
+        # que cambien de lado mueven la media mas que cualquier efecto real. Lo
+        # que decide es en cuantas consultas concretas gana cada configuracion.
+        gana_a = gana_b = empate = 0
+        for qid, relevantes in gt.items():
+            v = {}
+            for kp in (a, b):
+                docs = [
+                    d.doc_id
+                    for d in aggregate_documents(
+                        hits_por_consulta[qid][:kp], top_n=N_DOCUMENTS_PER_QUERY, strategy="sum"
+                    )
+                ]
+                v[kp] = f1(docs, relevantes)[2]
+            if abs(v[a] - v[b]) < 1e-9:
+                empate += 1
+            elif v[a] > v[b]:
+                gana_a += 1
+            else:
+                gana_b += 1
+        difieren = gana_a + gana_b
+        print(f"\nk_pool={a} gana en {gana_a}, k_pool={b} gana en {gana_b}, empatan {empate}")
+        if difieren and abs(gana_a - gana_b) <= max(1, difieren // 3):
+            print(
+                f"  -> reparto {gana_a}-{gana_b} sobre {difieren} consultas que difieren: "
+                f"indistinguible del azar, NO cambiar la configuracion por esto"
+            )
 
 
 if __name__ == "__main__":
