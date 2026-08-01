@@ -2,11 +2,16 @@
 """F1@3 aproximado contra un mini ground truth anotado a mano.
 
 ADL no publica el ground truth, asi que sin esto las decisiones de diseno
-(un encoder o dos, fusion RRF si o no, grafo si o no) se toman a ojo. Con
-~10 consultas anotadas alcanza para comparar configuraciones entre si; el
-valor absoluto NO es la nota oficial (la anotacion es parcial: los
-documentos no anotados cuentan como irrelevantes aunque quiza no lo sean,
-asi que el F1 real sera mayor o igual que este).
+(un encoder o dos, fusion RRF si o no, grafo si o no) se toman a ojo. El
+ground truth propio cubre hoy 41 de las 50 consultas; el valor absoluto NO
+es la nota oficial (la anotacion es parcial: los documentos no anotados
+cuentan como irrelevantes aunque quiza no lo sean, asi que el F1 real sera
+mayor o igual que este).
+
+**El promedio no decide.** Con ~40 consultas cada una pesa 0.025, asi que
+dos que cambien de lado por azar mueven la media mas que un efecto real.
+Para elegir entre dos configuraciones usar --comparar-con, que cuenta en
+cuantas consultas gana cada una y aplica una prueba de signos.
 
 NDCG@10 de fragmentos queda fuera a proposito: exigiria anotar relevancia
 graduada fragmento por fragmento, y para elegir entre configuraciones el
@@ -21,6 +26,7 @@ Uso:
 """
 
 import argparse
+import math
 import json
 import sys
 from pathlib import Path
@@ -66,6 +72,15 @@ def main() -> None:
         "candidatos que propuso el encoder X favorece a X, porque los documentos que X "
         "nunca recupero jamas pudieron marcarse como relevantes.",
     )
+    parser.add_argument(
+        "--comparar-con",
+        type=Path,
+        default=None,
+        help="Otro resultados.jsonl. En vez de solo promediar, cuenta en cuantas "
+        "consultas gana cada uno. Es la forma correcta de decidir entre dos "
+        "configuraciones: con ~30 consultas cada una pesa 0.03 en la media, asi que "
+        "dos que cambien de lado por azar mueven el promedio mas que un efecto real.",
+    )
     args = parser.parse_args()
 
     if not args.ground_truth.exists():
@@ -95,6 +110,47 @@ def main() -> None:
         print(f"{qid:10s} {p:6.2f} {r:6.2f} {valor:6.2f}  {sorted(set(docs) & relevantes)}")
 
     print(f"\nF1@{args.k} promedio sobre {len(gt)} consultas: {suma / len(gt):.3f}")
+
+    if args.comparar_con:
+        otros = {r["query_id"]: r for r in cargar_jsonl(args.comparar_con)}
+        a = args.resultados.name
+        b = args.comparar_con.name
+        gana_a = gana_b = empate = 0
+        suma_b = 0.0
+        for fila in gt:
+            qid = fila["query_id"]
+            relevantes = set(fila["docs_relevantes"])
+            if qid not in resultados or qid not in otros:
+                continue
+            va = f1([d["doc_id"] for d in resultados[qid]["documents"][: args.k]], relevantes)[2]
+            vb = f1([d["doc_id"] for d in otros[qid]["documents"][: args.k]], relevantes)[2]
+            suma_b += vb
+            if abs(va - vb) < 1e-9:
+                empate += 1
+            elif va > vb:
+                gana_a += 1
+            else:
+                gana_b += 1
+        print(f"\n{b}: F1@{args.k} promedio {suma_b / len(gt):.3f}")
+        print(f"\n{a} gana en {gana_a}, {b} gana en {gana_b}, empatan {empate}")
+        difieren = gana_a + gana_b
+        if difieren == 0:
+            print("  -> las dos configuraciones dan exactamente lo mismo")
+            return
+        # Prueba de signos: bajo la hipotesis de que las dos configuraciones son
+        # equivalentes, cada consulta que difiere es una moneda al aire. p es la
+        # probabilidad de ver un reparto al menos tan desigual por puro azar.
+        ganador, mayor = (a, gana_a) if gana_a > gana_b else (b, gana_b)
+        p = 2 * sum(math.comb(difieren, i) for i in range(mayor, difieren + 1)) / 2**difieren
+        p = min(1.0, p)
+        print(f"  prueba de signos sobre las {difieren} que difieren: p = {p:.3f}")
+        if p > 0.05:
+            print(
+                f"  -> NO concluyente. Entregar la configuracion mas simple, y no "
+                f"cambiarla apoyandose en la diferencia de promedios."
+            )
+        else:
+            print(f"  -> {ganador} gana de forma consistente, no solo en promedio")
 
 
 if __name__ == "__main__":

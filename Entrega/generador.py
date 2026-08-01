@@ -360,7 +360,10 @@ def aggregate_documents(
 
     Por defecto "sum", no "max": un documento relevante suele tener VARIOS
     pasajes relevantes, mientras que "max" premia al que tiene un unico chunk
-    afortunado. Medido sobre dev/eval/ (k_pool=60): 0.200 -> 0.300 de F1@3."""
+    afortunado. La eleccion se apoya en ese argumento, no en la medicion: sobre
+    el ground truth propio sum promedia mas que max, pero contando por consulta
+    el reparto es 16-8 con 17 empates (prueba de signos p=0.15), o sea que la
+    ventaja no alcanza significancia con esa muestra."""
     scores_by_doc: dict[str, list[float]] = defaultdict(list)
     for hit in hits:
         scores_by_doc[hit.doc_id].append(hit.score)
