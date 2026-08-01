@@ -387,13 +387,25 @@ def build_story() -> list:
         "memoria todas las combinaciones de tamano de pool y estrategia de agregacion."
     ))
     story.append(p(
-        "El resultado que cambio la configuracion entregada: con pool de 60 "
-        "candidatos, agregar por <b>suma</b> en lugar de por <b>maximo</b> sube el "
-        "F1@3 de <b>0,200 a 0,300</b>. La lectura es que un documento verdaderamente "
-        "relevante para una consulta contiene varios pasajes relevantes, mientras "
-        "que el maximo premia al documento que tuvo un unico fragmento afortunado. "
-        "La suma resulto igual o mejor que el maximo en practicamente toda la "
-        "grilla explorada, lo que sostiene la decision mas alla del valor puntual."
+        "La configuracion entregada agrega por <b>suma</b> de las puntuaciones de los "
+        "fragmentos de cada documento, en lugar de por <b>maximo</b>. En promedio la "
+        "suma rinde mejor (F1@3 de 0,306 frente a 0,226 sobre las 41 consultas "
+        "anotadas), pero conviene ser preciso sobre la fuerza de esa evidencia: "
+        "contando por consulta, la suma gana en 16 y el maximo en 8, con 17 empates. "
+        "Una prueba de signos sobre las 24 que difieren da <b>p = 0,15</b>; sobre las "
+        "10 consultas de anotacion independiente el reparto es 4-2 (p = 0,69). "
+        "<b>La ventaja no alcanza significancia estadistica con esta muestra.</b>"
+    ))
+    story.append(p(
+        "Se entrega igualmente la suma, y la razon principal no es el promedio sino "
+        "el argumento estructural: un documento verdaderamente relevante para una "
+        "consulta contiene <i>varios</i> pasajes relevantes, mientras que el maximo "
+        "premia al documento que tuvo un unico fragmento afortunado. La suma ademas "
+        "gana en ambas muestras y no pierde en ninguna, y no es mas compleja de "
+        "implementar. Se documenta asi, y no como un resultado medido, porque la "
+        "diferencia entre \"lo medimos\" y \"lo argumentamos y el dato no lo "
+        "contradice\" es justamente lo que evita sobreajustar a un ground truth "
+        "reducido."
     ))
     story.append(p(
         "<b>El promedio de F1@3 no basta para decidir, y conviene explicar por que.</b> "

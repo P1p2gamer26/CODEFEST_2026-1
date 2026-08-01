@@ -22,8 +22,14 @@ def aggregate_documents(
 ) -> list[DocumentHit]:
     """Por defecto "sum", no "max": un documento relevante para una consulta
     suele tener VARIOS pasajes relevantes, mientras que "max" premia al que
-    tiene un unico chunk afortunado. Medido sobre dev/eval/ (10 consultas,
-    k_pool=60): max 0.200 vs sum 0.300 de F1@3. Ver scripts/barrido_retrieval.py."""
+    tiene un unico chunk afortunado.
+
+    La eleccion se apoya en ese argumento, NO en la medicion. Sobre dev/eval/
+    (41 consultas) sum promedia 0.306 y max 0.226, pero contando por consulta
+    el reparto es 16-8 con 17 empates: prueba de signos p=0.15, y p=0.69 sobre
+    las 10 consultas de anotacion independiente. Sum gana en ambas muestras y
+    no pierde en ninguna, pero NO esta demostrado. Verificable con
+    scripts/eval_mini.py --comparar-con."""
     scores_by_doc: dict[str, list[float]] = defaultdict(list)
     for hit in hits:
         scores_by_doc[hit.doc_id].append(hit.score)
