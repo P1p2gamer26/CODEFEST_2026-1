@@ -21,6 +21,10 @@
 {"query_id": "q036", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-MAPPOEA-018", "F3-MAPPOEA-016", "F3-MAPPOEA-034", "F3-MAPPOEA-032", "F3-MAPPOEA-030", "F3-MAPPOEA-028", "F3-MAPPOEA-023", "F3-MAPPOEA-014"]}
 {"query_id": "q037", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-MAPPOEA-031", "F3-MAPPOEA-003"]}
 {"query_id": "q040", "nota": "normas de conducta y control social", "docs_relevantes": ["F3-MAPPOEA-035", "F3-MAPPOEA-029", "F3-MAPPOEA-020", "F3-ALERTAS-417", "F3-ALERTAS-398"]}
+{"query_id": "q041", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-MAPPOEA-030", "F3-MAPPOEA-031", "F3-MAPPOEA-034", "F3-MAPPOEA-020"]}
 {"query_id": "q042", "nota": "mineria ilegal de oro y GAO", "docs_relevantes": ["F3-MAPPOEA-020", "F3-MAPPOEA-016", "F3-MAPPOEA-015", "F3-MAPPOEA-021", "F3-MAPPOEA-022"]}
+{"query_id": "q043", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-MAPPOEA-018", "F3-MAPPOEA-030", "F3-MAPPOEA-034", "F3-MAPPOEA-022", "F3-MAPPOEA-031", "F3-MAPPOEA-032"]}
 {"query_id": "q044", "nota": "reclutamiento de ninos, ninas y adolescentes", "docs_relevantes": ["F3-ALERTAS-402", "F3-ALERTAS-396", "F3-MAPPOEA-020", "F3-MAPPOEA-013", "F3-MAPPOEA-035"]}
+{"query_id": "q045", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-ALERTAS-386", "F3-MAPPOEA-029", "F3-MAPPOEA-034", "F3-MAPPOEA-028", "F3-MAPPOEA-022"]}
+{"query_id": "q046", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-MAPPOEA-016"]}
 {"query_id": "q049", "nota": "restitucion de tierras", "docs_relevantes": ["F3-MAPPOEA-008", "F3-MAPPOEA-010", "F3-MAPPOEA-011", "F3-MAPPOEA-009", "F3-MAPPOEA-028"]}

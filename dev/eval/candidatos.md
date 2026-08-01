@@ -1168,7 +1168,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 > ¿Qué corredores de movilidad y territorios estratégicos son priorizados por los Grupos Armados Organizados (GAO), Grupos Armados Organizados Residuales (GAOR) y Grupos Delictivos Organizados (GDO) para asegurar sus economías ilícitas y fortalecer su control territorial?
 
-- [ ] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
+- [x] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
       Por otro lado, se percibe que para consolidar objetivos económicos, maximizan el conocimiento del antiguo grupo armado, sobre redes, rutas y estrategia militar; estos casos se han presentado con mayor evidencia en los departamentos del Cauca, Antioquia, Norte de Santander y Arauca, entre otros. A pe...
 
 - [ ] `F3-RESDAL-032` &mdash; RESDAL_atlas-2005-esp.pdf
@@ -1183,16 +1183,16 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-MAPPOEA-028` &mdash; MAPPOEA_xxiii-informe-esp.pdf
       3) organizaciones más grandes que buscan imponerse frente a las más pequeñas de arraigo local; 4) tensiones entre campesinos y colectivos étnicos por acceso a tierras; y 5) expectativas y estigmatizaciones producto de la instalación de las Zonas Veredales Transitorias de Normalización (ZVTN) y Punto...
 
-- [ ] `F3-MAPPOEA-031` &mdash; MAPPOEA_xxvi-informe-semestral-mappoea.pdf
+- [x] `F3-MAPPOEA-031` &mdash; MAPPOEA_xxvi-informe-semestral-mappoea.pdf
       Con respecto a los GDO, Los Rastrojos y La Constru, entre otros, continúan presentes en los territorios como articuladores o facilitadores de economías ilegales2 , sobre los que no se identifica algún interés o capacidad de expandirse hacia otras zonas del país. Con relación a los GAO, las Autodefen...
 
 - [ ] `F3-RESDAL-093` &mdash; RESDAL_atlas-completo-2.pdf
       Serán funciones específicas de la Fuerza Armada Nacional: -Asegurar el dominio de los espacios vitales que permitan la circulación de los flujos de personas y bienes entre las distintas regiones del país y del entorno internacional. -Defender los puntos estratégicos que garantizan el desenvolvimient...
 
-- [ ] `F3-MAPPOEA-034` &mdash; MAPPOEA_xxx-informe-semestral.pdf
+- [x] `F3-MAPPOEA-034` &mdash; MAPPOEA_xxx-informe-semestral.pdf
       CONDICIONES DE SEGURIDAD 2.1 Presencia y accionar de grupos armados ilegales Una de las características predominantes de los grupos armados ilegales es que en la mayoría de los territorios no han podido consolidar una hegemonía criminal, motivo por el cual persisten las confrontaciones armadas entre...
 
-- [ ] `F3-MAPPOEA-020` &mdash; MAPPOEA_informe-semestral-36-mappoea-1.pdf
+- [x] `F3-MAPPOEA-020` &mdash; MAPPOEA_informe-semestral-36-mappoea-1.pdf
       También, en aquellos con condiciones geográficas que facilitaron su uso como corredores de movilidad. De acuerdo con el monitoreo realizado en las zonas priorizadas por la Misión, el presente Informe hace referencia al accionar del Estado Mayor Central de las FARC-EP, el Ejército de Liberación Nacio...
 
 - [ ] `F3-RESDAL-033` &mdash; RESDAL_atlas-2012-ing-completo.pdf
@@ -1203,25 +1203,25 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 > ¿De qué manera el narcotráfico financia el fortalecimiento y la expansión territorial de los Grupos Armados Organizados (GAO), Grupos Armados Organizados Residuales (GAOR) y Grupos Delictivos Organizados (GDO) en departamentos como Norte de Santander, Arauca, Córdoba y el Cauca?
 
-- [ ] `F3-MAPPOEA-018` &mdash; MAPPOEA_informe-mappoea-35.pdf
+- [x] `F3-MAPPOEA-018` &mdash; MAPPOEA_informe-mappoea-35.pdf
       En ciertos casos, algunos grupos armados ilegales establecieron alianzas para contener el avance de un tercero o la acción de la fuerza pública. En Chocó, Guaviare, Meta, Nariño y Norte de Santander los GAI siguen desarrollando acciones de control sobre la población civil mediante la imposición de p...
 
-- [ ] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
+- [x] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
       Por otro lado, se percibe que para consolidar objetivos económicos, maximizan el conocimiento del antiguo grupo armado, sobre redes, rutas y estrategia militar; estos casos se han presentado con mayor evidencia en los departamentos del Cauca, Antioquia, Norte de Santander y Arauca, entre otros. A pe...
 
 - [ ] `F3-MAPPOEA-028` &mdash; MAPPOEA_xxiii-informe-esp.pdf
       Dicha estrategia ha resultado beneficiosa para los grupos armados ilegales, ya que aunque las autoridades centran sus esfuerzos en atacar y desmantelar las economías y redes criminales, no han logrado influir en la afectación a las estructuras jerárquicas que lideran el grupo. En paralelo la SG/OEA ...
 
-- [ ] `F3-MAPPOEA-034` &mdash; MAPPOEA_xxx-informe-semestral.pdf
+- [x] `F3-MAPPOEA-034` &mdash; MAPPOEA_xxx-informe-semestral.pdf
       Además, en la implementación del Programa Nacional Integral de Sustitución de Cultivos Ilícitos (PNIS) los grupos armados ilegales impactan la seguridad de la población civil y liderazgos que impulsan la sustitución voluntaria, así como de los funcionarios que la ejecutan. En Caquetá, Guaviare y Nar...
 
-- [ ] `F3-MAPPOEA-022` &mdash; MAPPOEA_informe-semestral-xxxiii-mappoea.pdf
+- [x] `F3-MAPPOEA-022` &mdash; MAPPOEA_informe-semestral-xxxiii-mappoea.pdf
       En Antioquia, Bolívar, Córdoba, Chocó y Valle del Cauca, las AGC/Clan del Golfo persuaden a NNA a través del consumo de alcohol y drogas ilícitas para posteriormente convertirlos en expendedores, utilizarlos como puntos de vigilancia y en actividades delictivas como la extorsión y el sicariato. El a...
 
-- [ ] `F3-MAPPOEA-031` &mdash; MAPPOEA_xxvi-informe-semestral-mappoea.pdf
+- [x] `F3-MAPPOEA-031` &mdash; MAPPOEA_xxvi-informe-semestral-mappoea.pdf
       Del mismo modo, en el departamento de Antioquia, las dinámicas de reorganización de los grupos armados ilegales con interés en el control de economías ilícitas como el narcotráfico, la minería o la extorsión; la participación en la implementación en programas de gobierno y la débil presencia institu...
 
-- [ ] `F3-MAPPOEA-032` &mdash; MAPPOEA_xxvii-informe-semestral-espanol.pdf
+- [x] `F3-MAPPOEA-032` &mdash; MAPPOEA_xxvii-informe-semestral-espanol.pdf
       En Putumayo se ha manifestado la posibilidad de que los grupos armados ilegales o estructuras dedicadas al narcotráfico, estén obligando a las comunidades a enfrentar a la Fuerza Pública para frenar las jornadas de erradicación. Adicional a la afectación del territorio con los cultivos de hoja de co...
 
 - [ ] `F3-MAPPOEA-035` &mdash; MAPPOEA_xxxi-informe-semestral-mappoea.pdf
@@ -1241,7 +1241,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-MAPPOEA-005` &mdash; MAPPOEA_2011-diagnostico-de-justicia-y-paz-en-el-marco-de-la-justicia-transicional-en-col.-1.pdf
       169 iv. El impacto de los crímenes: se evalúan, entre otras, sus consecuencias en la comunidad local o internacional, incluidas las sociales a largo plazo, los daños económicos y ambientales, delitos cometidos con el objetivo o consecuencia del aumento de la vulnerabilidad de los civiles, o otros ac...
 
-- [ ] `F3-ALERTAS-386` &mdash; ALERTAS_informes023.pdf
+- [x] `F3-ALERTAS-386` &mdash; ALERTAS_informes023.pdf
       Teniendo en cuenta la concentración de homicidios en un reducido número de municipios (21 municipios concentran el 43% de los homicidios), en su mayoría identificados en riesgo, se puede concluir que la acción del Estado para proteger la vida de personas defensoras de derechos humanos y líderes soci...
 
 - [ ] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
@@ -1253,19 +1253,19 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-ALERTAS-381` &mdash; ALERTAS_informes018.pdf
       Militarización en contextos urbanos y riesgos derivados de la actuación policial Se hace preciso señalar, que en algunos sectores identificados en la Alerta Temprana 020 /18, se ha evidenciado la connivencia entre estas estructuras criminales y agentes Estatales, quienes mantienen una relación de co...
 
-- [ ] `F3-MAPPOEA-029` &mdash; MAPPOEA_xxix-informe-semestral.pdf
+- [x] `F3-MAPPOEA-029` &mdash; MAPPOEA_xxix-informe-semestral.pdf
       pág. 55. Las medidas que se toman para superar la congestión judicial se denominan medidas de descongestión. 51 La Fiscalía General de la Nación reportó que de los homicidios de defensores de derechos humanos registrados por Naciones Unidas desde 2016, 381 se encuentran bajo su competencia. De estos...
 
-- [ ] `F3-MAPPOEA-034` &mdash; MAPPOEA_xxx-informe-semestral.pdf
+- [x] `F3-MAPPOEA-034` &mdash; MAPPOEA_xxx-informe-semestral.pdf
       A la Oficina del Alto Comisionado para la Paz 9.2.1. Hacer seguimiento y evaluar el impacto de la política pública y criminal para el desmantelamiento de las organizaciones criminales responsables de afectaciones contra liderazgos sociales, defensores y defensoras de los derechos humanos, comunidade...
 
-- [ ] `F3-MAPPOEA-028` &mdash; MAPPOEA_xxiii-informe-esp.pdf
+- [x] `F3-MAPPOEA-028` &mdash; MAPPOEA_xxiii-informe-esp.pdf
       La segunda, registrada en entornos urbanos en los que se observaron algunos riesgos asociados a la presencia de organizaciones criminales, que buscaban disuadir los procesos comunitarios de denuncia sobre problemáticas sociales, tales como el expendio local de sustancias psicoactivas. Además, se reg...
 
 - [ ] `F3-MAPPOEA-035` &mdash; MAPPOEA_xxxi-informe-semestral-mappoea.pdf
       Asimismo, avanzar en la atención y respuesta judicial de violencia intrafamiliar y de género, que permita mejorar la percepción de impunidad y generar mejores canales de confianza con la población víctima. 10.7 Al Ministerio de Justicia y del Derecho, al Consejo Superior de la Judicatura y a la Fisc...
 
-- [ ] `F3-MAPPOEA-022` &mdash; MAPPOEA_informe-semestral-xxxiii-mappoea.pdf
+- [x] `F3-MAPPOEA-022` &mdash; MAPPOEA_informe-semestral-xxxiii-mappoea.pdf
       iii) la efectividad de la implementación de las rutas y medidas de protección; y, iv) las garantías de seguridad en línea con el Acuerdo Final de Paz. A la fecha, la Corte evalúa la situación para proferir la respectiva decisión. Las afectaciones a la seguridad personal de los liderazgos sociales pe...
 
 
@@ -1291,7 +1291,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-MAPPOEA-019` &mdash; MAPPOEA_informe-periodico-40-esp-1-1.pdf
       Al igual que el cumplimiento de las medidas restaurativas contenidas en las resoluciones de la Sala de Definición de Situaciones Jurídicas. 29 LISTADO DE SIGLAS Y ACRÓNIMOS UTILIZADOS EN EL INFORME ACSN – Autodefensas Conquistadores de la Sierra Nevada. AEI – Artefactos Explosivos Improvisados. AFP ...
 
-- [ ] `F3-MAPPOEA-016` &mdash; MAPPOEA_cp51877scp-1.pdf
+- [x] `F3-MAPPOEA-016` &mdash; MAPPOEA_cp51877scp-1.pdf
       Por otro lado, la institucionalidad colombiana ha priorizado el abordaje de conflictividades sociales como un pilar para la construcción de paz en Colombia. Este compromiso requiere avanzar en una adecuada articulación, coordinación y complementariedad entre los niveles nacional, departamental y mun...
 
 - [ ] `F3-RESDAL-033` &mdash; RESDAL_atlas-2012-ing-completo.pdf
