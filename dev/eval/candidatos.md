@@ -57,10 +57,10 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F1-CSET-125` &mdash; CSET_center-for-security-and-emerging-technology.pdf
       These steps would position the military to employ AI-DSS in ways that would improve some of our most important Army and Joint fires-related processes and accelerate the responsible development and adoption of AI-enabled capabilities across the military. Center for Security and Emerging Technology | ...
 
-- [ ] `F3-SIPRI-016` &mdash; SIPRI_20240212113627.pdf
+- [x] `F3-SIPRI-016` &mdash; SIPRI_20240212113627.pdf
       Large systems launched from operating bases several miles away from the frontline are useful, but AI will also create the ability for infantry forces to deploy smaller systems for information gathering. Systems such as Nova 2 will autonomously map a building for infantry units and give a readout of ...
 
-- [ ] `F1-DAIO-006` &mdash; DAIO_study2204-2.pdf
+- [x] `F1-DAIO-006` &mdash; DAIO_study2204-2.pdf
       But the implications of AI systems for the Navy are likely to be broader and more profound than that. The RN’s forays into AI equipment are as yet relatively small scale – small (relative to crewed) non-nuclear-powered submersibles; and similarly small drones and surface vessels, notably autonomous ...
 
 - [ ] `F1-DAIO-014` &mdash; DAIO_study2312-master-and-servant-borchert-schuetz-verbovszky.pdf
@@ -98,7 +98,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F1-DAIO-015` &mdash; DAIO_study2313-overtaking-on-the-curve-john-lee.pdf
       Claims made by Chinese commentators for the potential of “intelligentized warfare” reflect those once made by US advo￾cates of the Revolution in Military Affairs: for example, that small-scale precision operations will achieve effects that previously required large-scale war making.33 This core conc...
 
-- [ ] `F1-CSET-103` &mdash; CSET_center-for-security-and-emerging-technology-53.pdf
+- [x] `F1-CSET-103` &mdash; CSET_center-for-security-and-emerging-technology-53.pdf
       Issue Brief April 2025 AI for Military Decision-Making Harnessing the Advantages and Avoiding the Risks Authors Emelia S. Probasco Helen Toner Matthew Burtell Tim G. J. Rudner Center for Security and Emerging Technology | 1 Executive Summary The integration of artificial intelligence into military o...
 
 - [ ] `F1-DAIO-014` &mdash; DAIO_study2312-master-and-servant-borchert-schuetz-verbovszky.pdf
@@ -398,10 +398,10 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 > ¿Cuáles son las principales amenazas cibernéticas que afectan el despliegue seguro de sistemas de inteligencia artificial en infraestructuras críticas?
 
-- [ ] `F1-CSET-100` &mdash; CSET_center-for-security-and-emerging-technology-50.pdf
+- [x] `F1-CSET-100` &mdash; CSET_center-for-security-and-emerging-technology-50.pdf
       There are sixteen sectors of crit￾ical infrastructure, including chemical, water, nuclear, transportation, and others (CISA, n.d.). These systems are complex, varied, and numerous, making it difficult to defend them all well. Critical infrastructure is also an impactful target for cyber attacks, mak...
 
-- [ ] `F1-CSET-098` &mdash; CSET_center-for-security-and-emerging-technology-5.pdf
+- [x] `F1-CSET-098` &mdash; CSET_center-for-security-and-emerging-technology-5.pdf
       [1047] “What Are the Risks from Artificial Intelligence?,” MIT AI Risk Initiative, accessed September 2025, https://airisk.mit.edu/. [1048] “Vulnerability Scanning Tools and Services,” UK National Cyber Security Centre, January 19, 2021, www.ncsc.gov.uk/guidance/vulnerability-scanning-tools-and-serv...
 
 - [ ] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
@@ -416,7 +416,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-SWF-079` &mdash; SWF_69cffd06bb49a754a728c08d-2019-global-counterspace-capabilities-an-open-source-assessme.pdf
       7-2 Secure World Foundation April 2019 additional follow-on cyberattacks in other vectors.456 A wide and rapidly growing array of tools and techniques threaten each of these levels. As a result, cyber capabilities are critically important to the overall counter-space environment.457 One former senio...
 
-- [ ] `F1-CSET-085` &mdash; CSET_center-for-security-and-emerging-technology-43.pdf
+- [x] `F1-CSET-085` &mdash; CSET_center-for-security-and-emerging-technology-43.pdf
       These competing trends will reshape cybersecurity rather than make it more defensive or offensive. Defense has a chance to create a safer digital ecosystem as long as critical components manage to remain secure despite the pressures to implement AI models and agents that are notoriously vulnerable a...
 
 - [ ] `F2-SWF-081` &mdash; SWF_69d003188c7e60684d6fab55-2021-global-counterspace-capabilities-an-open-source-assessme.pdf
@@ -1384,16 +1384,16 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-RESDAL-033` &mdash; RESDAL_atlas-2012-ing-completo.pdf
       In spite of all the above and the politicians’ stubborn insistence on assigning a central role to military person￾nel in the fight against insecurity, crime and violence rates continue to increase, without showing any signifi cant re￾turn on investment on resources and the expected results. Honduras...
 
-- [ ] `F3-MAPPOEA-033` &mdash; MAPPOEA_xxviii-informe-semestral-espanol.pdf
+- [x] `F3-MAPPOEA-033` &mdash; MAPPOEA_xxviii-informe-semestral-espanol.pdf
       En la zona fronteriza entre Colombia y Venezuela42, el Bajo Cauca antioqueño43, el sur del departamento de Córdoba44 y los departamentos de Caquetá45, Chocó, Cauca, Valle del Cauca y Nariño, se están concentrando la mayoría de las imposiciones asociadas a la justicia de facto. Se encuentran el delit...
 
-- [ ] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
+- [x] `F3-MAPPOEA-030` &mdash; MAPPOEA_xxv-informe-semestral-version-oficial-cp40544s03.pdf
       La autoría recae en diversos actores como las GAO, disidencias y bandas criminales quienes buscan a través de estas acciones anular o limitar la participación de líderes sociales en política y defensa de sus derechos de restitución de tierras, defensa del medio ambiente y participación en los progra...
 
-- [ ] `F3-MAPPOEA-018` &mdash; MAPPOEA_informe-mappoea-35.pdf
+- [x] `F3-MAPPOEA-018` &mdash; MAPPOEA_informe-mappoea-35.pdf
       Por el contrario, en territorios donde los grupos armados ilegales han logrado consolidar su influencia sin que existan disputas entre ellos, se mantuvieron las regulaciones del comportamiento de la población civil y la limitación al ejercicio de la misionalidad de algunas instituciones locales, com...
 
-- [ ] `F3-MAPPOEA-031` &mdash; MAPPOEA_xxvi-informe-semestral-mappoea.pdf
+- [x] `F3-MAPPOEA-031` &mdash; MAPPOEA_xxvi-informe-semestral-mappoea.pdf
       Del mismo modo, en el departamento de Antioquia, las dinámicas de reorganización de los grupos armados ilegales con interés en el control de economías ilícitas como el narcotráfico, la minería o la extorsión; la participación en la implementación en programas de gobierno y la débil presencia institu...
 
 - [ ] `F3-ALERTAS-424` &mdash; ALERTAS_informes061.pdf
@@ -1405,5 +1405,5 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F3-RESDAL-093` &mdash; RESDAL_atlas-completo-2.pdf
       - Qué misiones deben tener esas corporaciones (que, además, disponen del monopolio de la violencia), para satisfacer los grandes objetivos de defensa que, generalmente, emanan de la Constitución. Aunque, por supuesto, las experiencias no son trasladables, trataré de delinear a través del caso españo...
 
-- [ ] `F3-MAPPOEA-028` &mdash; MAPPOEA_xxiii-informe-esp.pdf
+- [x] `F3-MAPPOEA-028` &mdash; MAPPOEA_xxiii-informe-esp.pdf
       2. MONITOREO A LOS CONTEXTOS DE CONFLICTO ARMADO Y CRIMINALIDAD La SG/OEA resalta el compromiso del Gobierno colombiano de continuar con una estrategia sostenida para enfrentar el fenómeno del crimen organizado, particularmente haciendo frente a aquellos grupos categorizados institucionalmente como ...

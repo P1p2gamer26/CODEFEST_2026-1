@@ -1,6 +1,6 @@
 # Mini ground truth
 
-`ground_truth_mini.jsonl` anota, para **30 de las 50 consultas oficiales**, los
+`ground_truth_mini.jsonl` anota, para **41 de las 50 consultas oficiales**, los
 documentos que consideramos relevantes. **No es el ground truth de ADL** — ADL
 no lo publica. Sirve para una sola cosa: comparar configuraciones del sistema
 entre sí (un encoder vs. dos, con grafo vs. sin grafo, un chunking vs. otro).
@@ -18,7 +18,7 @@ Cada línea lleva un campo `pool` que dice de dónde salieron sus candidatos:
   obtuvieron contando palabras clave sobre `intermedios/chunks_intermedios.jsonl`,
   sin pasar por el recuperador. Son q005, q014 (F1), q017, q020, q026 (F2),
   q033, q040, q042, q044 y q049 (F3).
-- **Con `pool` (20 consultas)** — anotación por *pooling*: los candidatos los
+- **Con `pool` (31 consultas)** — anotación por *pooling*: los candidatos los
   propuso el propio recuperador (`anotar_candidatos.py`, `k_pool=200`) y se
   marcaron leyendo sus extractos. Es la técnica de TREC.
 
@@ -55,11 +55,32 @@ entrega usa 60, así que las marcas no se cumplen solas.
 - No se anotó relevancia de fragmentos, así que **no se calcula NDCG@10**, que
   es la mitad del puntaje oficial.
 
-## Consultas sin ningún documento marcado
+## Estado: las 50 consultas están procesadas
 
-q007, q028, q038 y q046 se revisaron y **ningún candidato respondía** a la
-consulta, así que no están en el ground truth. Son fallos de recuperación
-documentados, no consultas pendientes:
+**41 anotadas** y **9 revisadas sin ninguna marca**. No queda ninguna pendiente.
+
+## Las 9 sin ningún documento marcado
+
+En estas se revisaron los 10 candidatos y **ninguno respondía** a la consulta,
+así que no están en el ground truth. Son fallos de recuperación documentados,
+no consultas por anotar: q001, q007, q008, q011, q012, q015, q028, q038, q048.
+
+Vale la pena mirarlas juntas, porque son el mejor diagnóstico disponible de
+dónde falla el recuperador. Casos con causa identificada:
+
+- **q001** (amenazas NBQR): el término no existe en el corpus, pero **CBRN**, su
+  equivalente inglés, sale en 62 chunks de 20 documentos. Irrecuperable tanto
+  por vía densa como léxica.
+- **q015** (dependencia de semiconductores y hardware): ningún candidato trata
+  el tema, pese a que CSET sí tiene documentos sobre infraestructura de cómputo
+  (aparecen como candidatos de q014).
+- **q013** (amenazas cibernéticas a IA en infraestructura crítica): 7 de 10
+  candidatos eran secciones de ciberseguridad **espacial** de los informes
+  Global Counterspace. La palabra "cibernéticas" arrastró el dominio equivocado.
+- **q008, q011, q012** (fenómeno 1): los candidatos son informes de IA de
+  defensa temáticamente adyacentes, sin que ninguno responda a lo preguntado.
+
+Los que siguen sin causa clara:
 
 - **q007** (sistemas autónomos frente al DIH): devolvió directrices espaciales
   de UNOOSA, atlas de RESDAL e informes de MAPP/OEA, pese a que los informes de
