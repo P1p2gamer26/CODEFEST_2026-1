@@ -46,6 +46,23 @@ def test_aggregate_documents_sum_can_reorder_vs_max():
     assert docs_sum[0].doc_id == "docA"  # 0.8 > 0.5
 
 
+def test_aggregate_documents_topm_acota_la_inundacion():
+    """topM existe para el caso que diagnostico_ceros.py encontro: un documento
+    con muchos chunks mediocres desplaza del top-3 a uno con un chunk excelente.
+    top2 corta esa cola; sum no."""
+    hits = [_hit("a", "docA", 0.9)] + [_hit(f"b{i}", "docB", 0.2) for i in range(10)]
+
+    assert aggregate_documents(hits, top_n=1, strategy="sum")[0].doc_id == "docB"  # 2.0 > 0.9
+    assert aggregate_documents(hits, top_n=1, strategy="top2")[0].doc_id == "docA"  # 0.9 > 0.4
+
+
+def test_aggregate_documents_top1_equivale_a_max():
+    hits = [_hit("c1", "docA", 0.4), _hit("c2", "docA", 0.4), _hit("c3", "docB", 0.5)]
+    assert [d.doc_id for d in aggregate_documents(hits, top_n=2, strategy="top1")] == [
+        d.doc_id for d in aggregate_documents(hits, top_n=2, strategy="max")
+    ]
+
+
 def test_reciprocal_rank_fusion_rewards_consistent_items():
     list_a = [_hit("c1", "d1", 0.9), _hit("c2", "d2", 0.8), _hit("c3", "d3", 0.7)]
     list_b = [_hit("c2", "d2", 0.95), _hit("c1", "d1", 0.6), _hit("c4", "d4", 0.5)]

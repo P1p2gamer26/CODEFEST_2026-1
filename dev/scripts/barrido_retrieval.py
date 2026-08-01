@@ -37,7 +37,7 @@ CONSULTAS_PATH = DEV_DIR / "consultas_prueba" / "consultas_50_oficiales.jsonl"
 GROUND_TRUTH_PATH = DEV_DIR / "eval" / "ground_truth_mini.jsonl"
 
 K_POOLS = [10, 15, 20, 30, 40, 50, 60, 80, 100, 300]
-ESTRATEGIAS = ["max", "sum", "mean"]
+ESTRATEGIAS = ["max", "sum", "mean", "top2", "top3", "top5", "top10"]
 
 
 def main() -> None:
@@ -54,12 +54,12 @@ def main() -> None:
     parser.add_argument(
         "--comparar",
         nargs=2,
-        type=int,
         metavar=("A", "B"),
         default=None,
-        help="Dos valores de k_pool: cuenta en cuantas consultas gana cada uno. Un "
-        "promedio mas alto puede venir de dos consultas que cambiaron de lado por azar; "
-        "el reparto de victorias dice si la diferencia es real.",
+        help="Dos configuraciones 'k_pool[:agg]' (agg por defecto 'sum'), p.ej. "
+        "'60 60:top3'. Cuenta en cuantas consultas gana cada una. Un promedio mas "
+        "alto puede venir de dos consultas que cambiaron de lado por azar; el "
+        "reparto de victorias dice si la diferencia es real.",
     )
     args = parser.parse_args()
 
@@ -122,24 +122,30 @@ def main() -> None:
         # que cambien de lado mueven la media mas que cualquier efecto real. Lo
         # que decide es en cuantas consultas concretas gana cada configuracion.
         gana_a = gana_b = empate = 0
+        medias = {a: 0.0, b: 0.0}
         for qid, relevantes in gt.items():
             v = {}
-            for kp in (a, b):
+            for spec in (a, b):
+                kp, _, agg = spec.partition(":")
                 docs = [
                     d.doc_id
                     for d in aggregate_documents(
-                        hits_por_consulta[qid][:kp], top_n=N_DOCUMENTS_PER_QUERY, strategy="sum"
+                        hits_por_consulta[qid][: int(kp)],
+                        top_n=N_DOCUMENTS_PER_QUERY,
+                        strategy=agg or "sum",
                     )
                 ]
-                v[kp] = f1(docs, relevantes)[2]
+                v[spec] = f1(docs, relevantes)[2]
+                medias[spec] += v[spec]
             if abs(v[a] - v[b]) < 1e-9:
                 empate += 1
             elif v[a] > v[b]:
                 gana_a += 1
             else:
                 gana_b += 1
-        print(f"\nk_pool={a} gana en {gana_a}, k_pool={b} gana en {gana_b}, empatan {empate}")
-        print(veredicto_signos(f"k_pool={a}", gana_a, f"k_pool={b}", gana_b))
+        print(f"\n{a}: F1@3 {medias[a] / len(gt):.3f}    {b}: F1@3 {medias[b] / len(gt):.3f}")
+        print(f"{a} gana en {gana_a}, {b} gana en {gana_b}, empatan {empate}")
+        print(veredicto_signos(a, gana_a, b, gana_b))
 
 
 if __name__ == "__main__":
