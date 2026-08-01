@@ -351,6 +351,27 @@ def build_story() -> list:
         "(el grafo se trata como un indice adicional, sec. 8.5), detras de un flag "
         "<i>--use-graph</i> opcional en <i>generador.py</i>."
     ))
+    story.append(p(
+        "<b>El grafo sobre el corpus real tiene 224.101 nodos y 754.876 aristas</b>, "
+        "construidas a partir de 1.687 documentos. Dos decisiones lo hicieron "
+        "utilizable. La primera: se excluyen los formatos sin narrativa (CSV, XLSX y "
+        "las teselas vectoriales, el 17,7% de los fragmentos), porque el NER busca "
+        "entidades nombradas en lenguaje natural y aplicado a una fila de tabla "
+        "produce ruido &mdash; las entidades mas frecuentes de una version preliminar "
+        "eran <i>FALSO</i>, <i>VERDADEIRO</i> y el nombre de una capa de mapa. La "
+        "segunda: los nombres de entidad se limpian de caracteres de control, que el "
+        "texto de OCR arrastra y que hacen fallar la exportacion a GraphML, un "
+        "formato XML que no los admite."
+    ))
+    story.append(p(
+        "<b>El grafo se entrega, pero los resultados se generan sin el.</b> Medida su "
+        "fusion con el ranking vectorial contra el ground truth propio, no mejora en "
+        "ninguna consulta de las 10 de anotacion independiente (pierde 3-0) y gana "
+        "solo 1 de 41 en el conjunto completo (pierde 7-1). Se entrega por tanto el "
+        "artefacto, que es lo que pide la seccion 7, con la recuperacion en su "
+        "configuracion puramente vectorial. Que el componente bonus exista y sea "
+        "trazable al corpus no obliga a degradar la metrica usandolo."
+    ))
 
     story.append(h1("6. Modulo de recuperacion"))
     story.append(bullets([
