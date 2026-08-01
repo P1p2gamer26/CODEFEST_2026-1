@@ -48,7 +48,7 @@ entrega usa 60, así que las marcas no se cumplen solas.
   de relevancia: en q046 el mejor chunk de `F3-MAPPOEA-016` hablaba de
   conflictividad social, aunque el documento sí trata la minería ilícita. Esto
   hace que se marquen de menos, nunca de más.
-- **Las 20 consultas por pooling las juzgó el asistente, no el equipo.** Están
+- **Las 31 consultas por pooling las juzgó el asistente, no el equipo.** Están
   para revisarse. Las de fenómeno 1 son las menos fiables: casi todo candidato
   es "un informe de IA de defensa que roza el tema" y separarlos exige criterio
   de dominio.
