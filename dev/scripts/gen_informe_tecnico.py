@@ -243,17 +243,17 @@ def build_story() -> list:
         "silenciosamente incorrectos."
     ))
     story.append(p(
-        "<b>Resultado de la medicion: se entrega con un solo encoder.</b> Se "
-        "construyo el indice completo con <i>multilingual-e5-base</i> (128.526 "
-        "fragmentos, unas cinco horas de CPU) y se comparo contra el primario y "
-        "contra la fusion RRF de ambos, sobre el ground truth propio descrito en la "
-        "seccion 7. El primario resulto mejor en todas las mediciones:"
+        "<b>Resultado de la medicion: la fusion simetrica no sirve, la cascada si.</b> "
+        "Se construyo el indice completo con <i>multilingual-e5-base</i> (128.526 "
+        "fragmentos, unas cinco horas de CPU) y se comparo cada configuracion contra "
+        "el primario sobre el ground truth propio de la seccion 7:"
     ))
     comp_rows = [
         ["Configuracion", "F1@3 (10 indep.)", "F1@3 (41 consultas)", "Consultas ganadas vs. primario"],
-        ["MiniLM (entregada)", "0,300", "0,306", "&mdash;"],
+        ["MiniLM solo", "0,300", "0,306", "&mdash;"],
         ["multilingual-e5-base solo", "0,133", "0,182", "pierde 2-5 y 7-17"],
         ["Fusion RRF de ambos", "0,167", "0,268", "pierde 1-5 y 8-13"],
+        ["<b>Cascada (entregada)</b>", "<b>0,300</b>", "<b>0,352</b>", "<b>gana 5-0; empata 0-0</b>"],
     ]
     comp_tbl = Table(
         [[Paragraph(c, header_style if i == 0 else cell_style) for c in row]
@@ -272,20 +272,44 @@ def build_story() -> list:
     story.append(comp_tbl)
     story.append(Spacer(1, 8))
     story.append(p(
-        "Antes de concluir se verifico que el segundo encoder no estuviera mal "
-        "empleado, porque la familia E5 degrada en silencio si se omiten sus "
-        "prefijos: se confirmo que la indexacion aplica <i>passage:</i> y la consulta "
-        "<i>query:</i>, tanto en el pipeline como en la copia autocontenida de "
-        "<i>generador.py</i>. El bajo rendimiento es real, no un error de uso."
+        "Antes de nada se verifico que el segundo encoder no estuviera mal empleado, "
+        "porque la familia E5 degrada en silencio si se omiten sus prefijos: la "
+        "indexacion aplica <i>passage:</i> y la consulta <i>query:</i>, tanto en el "
+        "pipeline como en la copia autocontenida. Su bajo rendimiento en solitario es "
+        "real, no un error de uso &mdash; y esa es justamente la clave del diseno."
     ))
     story.append(p(
-        "La decision es solida porque los dos criterios apuntan al mismo lado: la "
-        "configuracion de un solo encoder es a la vez <b>la mas simple y la mejor "
-        "medida</b>, y no hay que elegir entre ambas cosas. Entregar dos indices "
-        "habria duplicado el tamano de la entrega y el costo de indexacion para "
-        "empeorar el resultado. La capacidad multi-encoder queda implementada y "
-        "probada detras de <i>--encoder-name A B</i>, disponible si el corpus "
-        "cambiara, pero desactivada por defecto."
+        "<b>Por que la fusion simetrica no podia funcionar.</b> RRF premia el "
+        "<i>acuerdo</i> entre listas. Medido sobre las 50 consultas, los dos encoders "
+        "comparten apenas el <b>11,3%</b> de los documentos del top-3 y el <b>6,2%</b> "
+        "de los fragmentos del top-10. Con ese nivel de desacuerdo RRF no fusiona: "
+        "intercala la lista buena con la mala, y el resultado queda a medio camino "
+        "entre ambas. Eso es exactamente lo observado (0,306 baja a 0,268)."
+    ))
+    story.append(p(
+        "<b>La cascada, que es lo que se entrega.</b> Lo que E5 hace mal es el "
+        "<i>recall</i>: su propio conjunto de candidatos rara vez contiene el "
+        "documento correcto. Pero puntuar candidatos que el primario ya encontro es "
+        "un trabajo distinto y mas facil. Asi que el primario genera 200 candidatos y "
+        "E5 solo los <b>re-puntua</b>, sumando su similitud a la del primario con un "
+        "peso de 0,25. Los dos terminos son cosenos, misma escala, de modo que "
+        "sumarlos es legitimo. La operacion es barata porque los dos indices se "
+        "construyen sobre los mismos fragmentos en el mismo orden: el vector de un "
+        "fragmento en el segundo espacio se lee por su fila con <i>reconstruct</i>, "
+        "sin volver a codificar ni un pasaje. El costo por consulta es una sola "
+        "vectorizacion adicional."
+    ))
+    story.append(p(
+        "El peso 0,25 no es el que maximiza el promedio: con 0,5 y 1,0 el F1@3 sobre "
+        "las 41 consultas sube algo mas (0,354 y 0,359), pero esas variantes empiezan "
+        "a <i>perder</i> consultas en la muestra de anotacion independiente, que es la "
+        "senal clasica de sobreajuste. Con 0,25 la cascada <b>no empeora ninguna "
+        "consulta de ninguna de las dos muestras</b>: gana 5 y pierde 0 sobre las 41, "
+        "y da exactamente el mismo resultado que el primario sobre las 10 "
+        "independientes. Se prefirio la variante que nunca hace dano sobre la que "
+        "promedia mejor. La prueba de signos sobre las 5 consultas que difieren da "
+        "p = 0,062: es el efecto mejor sustentado que se ha medido en este proyecto, "
+        "aunque con 41 consultas siga sin cruzar el umbral convencional del 5%."
     ))
 
     story.append(p(
@@ -515,11 +539,13 @@ def build_story() -> list:
         "queda refutada como mejora general."
     ))
     story.append(p(
-        "La conclusion operativa de la seccion es la misma en los tres casos: con 41 "
-        "consultas anotadas y 30 empates entre configuraciones, <b>la muestra no puede "
-        "resolver diferencias de este tamano</b>. Se entrega la configuracion mas "
-        "simple, y el codigo de ambas alternativas queda en el repositorio con su "
-        "medicion documentada para poder repetirla sobre un ground truth mayor."
+        "Ambas se descartaron con el mismo criterio, y el codigo de las dos queda en "
+        "el repositorio con su medicion documentada. El contraste con la cascada de la "
+        "seccion 3.1 es lo que da valor al criterio: aquella <b>gana 5 consultas y no "
+        "pierde ninguna</b>, mientras que estas dos reparten victorias y derrotas como "
+        "lo haria el azar. La diferencia no esta en el promedio &mdash; el maximo de la "
+        "grilla de agregacion (0,347) es comparable al de la cascada (0,352) &mdash; "
+        "sino en que una sobrevive al conteo por consulta y las otras no."
     ))
     story.append(p(
         "La entrega se verifica de punta a punta antes de empaquetarse con "
