@@ -362,11 +362,29 @@ def build_story() -> list:
     story.append(p(
         "El ground truth oficial no es publico durante el reto, de modo que ninguna "
         "decision de diseno puede validarse contra la metrica real. Para no elegir "
-        "a ojo se anotaron a mano <b>10 de las 50 consultas oficiales</b>, repartidas "
-        "en los tres fenomenos, marcando los documentos relevantes de cada una "
-        "(<i>dev/eval/</i>). Sobre esa base, <i>scripts/barrido_retrieval.py</i> "
-        "carga el indice una vez y evalua en memoria todas las combinaciones de "
-        "tamano de pool y estrategia de agregacion."
+        "a ojo se construyo uno propio (<i>dev/eval/</i>) que cubre <b>las 50 "
+        "consultas oficiales</b>: 41 con documentos relevantes marcados y 9 en las "
+        "que se reviso candidato por candidato sin que ninguno respondiera. Se "
+        "construyo en dos etapas y la distincion es importante para no enganarse:"
+    ))
+    story.append(bullets([
+        "<b>10 consultas de anotacion independiente.</b> Los candidatos salieron de "
+        "contar palabras clave sobre el texto extraido, <i>sin pasar por el "
+        "recuperador</i>. Son las unicas validas para comparar dos encoders entre si.",
+        "<b>31 consultas por <i>pooling</i></b> (la tecnica de TREC): los candidatos "
+        "los propuso el propio sistema y se marcaron leyendo sus extractos. Aportan "
+        "volumen, pero una consulta cuyos candidatos propuso el encoder X favorece a "
+        "X, porque un documento que X nunca recupero no pudo marcarse como relevante. "
+        "Por eso cada linea del ground truth registra su procedencia y las "
+        "herramientas de evaluacion tienen una opcion <i>--sin-pooling</i>.",
+    ]))
+    story.append(p(
+        "El sesgo resulto menor de lo temido: el F1@3 da 0,306 sobre las 41 consultas "
+        "y 0,300 sobre las 10 independientes. La razon es que los candidatos se "
+        "proponen con un pool de 200 mientras la configuracion entregada usa 60, de "
+        "modo que las marcas no se cumplen solas. Sobre esta base, "
+        "<i>scripts/barrido_retrieval.py</i> carga el indice una vez y evalua en "
+        "memoria todas las combinaciones de tamano de pool y estrategia de agregacion."
     ))
     story.append(p(
         "El resultado que cambio la configuracion entregada: con pool de 60 "
@@ -378,15 +396,29 @@ def build_story() -> list:
         "grilla explorada, lo que sostiene la decision mas alla del valor puntual."
     ))
     story.append(p(
-        "<b>Lo que esta medicion no permite concluir.</b> Con 10 consultas, que una "
-        "sola cambie de resultado mueve el promedio en 0,1: el tamano del pool "
-        "oscilo entre 0,20 y 0,30 sin tendencia monotona, de modo que el valor 60 "
-        "esta dentro de una meseta y no es un optimo demostrado. Se documenta "
-        "explicitamente porque la alternativa &mdash; presentar cada numero de un "
-        "barrido como un hallazgo &mdash; llevaria a sobreajustar el sistema a diez "
-        "consultas y degradar las cuarenta restantes. Por la misma razon se "
-        "descarto una hipotesis intermedia sobre recuperacion entre idiomas "
-        "distintos: la muestra no permitia distinguirla del ruido."
+        "<b>El promedio de F1@3 no basta para decidir, y conviene explicar por que.</b> "
+        "El tamano del pool parecia importar: con 26 consultas, un pool de 30 daba "
+        "0,309 frente a 0,274 con 60, y la ventaja se repetia al medirla con 10, 19 y "
+        "26 consultas. Contando por consulta en vez de promediar, el resultado es "
+        "otro: <b>30 gana en 5 consultas, 60 gana en 3 y empatan 18</b>. Un reparto "
+        "5-3 sobre las ocho que difieren es lo que produce el azar. Con del orden de "
+        "30 consultas cada una pesa 0,033 en la media, asi que dos que cambien de "
+        "lado mueven el promedio mas que cualquier efecto real. El pool se dejo en 60 "
+        "y <i>barrido_retrieval.py</i> incorporo la comparacion por conteo de "
+        "victorias, que es la herramienta correcta para la decision entre encoders."
+    ))
+    story.append(p(
+        "El mismo criterio descarto otras tres hipotesis que parecian prometedoras: "
+        "que fallara la recuperacion entre idiomas distintos (2 de 5 aciertos con "
+        "documentos en ingles frente a 3 de 5 en espanol, sin diferencia con esa "
+        "muestra); que el sistema ignorara los terminos discriminantes de la consulta "
+        "(de las siglas de las 50 consultas la unica ausente del corpus es NBQR, y "
+        "afecta a una sola consulta); y que confundiera los grupos armados ilegales "
+        "con las fuerzas armadas estatales (medido con un patron justo, afecta al 8% "
+        "de los cupos de documento, no a la mayoria). Se documentan porque el riesgo "
+        "real de un ground truth reducido no es medir de menos sino <i>sobreajustar</i>: "
+        "presentar cada pico de un barrido como hallazgo degradaria las consultas no "
+        "observadas."
     ))
     story.append(p(
         "La entrega se verifica de punta a punta antes de empaquetarse con "
@@ -402,13 +434,19 @@ def build_story() -> list:
 
     story.append(h1("8. Limitaciones conocidas y decisiones documentadas"))
     story.append(bullets([
-        "<b>El ground truth reducido es la limitacion dominante del proyecto.</b> "
+        "<b>El ground truth propio es la limitacion dominante del proyecto.</b> "
         "Los valores de F1@3 de la seccion 7 sirven para ordenar configuraciones "
-        "entre si, no para estimar la nota: la anotacion es parcial, asi que un "
-        "documento relevante no anotado cuenta como error y el valor real sera "
-        "mayor. Diez consultas tampoco alcanzan para calibrar mas de un parametro "
-        "sin sobreajustar; ampliar la anotacion es la mejora de mayor impacto "
-        "pendiente, por encima de cualquier cambio adicional al recuperador.",
+        "entre si, no para estimar la nota: la anotacion es parcial frente a un "
+        "corpus de 1826 documentos, asi que un documento relevante no anotado cuenta "
+        "como error y el valor real sera mayor. Ademas se juzga el documento viendo "
+        "un solo fragmento &mdash; el mejor de cada documento, que no siempre es la "
+        "mejor evidencia &mdash; lo que hace marcar de menos, nunca de mas.",
+        "<b>No se mide NDCG@10</b>, que es la mitad del puntaje. Anotarlo exigiria "
+        "relevancia graduada fragmento por fragmento. Las decisiones que afectan "
+        "solo a los fragmentos se tomaron por tanto sobre argumentos estructurales y "
+        "no por medicion: la supresion de duplicados exactos, por ejemplo, no puede "
+        "empeorar el NDCG porque el ranking ideal no contiene el mismo texto dos "
+        "veces.",
         "<b>Documentos sin texto recuperable:</b> 8 de los 1826. Cinco son imagenes "
         "(una de ellas en formato AVIF, que Pillow no lee sin plugin adicional), una "
         "es un JSON de 0 bytes y dos son paginas HTML de error guardadas con "
