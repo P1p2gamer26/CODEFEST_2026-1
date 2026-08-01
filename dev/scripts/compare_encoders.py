@@ -55,6 +55,15 @@ def main() -> None:
     )
     parser.add_argument("--use-fake-encoder", action="store_true")
     parser.add_argument("--k", type=int, default=N_FRAGMENTS_PER_QUERY)
+    parser.add_argument(
+        "--index-base",
+        type=Path,
+        default=None,
+        help="Carpeta que contiene las subcarpetas encoder_<nombre>/. Sin esto se "
+        "buscan las dos en Entrega/base_vectorial/, y el segundo encoder no esta "
+        "ahi: los indices de prueba van a dev/intermedios/ para no mezclarse con "
+        "la entrega (ver la nota sobre --out-base en build_corpus_index.py).",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -62,21 +71,25 @@ def main() -> None:
     loaded = []
     for name in args.encoder_name:
         enc = get_encoder(name=name, use_fake=args.use_fake_encoder)
-        idx, meta = load_index(enc.name)
+        index_dir = args.index_base / f"encoder_{enc.name}" if args.index_base else None
+        if index_dir is not None and not index_dir.is_dir():
+            parser.error(f"no existe {index_dir}")
+        idx, meta = load_index(enc.name, index_dir=index_dir)
         loaded.append((enc, idx, meta))
 
     consultas = load_consultas(args.consultas)
     name_a, name_b = args.encoder_name
 
     solapamientos = []
+    solapamientos_doc = []
     coincidencias_top1 = 0
 
     for consulta in consultas:
-        tops = [
-            [h.chunk_id for h in search(consulta["text"], enc, idx, meta, k=args.k)]
-            for enc, idx, meta in loaded
+        hits = [
+            search(consulta["text"], enc, idx, meta, k=args.k) for enc, idx, meta in loaded
         ]
-        top_a, top_b = tops
+        top_a, top_b = ([h.chunk_id for h in hs] for hs in hits)
+        docs_a, docs_b = ({h.doc_id for h in hs} for hs in hits)
         if not top_a or not top_b:
             continue
 
@@ -85,6 +98,12 @@ def main() -> None:
         interseccion = len(set(top_a) & set(top_b))
         union = len(set(top_a) | set(top_b))
         solapamientos.append(interseccion / union if union else 0.0)
+        # El de DOCUMENTO es el que importa para el F1@3, y es el que hay que
+        # mirar a esta escala: con 128.526 fragmentos y k=10, dos encoders
+        # buenos pueden elegir chunks distintos DEL MISMO documento, asi que el
+        # Jaccard de chunks sale minusculo aunque coincidan en lo esencial.
+        union_doc = len(docs_a | docs_b)
+        solapamientos_doc.append(len(docs_a & docs_b) / union_doc if union_doc else 0.0)
         if top_a[0] == top_b[0]:
             coincidencias_top1 += 1
 
@@ -98,22 +117,31 @@ def main() -> None:
     logger.info("  A: %s", name_a)
     logger.info("  B: %s", name_b)
     logger.info("")
-    logger.info("  solapamiento medio (Jaccard): %.3f", promedio)
-    logger.info("  minimo / maximo:              %.3f / %.3f", min(solapamientos), max(solapamientos))
-    logger.info(
-        "  consultas con el mismo top-1: %d de %d", coincidencias_top1, len(solapamientos)
-    )
+    promedio_doc = sum(solapamientos_doc) / len(solapamientos_doc)
+    logger.info("  solapamiento de FRAGMENTOS (Jaccard): %.3f", promedio)
+    logger.info("  minimo / maximo:                      %.3f / %.3f", min(solapamientos), max(solapamientos))
+    logger.info("  consultas con el mismo top-1:         %d de %d", coincidencias_top1, len(solapamientos))
+    logger.info("  solapamiento de DOCUMENTOS (Jaccard): %.3f", promedio_doc)
     logger.info("")
 
-    if promedio > 0.8:
-        logger.info("=> Rankings muy parecidos: fusionar aportaria poco.")
-        logger.info("   Considerar entregar un solo encoder y ahorrar tiempo y tamano.")
-    elif promedio >= 0.4:
-        logger.info("=> Se complementan: es el escenario donde RRF suele mejorar las metricas.")
-        logger.info("   Vale la pena entregar ambos indices y fusionar.")
+    # Se interpreta el solapamiento de DOCUMENTOS, no el de fragmentos: con
+    # 128.526 fragmentos y k=10 el de fragmentos sale casi siempre minusculo,
+    # incluso entre dos encoders buenos que eligen chunks distintos del mismo
+    # documento. Interpretarlo llevaba a concluir "revisar que los encoders
+    # sean razonables" cuando ambos funcionaban bien.
+    if promedio_doc > 0.8:
+        logger.info("=> Traen casi los mismos documentos: fusionar aportaria poco.")
+        logger.info("   Conviene entregar un solo encoder y ahorrar tiempo y tamano.")
+    elif promedio_doc >= 0.3:
+        logger.info("=> Se complementan: es el escenario donde RRF puede ayudar.")
+        logger.info("   Medirlo con eval_mini.py --comparar-con antes de decidir.")
     else:
-        logger.info("=> Rankings muy distintos. Revisar que ambos encoders sean razonables")
-        logger.info("   (p. ej. que los prefijos de E5 se esten aplicando) antes de fusionar.")
+        logger.info("=> Traen documentos muy distintos. Antes de fusionar, comprobar que")
+        logger.info("   ambos encoders devuelvan resultados sensatos (inspect_results.py)")
+        logger.info("   y que los prefijos de E5 se esten aplicando.")
+    logger.info("")
+    logger.info("Este script NO dice cual es mejor, solo cuanto se parecen.")
+    logger.info("Para decidir: eval_mini.py --comparar-con <otro resultados.jsonl> --sin-pooling")
 
 
 if __name__ == "__main__":
