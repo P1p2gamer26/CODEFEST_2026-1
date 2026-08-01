@@ -108,6 +108,27 @@ def test_export_graphml_con_estilo_es_releible(tmp_path):
     assert all("x" in d and "tipo" in d for _, d in releido.nodes(data=True))
 
 
+def test_export_graphml_escapa_comillas_en_nombres_de_entidad(tmp_path):
+    """saxutils.escape no toca la comilla doble, y los nombres de entidad van
+    dentro de atributos XML entrecomillados. El grafo del corpus real tiene 160
+    nodos con comilla en el nombre: sin escaparla el GraphML sale corrupto y ni
+    networkx lo relee."""
+    import networkx as nx
+    from src.graph.build_graph import export_graphml
+
+    g = nx.MultiDiGraph()
+    g.add_node('Operacion "Libertad"', label='Operacion "Libertad"', tipo="ORG")
+    g.add_node("ONU", label="ONU", tipo="ORG")
+    g.add_edge('Operacion "Libertad"', "ONU", relation='dijo "algo"',
+               doc_id="D1", chunk_id="D1-c0", weight=1)
+
+    out = tmp_path / "g.graphml"
+    export_graphml(g, out)
+
+    releido = nx.read_graphml(out)
+    assert 'Operacion "Libertad"' in releido.nodes
+
+
 def test_export_graphml_omite_el_layout_si_el_grafo_es_grande(tmp_path):
     """El layout compara todas las parejas de nodos: con los 224.101 del corpus
     real no terminaria nunca. Por encima del tope se exporta plano."""

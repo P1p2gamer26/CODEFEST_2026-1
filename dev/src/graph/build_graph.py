@@ -42,8 +42,11 @@ _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f￾￿]")
 FORMATOS_SIN_NARRATIVA = frozenset({"csv", "xlsx", "pbf"})
 
 # Por encima de esto, export_graphml omite layout y estilo (ver el docstring
-# del modulo). Con 2.000 nodos el layout ya son ~2e6 parejas por pasada.
-MAX_NODOS_LAYOUT = 2000
+# del modulo). El tope estaba en 2.000, que en la practica es inalcanzable:
+# medido (1 ago 2026, CPU) 100 nodos -> 1,9 s, 400 -> 32 s, 1.000 -> 233 s, o
+# sea que 2.000 pasan de los 15 min. 400 es lo mas alto que sigue siendo
+# interactivo, y muy por encima del --top 40 que usa scripts/ver_grafo.py.
+MAX_NODOS_LAYOUT = 400
 
 # Etiquetas NER de spaCy (CoNLL en es/pt, OntoNotes en en) agrupadas en
 # categorias legibles para colorear el grafo y que se entienda que tipo de
@@ -68,6 +71,18 @@ COLOR_NODO = "#2F2F2F"
 COLOR_ARISTA = "#8A8A8A"
 
 ALTO_NODO = 34.0
+
+
+def _attr(texto: str) -> str:
+    """Escapa un valor que va DENTRO de un atributo XML entrecomillado.
+
+    `saxutils.escape` solo cubre & < >, no la comilla doble, asi que una entidad
+    como 'Operacion "Libertad"' cerraba el atributo y producia un GraphML que ni
+    networkx podia releer. No es hipotetico: el grafo del corpus real tiene 160
+    nodos con comilla doble en el nombre (texto de OCR y de PDF mal extraido).
+    Para el contenido de un elemento basta `_xml_escape`.
+    """
+    return _xml_escape(texto, {'"': "&quot;"})
 
 
 def _limpiar(texto: str) -> str:
@@ -213,7 +228,7 @@ def export_graphml(
         y = cy - alto / 2
         label_esc = _xml_escape(label)
         return (
-            f'  <node id="{_xml_escape(nodo)}">\n'
+            f'  <node id="{_attr(nodo)}">\n'
             f'    <data key="d0">{label_esc}</data>\n'
             f'    <data key="d1">{_xml_escape(tipo)}</data>\n'
             f'    <data key="d2">{grado}</data>\n'
@@ -240,8 +255,8 @@ def export_graphml(
         doc_id = str(data.get("doc_id", ""))
         chunk_id = str(data.get("chunk_id", ""))
         return (
-            f'  <edge id="{_xml_escape(eid)}" source="{_xml_escape(u)}" '
-            f'target="{_xml_escape(v)}" directed="true">\n'
+            f'  <edge id="{_attr(eid)}" source="{_attr(u)}" '
+            f'target="{_attr(v)}" directed="true">\n'
             f'    <data key="d6">{_xml_escape(relation)}</data>\n'
             f'    <data key="d7">{_xml_escape(doc_id)}</data>\n'
             f'    <data key="d8">{_xml_escape(chunk_id)}</data>\n'
