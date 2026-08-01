@@ -468,31 +468,31 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 > ¿Qué ventajas estratégicas obtienen los actores que incorporan inteligencia artificial y drones de bajo costo, y cuáles son los riesgos de retrasar la transformación tecnológica en defensa?
 
-- [ ] `F3-SIPRI-002` &mdash; SIPRI_0226-milai-procurement-kr.pdf
+- [x] `F3-SIPRI-002` &mdash; SIPRI_0226-milai-procurement-kr.pdf
       미국 국방부의 2018년 인공지능 전략은 AI 역량을 무기 체계에 통합하지 못할 경 우 전쟁 수행자가 유사 대등국(near-peer, 경쟁국)의 위협으로부터 미국을 방어하는 능 력이 저해될 수 있음을 지적하며 이러한 비전을 확증했습니다.10 미국과 중국이 인공지능(AI)에 부여하는 전략적 중요성은 다른 많은 국가들, 특히 미 국의 나토 동맹국들의 견해에 상당한 영향을 미쳤습니다. 프랑스, 영국, 캐나다를 비롯 한 여러 나토 동맹국들은 자국의 군사 전략에 AI에 대한 비전을 공식화했으며, 나토 비 동맹국인 호주 또한 호주-영국-미국(...
 
-- [ ] `F1-DAIO-009` &mdash; DAIO_study2307-2.pdf
+- [x] `F1-DAIO-009` &mdash; DAIO_study2307-2.pdf
       However, the most considerable obstacles slowing down U.S. defense innovation, and AI adoption especially, have been 1) an organizational structure and acquisitions process that is not best suited to translating general-purpose technologies of commercial and civilian origins into fundamental capabil...
 
 - [ ] `F1-DAIO-031` &mdash; DAIO_study2530-bonds-that-separate-heiko-borchert.pdf
       ومع ذلك، تبقى االستخدامات الحالية محدودة نسبيًا،ً وترّكّز باألساس عىل التحليالت التنبؤية ألغراض املراقبة، واملراقبة الفضائية، واألمن السيرباين، واألنظمة غري املأهولة. غري أن دمج الذكاء االصطناعي بشكل ف ّّعال يف القوات املسلحة الخليجية ومنتجات الصناعات الدفاعية املحلية يصطدم بعقبات مرتبطة بالثقافة اا...
 
-- [ ] `F1-DAIO-033` &mdash; DAIO_study2632-from-laggard-to-potential-regional-innovator-raluca-csernatoni.pdf
+- [x] `F1-DAIO-033` &mdash; DAIO_study2632-from-laggard-to-potential-regional-innovator-raluca-csernatoni.pdf
       Here, optimism about technological progress risked obscuring the hard governance questions that determine whether innovation actually delivers military advance. Hence, AI was described as a “game changer,” but engagement remained aspi￾rational and overly deterministic, assuming digital progress woul...
 
 - [ ] `F3-SIPRI-016` &mdash; SIPRI_20240212113627.pdf
       Export controls can help reduce the transfer of military drone swarms, critical components, and the know-how to create either. Legitimate defence companies depend on trust relationships with their governments, and few would risk the loss of reputation, future contracts, and fees over a single deal. ...
 
-- [ ] `F3-SIPRI-012` &mdash; SIPRI_1125-civilian-ai.pdf
+- [x] `F3-SIPRI-012` &mdash; SIPRI_1125-civilian-ai.pdf
       Examples include making it easier to weaponize commercial drones or to enhance them with greater cyber capabilities. Alternatively, restricting openness could exacerbate tension between the haves and the have-nots, and lead some actors who feel strategically inferior in the AI domain to exercise pow...
 
 - [ ] `F1-CSET-069` &mdash; CSET_center-for-security-and-emerging-technology-38.pdf
       This brief argues that the USAF’s ability to win future conflicts will depend on how well it embeds, empowers, and retains the talent needed for AI adoption. This brief first explores how embedded engineers can drive innovation from the ground up by offloading time-consuming, cognitively taxing, or ...
 
-- [ ] `F1-CSET-009` &mdash; CSET_center-for-security-and-emerging-technology-14.pdf
+- [x] `F1-CSET-009` &mdash; CSET_center-for-security-and-emerging-technology-14.pdf
       Data Brief November 2025 The U.S. Aerial Drone Market Authors Kyle Miller Sam Bresnick Jacob Feldgoise Christian Schoeberl Center for Security and Emerging Technology | 1 Executive Summary The importance of unmanned aerial vehicles (UAVs), or drones, is growing rapidly in national defense and securi...
 
-- [ ] `F1-DAIO-019` &mdash; DAIO_study2317-a-winding-road-before-scaling-up-kevin-martin-lucie-liversain.pdf
+- [x] `F1-DAIO-019` &mdash; DAIO_study2317-a-winding-road-before-scaling-up-kevin-martin-lucie-liversain.pdf
       Spending on artificial intelligence is therefore mainly associated with program￾matic roadmaps, decided over a long period of time, leaving very little room for capturing open innovation. The low level of investment to attract military appli￾cations of civilian AI innovations therefore complicates t...
 
 - [ ] `F3-SIPRI-001` &mdash; SIPRI_0226-milai-procurement-260216.pdf
@@ -509,16 +509,16 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F1-CSET-074` &mdash; CSET_center-for-security-and-emerging-technology-4.pdf
       Another possible contributor to satellite survivability is mutually agreed arms control. A judicious combination of certain arms control measures and unilateral satellite survivability measures might provide more security to U.S. military satellites than either type of measure alone. At the same tim...
 
-- [ ] `F2-SWF-041` &mdash; SWF_2025-executive-summary-french.pdf
+- [x] `F2-SWF-041` &mdash; SWF_2025-executive-summary-french.pdf
       En revanche, seules des capacités non cinétiques sont effectivement utilisées contre des satellites lors d’opérations militaires. Un résumé plus détaillé des capacités de chacun de ces pays est fourni dans ce document. RÉSUMÉ DU RAPPORT > vii ÉVALUATION DES CAPACITÉS ANTISATELLITES DANS LE MONDE USA...
 
-- [ ] `F2-SWF-117` &mdash; SWF_gcsr-2026-execsum-fre.pdf
+- [x] `F2-SWF-117` &mdash; SWF_gcsr-2026-execsum-fre.pdf
       La Chine dispose d’au moins un, et peut-être jusqu’à trois, programmes actifs de développement de capacités antisatellites à ascension directe, soit en tant que systèmes antisatellites dédiés, soit en tant que systèmes de défense antimissile à mi-parcours pouvant également être utilisés pour interce...
 
-- [ ] `F2-CSIS-208` &mdash; CSIS_spacethreatassessment2019-compressed.pdf
+- [x] `F2-CSIS-208` &mdash; CSIS_spacethreatassessment2019-compressed.pdf
       SPACE THREAT ASSESSMENT 2019 IV FOREWORD WE ARE ALMOST AS DEPENDENT ON SATELLITES as we are on the sun itself. They are our “infrastructure of infrastructure,” enabling our television, internet, telecommunications, ener￾gy, trade, and financial networks to function. Who wouldn’t be lost without GPS,...
 
-- [ ] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
+- [x] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
       144 Robert L. Smith, “Final Report of the Ad Hoc NSC Space Panel—Part II: U.S. Anti-Satellite Capabilities,” National Security Council, November 3, 1976: p. 1. 01-23 As the United States continues to build out its Aegis, GMD, and Aegis Ashore missile defense architecture, it could theoretically hold...
 
 - [ ] `F2-SWF-100` &mdash; SWF_copuos-briefing-book-2025-fre-web.pdf
@@ -527,10 +527,10 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-UNOOSA-028` &mdash; UNOOSA_st-space-61rev03f.pdf
       Étant donné que la sécurité des vols spatiaux dépend fortement de la précision des données orbitales et autres données pertinentes, les États et les organisations internationales intergouvernementales devraient promouvoir des techniques et la recherche de nouvelles méthodes qui permettent d’améliore...
 
-- [ ] `F2-SWF-120` &mdash; SWF_gcsr-2026-execsum-spa.pdf
+- [x] `F2-SWF-120` &mdash; SWF_gcsr-2026-execsum-spa.pdf
       La evidencia muestra una importante investigación y desarrollo de una amplia gama de capacidades contraespaciales destructivas y no destructivas en varios países. Sin embargo, en las operaciones militares actuales las capacidades no destructivas sólo se utilizan activamente contra los satélites. A c...
 
-- [ ] `F2-SWF-080` &mdash; SWF_69d000e653a0667bf9cf7a6f-2020-global-counterspace-capabilities-an-open-source-assessme.pdf
+- [x] `F2-SWF-080` &mdash; SWF_69d000e653a0667bf9cf7a6f-2020-global-counterspace-capabilities-an-open-source-assessme.pdf
       While development and launch of next-generation satellite networks including Iridium NEXT should assist somewhat, this highlights the severity of the threat posed by reliance on legacy infrastructure, and the insecurity of satellite architectures generally. Other techniques, including the use of ran...
 
 
@@ -538,7 +538,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 
 > ¿Cómo se está empleando la guerra electrónica para interferir sistemas espaciales y qué incidentes recientes lo evidencian?
 
-- [ ] `F3-SIPRI-078` &mdash; SIPRI_9781954445024.pdf
+- [x] `F3-SIPRI-078` &mdash; SIPRI_9781954445024.pdf
       The use of a kinetic ASAT against another state’s space object is unprecedented and, as mentioned, would have indiscriminate consequences due to debris-generation. This is distinguished from electronic warfare such as jamming, which appears to be increasingly used, and has temporary and reversible e...
 
 - [ ] `F2-SWF-124` &mdash; SWF_global-counterspace-capabilities-2026-hr.pdf
@@ -550,7 +550,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-SWF-083` &mdash; SWF_69d00cb41bf6510b78f7de95-2017-french-handbook-for-new-actors.pdf
       La plupart des technologies spatiales étant caractérisées par le double LES ADMINISTRATIONS ET POLITIQUES SPATIALES NATIONALES 66 | Manuel des Nouveaux Acteurs du Secteur Spatial usage, les décisions politiques en matière de technologie spatiale doivent trouver un juste équilibre entre la maîtrise d...
 
-- [ ] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
+- [x] `F2-SWF-123` &mdash; SWF_global-counterspace-capabilities-2025.pdf
       Taken together, these three incidents indicate that cyber attacks on space systems are likely to occur as part of future armed conflicts which incorporate more military and commercial space systems. Iridium, a satellite communications company whose single largest client is the Pentagon, provides ano...
 
 - [ ] `F2-CSIS-002` &mdash; CSIS_032321-harrisonjohnsonyoung-defenseagainstdarkartsinspace-report-update-compressed.pdf
@@ -565,7 +565,7 @@ Una consulta sin ningun documento marcado se omite del ground truth.
 - [ ] `F2-SWF-122` &mdash; SWF_global-counterspace-capabilities-2024.pdf
       First, the growing reliance on space for national security and the proliferation of counterspace capabilities creates an increased risk that incidents in space can spark or escalate conflict on Earth. The sudden loss or interruption of space capabilities during a period of heightened geopolitical te...
 
-- [ ] `F2-SWF-114` &mdash; SWF_gcsr-2026-execsum-ara.pdf
+- [x] `F2-SWF-114` &mdash; SWF_gcsr-2026-execsum-ara.pdf
       فإن العقيدة العسكرية الصينية تركز تركيزا ً من حرب المعلومات األوسع. وبينما توجد أدلة عديدة عىل الجهود التي اإللكترونية بوصفها جزئا تبذلها الصين في التطوير والبحث العلمي المتالك قدرات الحرب اإللكترونية الستخدامها بصفة قدرات فضائية مضادة، فمن الناحية األخرى توجد بعض األدلة من المصادر المفتوحة عىل أن ا...
 
 

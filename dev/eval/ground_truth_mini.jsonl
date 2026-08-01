@@ -4,7 +4,10 @@
 {"query_id": "q009", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F1-DAIO-015", "F1-DAIO-006", "F1-CSET-103", "F1-DAIO-018"]}
 {"query_id": "q010", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F1-DAIO-018"]}
 {"query_id": "q014", "nota": "infraestructura de computo avanzado", "docs_relevantes": ["F1-AIINDEX-023", "F1-AIINDEX-022", "F1-CSET-066", "F1-CSET-076", "F1-CSET-019"]}
+{"query_id": "q016", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-SIPRI-002", "F1-DAIO-009", "F1-DAIO-033", "F3-SIPRI-012", "F1-CSET-009", "F1-DAIO-019"]}
 {"query_id": "q017", "nota": "derecho internacional del espacio y armas", "docs_relevantes": ["F2-UNOOSA-027", "F2-SWF-099", "F2-SWF-126", "F2-CSIS-203", "F2-CSIS-177"]}
+{"query_id": "q018", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F2-SWF-041", "F2-SWF-117", "F2-CSIS-208", "F2-SWF-123", "F2-SWF-120", "F2-SWF-080"]}
+{"query_id": "q019", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-SIPRI-078", "F2-SWF-123", "F2-SWF-114"]}
 {"query_id": "q020", "nota": "spoofing de servicios satelitales", "docs_relevantes": ["F2-CSIS-142", "F2-CSIS-049", "F2-CSIS-136", "F2-SWF-124", "F2-SWF-123"]}
 {"query_id": "q021", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F2-SWF-123", "F2-CSIS-142", "F2-SWF-121"]}
 {"query_id": "q022", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F2-SWF-119", "F2-SWF-123", "F2-SWF-039"]}
