@@ -488,12 +488,46 @@ def build_story() -> list:
         "observadas."
     ))
     story.append(p(
+        "<b>Donde esta realmente el cuello de botella.</b> Antes de seguir ajustando "
+        "parametros se midio que impide acertar cuando el sistema falla. "
+        "<i>scripts/diagnostico_ceros.py</i> separa los tres motivos posibles de un "
+        "F1@3 nulo: que el documento no este indexado, que ningun fragmento suyo entre "
+        "al pool, o que entre y pierda la agregacion a nivel documento. El reparto es "
+        "concluyente: de las 17 consultas en cero, ninguna por falta de indexacion, "
+        "dos porque el encoder no alcanza el documento, y <b>quince con el documento "
+        "correcto dentro del pool</b> &mdash; cuatro de ellas con un fragmento suyo en "
+        "las tres primeras posiciones. El limite no esta en la recuperacion sino en la "
+        "agregacion."
+    ))
+    story.append(p(
+        "De ese diagnostico salieron dos intentos de mejora, ambos implementados y "
+        "ambos descartados por la misma regla de conteo de victorias. El primero, "
+        "agregar sumando solo los <i>M</i> mejores fragmentos de cada documento en vez "
+        "de todos: la suma sin tope permite que un documento con muchos fragmentos "
+        "mediocres desplace a uno con un fragmento excelente. El promedio mejora "
+        "(hasta 0,347 con pool 100), pero ese valor es el maximo de setenta "
+        "combinaciones del barrido y por consulta el reparto es 8-3 con 30 empates "
+        "(<b>p = 0,227</b>); el cambio minimo y motivado, mantener el pool en 60 y "
+        "sumar los tres mejores, da 4-5 con 32 empates (<b>p = 1,000</b>). El segundo, "
+        "un recuperador lexico BM25 fusionado con el denso por RRF, para rescatar los "
+        "terminos discriminantes raros que un vector de 384 dimensiones diluye: rinde "
+        "0,192 frente a 0,306 y pierde 15-4 (<b>p = 0,019</b>). La hipotesis lexica "
+        "queda refutada como mejora general."
+    ))
+    story.append(p(
+        "La conclusion operativa de la seccion es la misma en los tres casos: con 41 "
+        "consultas anotadas y 30 empates entre configuraciones, <b>la muestra no puede "
+        "resolver diferencias de este tamano</b>. Se entrega la configuracion mas "
+        "simple, y el codigo de ambas alternativas queda en el repositorio con su "
+        "medicion documentada para poder repetirla sobre un ground truth mayor."
+    ))
+    story.append(p(
         "La entrega se verifica de punta a punta antes de empaquetarse con "
         "<i>scripts/validar_entrega.py</i>, que comprueba la estructura de "
         "carpetas, las 50 lineas, los 3 documentos y 10 fragmentos por consulta, el "
         "limite de 250 palabras, la alineacion entre el indice FAISS y "
         "<i>metadata.jsonl</i>, y que todo <i>doc_id</i> reportado pertenezca al "
-        "inventario de ADL. La suite de pruebas (51 casos) cubre los invariantes "
+        "inventario de ADL. La suite de pruebas (72 casos) cubre los invariantes "
         "criticos, incluida la ejecucion de <i>generador.py</i> como subproceso con "
         "<i>PYTHONPATH</i> vacio para garantizar que es autocontenido y que los "
         "resultados son reproducibles, requisito del punto 4 de la sec. 1.4."
