@@ -277,6 +277,10 @@ class Hit:
     formato: str
     fenomeno: int | None
     idioma: str | None
+    # Fila del chunk en el indice FAISS. La usa la cascada de dos encoders para
+    # leer el vector del MISMO chunk en el otro indice sin recodificar el
+    # pasaje. Los hits que no vienen de FAISS (grafo, fusion) no tienen fila.
+    fila: int = -1
 
 
 def search(
@@ -330,6 +334,7 @@ def search(
                 formato=meta["formato"],
                 fenomeno=meta.get("fenomeno"),
                 idioma=meta.get("idioma"),
+                fila=int(idx),
             )
         )
         if len(hits) >= k:
@@ -338,6 +343,79 @@ def search(
     for i, hit in enumerate(hits, start=1):
         hit.rank = i
     return hits
+
+
+# ---------------------------------------------------------------------------
+# Cascada de dos encoders -- de src/retrieval/rerank.py
+# ---------------------------------------------------------------------------
+
+
+def rerank_por_segundo_encoder(
+    hits: list[Hit],
+    index_secundario: faiss.Index,
+    vector_consulta: np.ndarray,
+    peso: float,
+) -> list[Hit]:
+    """Reordena `hits` mezclando su score con el del encoder secundario:
+
+        score = cos_primario + peso * cos_secundario
+
+    El primario genera los candidatos (conserva su recall) y el secundario solo
+    los re-puntua. Se hace asi, y no fusionando las dos listas con RRF, porque
+    RRF premia el acuerdo entre listas y los dos encoders casi no coinciden
+    (11,3% de los documentos del top-3): fusionarlos intercala la lista buena
+    con la mala. Ver la seccion 3.1 del informe tecnico.
+
+    Los dos terminos son cosenos, misma escala, asi que sumarlos es legitimo.
+    El vector del chunk se lee del otro indice por su FILA, sin recodificar el
+    pasaje: los dos indices se construyen sobre los mismos records en el mismo
+    orden. Los hits sin fila (grafo, fusion) conservan su score primario.
+    """
+    if not hits:
+        return []
+
+    consulta = np.asarray(vector_consulta, dtype="float32").reshape(-1)
+
+    puntuados: list[tuple[float, Hit]] = []
+    for hit in hits:
+        score = hit.score
+        if peso and hit.fila >= 0:
+            vector = index_secundario.reconstruct(hit.fila)
+            score += peso * float(np.dot(consulta, vector))
+        puntuados.append((score, hit))
+
+    # sorted es estable: ante empates se conserva el orden del primario.
+    puntuados.sort(key=lambda par: par[0], reverse=True)
+
+    return [
+        Hit(
+            rank=rank,
+            score=score,
+            chunk_id=hit.chunk_id,
+            doc_id=hit.doc_id,
+            fuente=hit.fuente,
+            texto=hit.texto,
+            formato=hit.formato,
+            fenomeno=hit.fenomeno,
+            idioma=hit.idioma,
+            fila=hit.fila,
+        )
+        for rank, (score, hit) in enumerate(puntuados, start=1)
+    ]
+
+
+def verificar_alineacion(metadata_a: list[dict], metadata_b: list[dict]) -> None:
+    """Aborta si los dos indices no describen los mismos chunks en el mismo
+    orden: la cascada re-puntuaria el chunk equivocado en silencio."""
+    if len(metadata_a) != len(metadata_b):
+        raise ValueError(
+            f"los indices tienen distinto numero de chunks: {len(metadata_a)} vs {len(metadata_b)}"
+        )
+    for i, (a, b) in enumerate(zip(metadata_a, metadata_b)):
+        if a["chunk_id"] != b["chunk_id"]:
+            raise ValueError(
+                f"los indices divergen en la fila {i}: {a['chunk_id']!r} vs {b['chunk_id']!r}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -722,6 +800,21 @@ DEFAULT_K_POOL = 60  # candidatos usados para agregar a nivel documento (sec. 8.
 # mayor que los 10 fragmentos que se devuelven, para que la relevancia de un
 # documento no dependa solo de si su mejor chunk entro en el top-10 mostrado.
 
+# Cascada de dos encoders. Ambos valores estan MEDIDOS, no supuestos, con
+# scripts/barrido_dos_encoders.py sobre el mini ground truth (ver informe,
+# sec. 7). Peso 0,25: los pesos mayores rinden mas en promedio sobre las 41
+# consultas anotadas pero empiezan a perder en las 10 de anotacion
+# independiente, que es la senal clasica de sobreajuste al pooling. Con 0,25 la
+# cascada no empeora NINGUNA consulta de ninguna de las dos muestras.
+DEFAULT_RERANK_WEIGHT = 0.25
+DEFAULT_RERANK_DEPTH = 200
+
+# La cascada viene ACTIVADA por defecto porque es la configuracion con la que
+# se genero resultados.jsonl: correr este script sin flags tiene que reproducir
+# la entrega (punto 4 de la sec. 1.4), no una variante parecida. Se apaga con
+# --rerank-encoder none, y se apaga sola con --use-fake-encoder.
+DEFAULT_RERANK_ENCODER = ENCODER_SECONDARY_NAME
+
 
 def load_consultas(path: Path) -> list[dict]:
     consultas = []
@@ -800,6 +893,36 @@ def main() -> None:
         help="Carpeta base que contiene las subcarpetas encoder_<nombre>/. Por defecto "
         "base_vectorial/ junto a este script.",
     )
+    parser.add_argument(
+        "--rerank-encoder",
+        default=DEFAULT_RERANK_ENCODER,
+        help="Segundo encoder en CASCADA (sec. 4.4): el primario genera los candidatos "
+        "y este los re-puntua. Es la forma de usar dos encoders que si mejora; "
+        "fusionar sus dos listas con RRF (--encoder-name A B) medido empeora. "
+        "Activado por defecto (es la configuracion de la entrega); 'none' lo apaga.",
+    )
+    parser.add_argument(
+        "--rerank-index-dir",
+        type=Path,
+        default=None,
+        help="Indice del encoder en cascada. Por defecto base_vectorial/encoder_<nombre>. "
+        "Existe aparte de --index-base para poder probar la cascada con el indice "
+        "primario oficial y el secundario en otra carpeta.",
+    )
+    parser.add_argument(
+        "--rerank-weight",
+        type=float,
+        default=DEFAULT_RERANK_WEIGHT,
+        help="Autoridad del segundo encoder en la mezcla de scores.",
+    )
+    parser.add_argument(
+        "--rerank-depth",
+        type=int,
+        default=DEFAULT_RERANK_DEPTH,
+        help="Candidatos que genera el primario antes del re-puntaje. Con la misma "
+        "profundidad que --k-pool la cascada apenas cambia nada: el margen esta en "
+        "dejar que el secundario ascienda documentos que el primario dejo mas abajo.",
+    )
     parser.add_argument("--out", type=Path, default=RESULTADOS_PATH)
     parser.add_argument("--k-pool", type=int, default=DEFAULT_K_POOL)
     parser.add_argument("--fenomeno", type=int, default=None, choices=[1, 2, 3])
@@ -842,6 +965,40 @@ def main() -> None:
     metadata = encoders_indices[0][2]
     metadata_by_chunk_id = {m["chunk_id"]: m for m in metadata}
 
+    # Encoder en cascada (opcional): no aporta candidatos propios, solo
+    # re-puntua los del primario, asi que se carga aparte de encoders_indices.
+    rerank = None
+    if args.rerank_encoder and args.rerank_encoder.lower() == "none":
+        args.rerank_encoder = None
+    if args.use_fake_encoder:
+        # El encoder falso no tiene un indice secundario real que re-puntuar.
+        args.rerank_encoder = None
+    if args.rerank_encoder:
+        enc_r = get_encoder(name=args.rerank_encoder, use_fake=args.use_fake_encoder)
+        if args.rerank_index_dir is not None:
+            rerank_dir = args.rerank_index_dir
+        elif args.index_base is not None:
+            rerank_dir = args.index_base / f"encoder_{enc_r.name}"
+        else:
+            rerank_dir = None
+        idx_r, meta_r = load_index(enc_r.name, index_dir=rerank_dir)
+        # La cascada lee el vector del chunk por su FILA en el otro indice: si
+        # los indices no describen los mismos chunks en el mismo orden,
+        # re-puntuaria el chunk equivocado y los resultados serian plausibles
+        # pero mal fundados. Mejor abortar.
+        try:
+            verificar_alineacion(metadata, meta_r)
+        except ValueError as exc:
+            parser.exit(2, f"error: {exc}\n")
+        rerank = (enc_r, idx_r)
+        logger.info(
+            "cascada: %s re-puntua los %d candidatos de %s (peso %.2f)",
+            enc_r.name,
+            args.rerank_depth,
+            encoders_indices[0][0].name,
+            args.rerank_weight,
+        )
+
     # Los indices deben compartir exactamente los mismos chunks: RRF fusiona
     # por chunk_id y la metadata se lee de uno solo. Si no coinciden, alguien
     # construyo los indices por separado (fragmentando dos veces) y los
@@ -874,6 +1031,10 @@ def main() -> None:
     logger.info("consultas cargadas: %d", len(consultas))
 
     resultados = []
+    # Con cascada el primario genera mas candidatos de los que se agregan, para
+    # que el secundario pueda ascender documentos que quedaron por debajo del
+    # pool. Sin cascada, k_pool de siempre.
+    k_busqueda = max(args.k_pool, args.rerank_depth) if rerank else args.k_pool
     for consulta in consultas:
         # Una lista de candidatos por encoder (sec. 8.4).
         ranked_lists = [
@@ -882,7 +1043,7 @@ def main() -> None:
                 enc,
                 idx,
                 meta,
-                k=args.k_pool,
+                k=k_busqueda,
                 fenomeno=args.fenomeno,
                 formato=args.formato,
                 idioma=args.idioma,
@@ -890,6 +1051,18 @@ def main() -> None:
             )
             for enc, idx, meta in encoders_indices
         ]
+
+        if rerank is not None:
+            enc_r, idx_r = rerank
+            ranked_lists = [
+                rerank_por_segundo_encoder(
+                    lista[: args.rerank_depth],
+                    idx_r,
+                    enc_r.encode_query(consulta["text"]),
+                    peso=args.rerank_weight,
+                )
+                for lista in ranked_lists
+            ]
 
         # El grafo entra como una lista mas a fusionar (sec. 8.5: "RRF
         # tratando el grafo como un indice adicional").
@@ -905,6 +1078,12 @@ def main() -> None:
         else:
             fused = reciprocal_rank_fusion(ranked_lists, key=lambda h: h.chunk_id)
             hits = rebuild_hits_from_fusion(fused, metadata_by_chunk_id, limit=args.k_pool)
+
+        # La agregacion a documento usa siempre k_pool candidatos. Con cascada
+        # la lista viene con rerank_depth (200): recortarla aqui es lo que hace
+        # que la profundidad extra sirva para REORDENAR y no para ampliar el
+        # pool, que es un cambio distinto y no medido.
+        hits = hits[: args.k_pool]
 
         resultados.append(
             build_result_object(consulta["query_id"], hits, agg_strategy=args.agg_strategy)
