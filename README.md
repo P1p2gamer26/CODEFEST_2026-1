@@ -223,6 +223,41 @@ estén alineados (sec. 5.3), los campos obligatorios de la Tabla 1, y que el
 informe técnico no pase de 8 páginas. Sale con código 1 si algo falla, así
 que sirve en CI.
 
+### Medir la calidad de recuperación
+
+ADL no publica su ground truth, así que para no elegir configuraciones a ojo
+hay uno propio en `dev/eval/` que cubre las 50 consultas (41 anotadas, 9
+revisadas sin ningún candidato relevante). Su `README.md` explica las
+limitaciones, que conviene leer antes de creerle a los números.
+
+```bash
+# F1@3 sobre el ground truth propio
+python dev/scripts/eval_mini.py --resultados Entrega/resultados.jsonl
+
+# solo las 10 consultas anotadas sin pasar por el recuperador:
+# OBLIGATORIO al comparar dos encoders entre sí
+python dev/scripts/eval_mini.py --resultados Entrega/resultados.jsonl --sin-pooling
+
+# barrido de tamaño de pool x estrategia de agregación (carga el índice una vez)
+python dev/scripts/barrido_retrieval.py
+
+# ¿la diferencia entre dos configuraciones es real o es azar?
+python dev/scripts/barrido_retrieval.py --comparar 30 60
+
+# ampliar el ground truth: propone candidatos para marcar a mano
+python dev/scripts/anotar_candidatos.py --generar      # -> dev/eval/candidatos.md
+python dev/scripts/anotar_candidatos.py --recolectar
+
+# qué documentos del manifest de ADL no quedaron indexados, y por qué
+python dev/scripts/cobertura_corpus.py
+```
+
+**`--comparar` importa más de lo que parece.** Con ~30 consultas cada una pesa
+0,033 en la media, así que dos que cambien de lado por azar mueven el promedio
+más que un efecto real. Caso concreto: un pool de 30 parecía superar a 60
+(0,309 vs 0,274) de forma consistente, y al contar por consulta el reparto era
+5-3 con 18 empates — indistinguible de lanzar una moneda.
+
 Validación mínima del esquema a mano, si se quiere sin el script (mismo
 comando en cualquier plataforma porque es Python puro):
 
@@ -438,8 +473,8 @@ Mapeo directo a la Sección 1.4 ("Entregables") de
 | # | Entregable exigido | Dónde está | Estado |
 |---|---|---|---|
 | 1 | Base vectorial: `index.faiss` + `metadata.jsonl` por encoder, en `base_vectorial/encoder_<nombre>/` | `Entrega/base_vectorial/encoder_paraphrase-multilingual-MiniLM-L12-v2/` | ✅ generado con el encoder real, `index.faiss` serializado con `faiss.write_index()`. Con multi-encoder (paso 3b) se crea una subcarpeta adicional por cada encoder, como permite la sec. 1.4 |
-| 1b | Grafo de conocimiento (bonus) en `base_vectorial/grafo/grafo.graphml` | `Entrega/base_vectorial/grafo/grafo.graphml` | ✅ (bonus implementado) |
-| 2 | `resultados.jsonl`, 50 líneas, consultas q001–q050 | `Entrega/resultados.jsonl` | ⚠️ 50 líneas presentes, pero generadas con las consultas de prueba provisionales, no las oficiales — regenerar con q001–q050 cuando ADL las entregue (paso 4 de la sección 6) |
+| 1b | Grafo de conocimiento (bonus) en `base_vectorial/grafo/grafo.graphml` | — | ⚠️ **código implementado, pero el grafo NO está en la entrega**. El que había era del corpus sintético viejo: sus 7 `doc_id` son hashes que no existen en el manifest de ADL, así que como bonus contaba en contra. Se movió a `dev/intermedios/grafo_sintetico_viejo/` y vuelve cuando se reconstruya con el corpus real (`--solo-grafo`, varias horas de NER). `validar_entrega.py` ahora comprueba que los `doc_id` del grafo estén indexados |
+| 2 | `resultados.jsonl`, 50 líneas, consultas q001–q050 | `Entrega/resultados.jsonl` | ✅ generado con las **50 consultas oficiales** (`dev/consultas_prueba/consultas_50_oficiales.jsonl`) sobre el índice del corpus real, y verificado reproducible byte a byte desde una carpeta aislada |
 | 3 | Documento técnico en PDF (máx. 8 páginas): chunking, encoder(s), tipo de índice FAISS, grafo | `Entrega/informe_tecnico.pdf` | ✅ |
 | 4 | Script `generador.py` que reproduce `resultados.jsonl` desde el índice | `Entrega/generador.py` | ✅ |
 
