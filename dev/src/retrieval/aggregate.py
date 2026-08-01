@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from .search import Hit
 
-AggregationStrategy = str  # "max" | "sum" | "mean"
+AggregationStrategy = str  # "max" | "sum" | "mean" | "topM" (M entero: top2, top3...)
 
 
 @dataclass
@@ -40,6 +40,17 @@ def aggregate_documents(
         agg_scores = {doc_id: sum(scores) for doc_id, scores in scores_by_doc.items()}
     elif strategy == "mean":
         agg_scores = {doc_id: sum(scores) / len(scores) for doc_id, scores in scores_by_doc.items()}
+    elif strategy.startswith("top") and strategy[3:].isdigit():
+        # "sum" no tiene tope, asi que un documento con 30 chunks mediocres en el
+        # pool le gana a uno con un solo chunk en rank 1. Medido con
+        # scripts/diagnostico_ceros.py: 15 de las 17 consultas con F1=0 tienen el
+        # documento correcto DENTRO del pool, varias con un chunk en rank 1-3.
+        # topM suma solo los M mejores chunks del documento: conserva el premio a
+        # tener varios pasajes relevantes (top1 == max) sin premiar el inundar.
+        m = int(strategy[3:])
+        agg_scores = {
+            doc_id: sum(sorted(scores, reverse=True)[:m]) for doc_id, scores in scores_by_doc.items()
+        }
     else:
         raise ValueError(f"estrategia de agregacion desconocida: {strategy}")
 
