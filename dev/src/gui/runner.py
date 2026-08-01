@@ -24,8 +24,8 @@ from ..config import (
 from ..embedding.build_index import build_and_persist, load_index
 from ..embedding.encoders import get_encoder
 from ..ingestion.pipeline import iter_corpus_files, process_document, write_chunks_jsonl
-from ..retrieval.fusion import reciprocal_rank_fusion
-from ..retrieval.search import Hit, search
+from ..retrieval.fusion import rebuild_hits_from_fusion, reciprocal_rank_fusion
+from ..retrieval.search import search
 
 ENTREGA_DIR = Path(__file__).resolve().parents[3] / "Entrega"  # <raiz>/Entrega
 
@@ -157,27 +157,10 @@ def _answer_one(
         graph_hits = graph_search(query_text, graph, lang=query_lang, k=k_pool)
         if graph_hits:
             fused = reciprocal_rank_fusion([hits, graph_hits], key=lambda h: h.chunk_id)
-            rebuilt: list[Hit] = []
-            for item, score in fused[:k_pool]:
-                meta = metadata_by_chunk_id.get(item.chunk_id)
-                if meta is None:
-                    continue
-                rebuilt.append(
-                    Hit(
-                        rank=0,
-                        score=score,
-                        chunk_id=meta["chunk_id"],
-                        doc_id=meta["doc_id"],
-                        fuente=meta["fuente"],
-                        texto=meta["texto"],
-                        formato=meta["formato"],
-                        fenomeno=meta.get("fenomeno"),
-                        idioma=meta.get("idioma"),
-                    )
-                )
-            for i, h in enumerate(rebuilt, start=1):
-                h.rank = i
-            hits = rebuilt
+            # Se reutiliza rebuild_hits_from_fusion en vez de rehacerlo aqui:
+            # es la misma reconstruccion que hace generador.py, y tenerla dos
+            # veces garantiza que tarde o temprano diverjan.
+            hits = rebuild_hits_from_fusion(fused, metadata_by_chunk_id, limit=k_pool)
 
     return generador.build_result_object(query_id, hits), tokens, best_score
 

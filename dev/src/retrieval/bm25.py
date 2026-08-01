@@ -3,7 +3,7 @@ para complementar la densa (sec. 8.4, se fusiona por RRF).
 
 Motivacion medida: el encoder denso pierde los terminos discriminantes raros
 que no alinea entre idiomas. El caso documentado es NBQR/CBRN, pero el efecto
-es general -- una sigla o un topónimo poco frecuente pesa poco en un vector
+es general -- una sigla o un toponimo poco frecuente pesa poco en un vector
 de 384 dimensiones y mucho en el idf de BM25.
 
 No usa ninguna dependencia externa (`rank_bm25`, sklearn): `Entrega/generador.py`

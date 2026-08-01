@@ -22,10 +22,20 @@ import sys
 import threading
 import time
 import tkinter as tk
-
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 from pathlib import Path
+
+# Modo offline: evita que cada arranque consulte huggingface.co para revalidar
+# un modelo que ya esta en disco (son varios segundos y falla sin red). Tiene
+# que quedar antes de importar cualquier cosa que arrastre transformers, o sea
+# antes de importar `runner` mas abajo -- no es un import fuera de sitio.
+# Se activa solo si el cache existe: forzarlo en una maquina limpia convertia
+# la primera descarga, que es legitima, en un error criptico de "modelo no
+# encontrado en modo offline".
+_HF_CACHE = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface"))
+if _HF_CACHE.exists():
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
