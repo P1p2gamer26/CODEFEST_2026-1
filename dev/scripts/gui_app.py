@@ -16,11 +16,15 @@ Uso:
     python scripts/gui_app.py
 """
 
+import os
 import queue
 import sys
 import threading
 import time
 import tkinter as tk
+
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 from pathlib import Path
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
@@ -217,17 +221,20 @@ class App(tk.Tk):
             try:
                 usa_grafo = GRAFO_PATH.exists()
                 session = Session(use_graph=usa_grafo)
-                self.session = session
-                self.activity.push(
-                    f"Listo. Indice con {session.index.ntotal} vectores"
-                    + (", grafo cargado" if usa_grafo else " (sin grafo)"),
-                    "Listo",
-                )
-                self.chat.entry.configure(state="normal")
+                self.after(0, self._sesion_lista, session, usa_grafo)
             except Exception as exc:  # noqa: BLE001
-                self.activity.push(f"ERROR cargando la sesion: {exc}", "Error")
+                self.after(0, self.activity.push, f"ERROR cargando la sesion: {exc}", "Error")
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _sesion_lista(self, session: Session, usa_grafo: bool):
+        self.session = session
+        self.activity.push(
+            f"Listo. Indice con {session.index.ntotal} vectores"
+            + (", grafo cargado" if usa_grafo else " (sin grafo)"),
+            "Listo",
+        )
+        self.chat.entry.configure(state="normal")
 
     # -- chat interactivo -----------------------------------------------------
 
