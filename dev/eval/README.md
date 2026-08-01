@@ -65,9 +65,24 @@ documentados, no consultas pendientes:
   de UNOOSA, atlas de RESDAL e informes de MAPP/OEA, pese a que los informes de
   SIPRI sobre LAWS están en el corpus.
 - **q038** (innovaciones tácticas de los grupos armados) y **q034**: devolvieron
-  presupuestos de defensa de EEUU y atlas sobre la organización de las fuerzas
-  armadas estatales. Parece confusión entre "grupos armados ilegales" y
-  "fuerzas armadas".
+  presupuestos de defensa de EEUU y atlas de RESDAL sobre la organización de las
+  fuerzas armadas estatales.
+
+### Sobre la supuesta confusión "grupos armados" vs. "fuerzas armadas"
+
+Medida y **redimensionada**, conviene no repetir el error. La primera medición
+usó el patrón estrecho `grupos? armados? (ilegal|organizado)` y dio 0 menciones
+en documentos con 218–329 de "fuerzas armadas", lo que parecía un fallo
+categórico. Con un patrón justo, que incluya "crimen organizado" y "grupos
+criminales", **solo 4 de 48 cupos de documento (8%) en las 16 consultas sobre
+grupos armados carecen de toda mención del sujeto** — y q038 y q039 dan 0/3.
+
+Lo que queda en pie es más débil y más matizado: los atlas de RESDAL mencionan
+"crimen organizado" 6 veces en 984.000 caracteres (20 en 1,2 MB para el de
+2024), es decir densidad de ruido de fondo en documentos que tratan de otra
+cosa. Son mala respuesta, pero **no por ausencia del término**. Cualquier
+propuesta de recuperación léxica (BM25) apoyada en este fenómeno debe
+justificarse midiendo densidad, no presencia.
 
 ## Cómo ampliarlo
 
