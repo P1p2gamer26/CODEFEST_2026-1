@@ -374,6 +374,15 @@ def aggregate_documents(
         agg_scores = {doc_id: sum(scores) for doc_id, scores in scores_by_doc.items()}
     elif strategy == "mean":
         agg_scores = {doc_id: sum(scores) / len(scores) for doc_id, scores in scores_by_doc.items()}
+    elif strategy.startswith("top") and strategy[3:].isdigit():
+        # Suma solo los M mejores fragmentos del documento: "sum" no tiene tope
+        # y un documento con muchos fragmentos mediocres desplaza a uno con un
+        # solo fragmento excelente. Medido y no adoptado (ver informe, sec. 7);
+        # se mantiene aqui para que esta copia no diverja de src/retrieval/.
+        m = int(strategy[3:])
+        agg_scores = {
+            doc_id: sum(sorted(scores, reverse=True)[:m]) for doc_id, scores in scores_by_doc.items()
+        }
     else:
         raise ValueError(f"estrategia de agregacion desconocida: {strategy}")
 
@@ -739,7 +748,11 @@ def build_result_object(
     top_docs: int = N_DOCUMENTS_PER_QUERY,
     max_fragments: int = N_FRAGMENTS_PER_QUERY,
     max_words: int = MAX_FRAGMENT_WORDS,
-    agg_strategy: str = "max",
+    # "sum" es la configuracion entregada, asi que tiene que ser el default:
+    # src/gui/runner.py llama a esta funcion sin pasar la estrategia y con el
+    # default anterior ("max") la GUI mostraba documentos distintos a los de
+    # resultados.jsonl. El CLI siempre la pasa explicita, por eso no se veia.
+    agg_strategy: str = "sum",
 ) -> dict:
     doc_hits = aggregate_documents(hits, top_n=top_docs, strategy=agg_strategy)
     fragments = enforce_word_limit(hits, max_fragments=max_fragments, max_words=max_words)
