@@ -243,15 +243,49 @@ def build_story() -> list:
         "silenciosamente incorrectos."
     ))
     story.append(p(
-        "Como el <i>ground truth</i> oficial no es publico, la decision entre uno y "
-        "dos encoders no se toma por preferencia sino contra el ground truth "
-        "reducido descrito en la seccion 7, complementado con "
-        "<i>scripts/compare_encoders.py</i>, que cuantifica el solapamiento entre "
-        "ambos rankings: un solapamiento alto indica que fusionar no aportaria y que "
-        "conviene entregar un solo indice. Mientras esa comparacion no arroje una "
-        "mejora medible, la configuracion multi-encoder queda detras de un flag y "
-        "desactivada por defecto &mdash; se prefiere entregar la configuracion "
-        "simple verificada antes que la compleja no verificada."
+        "<b>Resultado de la medicion: se entrega con un solo encoder.</b> Se "
+        "construyo el indice completo con <i>multilingual-e5-base</i> (128.526 "
+        "fragmentos, unas cinco horas de CPU) y se comparo contra el primario y "
+        "contra la fusion RRF de ambos, sobre el ground truth propio descrito en la "
+        "seccion 7. El primario resulto mejor en todas las mediciones:"
+    ))
+    comp_rows = [
+        ["Configuracion", "F1@3 (10 indep.)", "F1@3 (41 consultas)", "Consultas ganadas vs. primario"],
+        ["MiniLM (entregada)", "0,300", "0,306", "&mdash;"],
+        ["multilingual-e5-base solo", "0,133", "0,182", "pierde 2-5 y 7-17"],
+        ["Fusion RRF de ambos", "0,167", "0,268", "pierde 1-5 y 8-13"],
+    ]
+    comp_tbl = Table(
+        [[Paragraph(c, header_style if i == 0 else cell_style) for c in row]
+         for i, row in enumerate(comp_rows)],
+        colWidths=[4.6 * cm, 3.1 * cm, 3.3 * cm, 4.5 * cm],
+    )
+    comp_tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a2b4c")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cccccc")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f2f4f8")]),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(comp_tbl)
+    story.append(Spacer(1, 8))
+    story.append(p(
+        "Antes de concluir se verifico que el segundo encoder no estuviera mal "
+        "empleado, porque la familia E5 degrada en silencio si se omiten sus "
+        "prefijos: se confirmo que la indexacion aplica <i>passage:</i> y la consulta "
+        "<i>query:</i>, tanto en el pipeline como en la copia autocontenida de "
+        "<i>generador.py</i>. El bajo rendimiento es real, no un error de uso."
+    ))
+    story.append(p(
+        "La decision es solida porque los dos criterios apuntan al mismo lado: la "
+        "configuracion de un solo encoder es a la vez <b>la mas simple y la mejor "
+        "medida</b>, y no hay que elegir entre ambas cosas. Entregar dos indices "
+        "habria duplicado el tamano de la entrega y el costo de indexacion para "
+        "empeorar el resultado. La capacidad multi-encoder queda implementada y "
+        "probada detras de <i>--encoder-name A B</i>, disponible si el corpus "
+        "cambiara, pero desactivada por defecto."
     ))
 
     story.append(p(
