@@ -76,3 +76,48 @@ def test_graph_limpia_caracteres_no_validos_en_xml():
     assert _limpiar("Naciones\x00Unidas") == "NacionesUnidas"
     assert _limpiar("Corte\nSuprema  de\tJusticia") == "Corte Suprema de Justicia"
     assert _limpiar("\x0b\x1f") == ""
+
+
+def _grafo_de_prueba():
+    from src.graph.build_graph import build_knowledge_graph
+    from src.ingestion.pipeline import ChunkRecord
+
+    textos = [
+        "La OTAN firmo un acuerdo con Colombia en Bruselas.",
+        "Naciones Unidas presento un informe sobre Colombia.",
+    ]
+    return build_knowledge_graph([
+        ChunkRecord(doc_id=f"D{i}", chunk_id=f"D{i}-c0", fuente="f.pdf", formato="pdf",
+                    fenomeno=1, posicion=0, num_tokens=20, texto=t, idioma="es")
+        for i, t in enumerate(textos)
+    ])
+
+
+def test_export_graphml_con_estilo_es_releible(tmp_path):
+    """El export con layout escribe el XML a mano (formato yEd); si se rompe,
+    networkx deja de poder releerlo y el bonus se entrega corrupto."""
+    import networkx as nx
+    from src.graph.build_graph import export_graphml
+
+    g = _grafo_de_prueba()
+    out = tmp_path / "g.graphml"
+    export_graphml(g, out)
+
+    releido = nx.read_graphml(out)
+    assert releido.number_of_nodes() == g.number_of_nodes()
+    assert all("x" in d and "tipo" in d for _, d in releido.nodes(data=True))
+
+
+def test_export_graphml_omite_el_layout_si_el_grafo_es_grande(tmp_path):
+    """El layout compara todas las parejas de nodos: con los 224.101 del corpus
+    real no terminaria nunca. Por encima del tope se exporta plano."""
+    import networkx as nx
+    from src.graph.build_graph import export_graphml
+
+    g = _grafo_de_prueba()
+    out = tmp_path / "g.graphml"
+    export_graphml(g, out, max_nodos_layout=1)
+
+    releido = nx.read_graphml(out)
+    assert releido.number_of_nodes() == g.number_of_nodes()  # sigue completo
+    assert not any("x" in d for _, d in releido.nodes(data=True))  # pero sin layout
