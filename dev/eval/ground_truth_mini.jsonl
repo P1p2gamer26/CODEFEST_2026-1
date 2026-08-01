@@ -1,8 +1,11 @@
+{"query_id": "q002", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-SIPRI-016", "F1-DAIO-006"]}
+{"query_id": "q003", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F1-CSET-103"]}
 {"query_id": "q004", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F1-DAIO-009", "F1-DAIO-025"]}
 {"query_id": "q005", "nota": "dependencia de tecnologias extranjeras de IA", "docs_relevantes": ["F1-ATLCOUNCIL-165", "F1-ATLCOUNCIL-005", "F1-CSET-076", "F1-ILIA-009"]}
 {"query_id": "q006", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-SIPRI-100", "F3-SIPRI-001", "F3-SIPRI-081"]}
 {"query_id": "q009", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F1-DAIO-015", "F1-DAIO-006", "F1-CSET-103", "F1-DAIO-018"]}
 {"query_id": "q010", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F1-DAIO-018"]}
+{"query_id": "q013", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F1-CSET-100", "F1-CSET-098", "F1-CSET-085"]}
 {"query_id": "q014", "nota": "infraestructura de computo avanzado", "docs_relevantes": ["F1-AIINDEX-023", "F1-AIINDEX-022", "F1-CSET-066", "F1-CSET-076", "F1-CSET-019"]}
 {"query_id": "q016", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-SIPRI-002", "F1-DAIO-009", "F1-DAIO-033", "F3-SIPRI-012", "F1-CSET-009", "F1-DAIO-019"]}
 {"query_id": "q017", "nota": "derecho internacional del espacio y armas", "docs_relevantes": ["F2-UNOOSA-027", "F2-SWF-099", "F2-SWF-126", "F2-CSIS-203", "F2-CSIS-177"]}
@@ -35,3 +38,4 @@
 {"query_id": "q046", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-MAPPOEA-016"]}
 {"query_id": "q047", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-MAPPOEA-032", "F3-RESDAL-091"]}
 {"query_id": "q049", "nota": "restitucion de tierras", "docs_relevantes": ["F3-MAPPOEA-008", "F3-MAPPOEA-010", "F3-MAPPOEA-011", "F3-MAPPOEA-009", "F3-MAPPOEA-028"]}
+{"query_id": "q050", "nota": "anotado por pooling con --recolectar", "pool": "paraphrase-multilingual-MiniLM-L12-v2", "docs_relevantes": ["F3-MAPPOEA-033", "F3-MAPPOEA-030", "F3-MAPPOEA-018", "F3-MAPPOEA-031", "F3-MAPPOEA-028"]}
