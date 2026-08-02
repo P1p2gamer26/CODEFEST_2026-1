@@ -27,6 +27,7 @@ Uso:
 
 import argparse
 import math
+import math
 import json
 import sys
 from pathlib import Path
@@ -57,6 +58,32 @@ def f1(recuperados: list[str], relevantes: set[str]) -> tuple[float, float, floa
     p = aciertos / len(recuperados)
     r = aciertos / min(len(relevantes), len(recuperados))
     return p, r, 2 * p * r / (p + r)
+
+
+def ndcg(fragmentos: list[dict], relevantes: set[str], k: int = 10) -> float:
+    """NDCG@k sobre la lista de fragmentos (sec. 10.2.1 del PDF).
+
+    APROXIMACION DELIBERADA: la relevancia de un fragmento se hereda de su
+    documento -- vale 1 si su doc_id esta en el ground truth, 0 si no. No
+    tenemos anotacion a nivel fragmento, y construirla son 500 juicios a mano
+    contra los 41 que costo la de documento.
+
+    Lo que esta aproximacion SI mide: si el sistema pone arriba fragmentos de
+    documentos relevantes. Lo que NO mide: si el fragmento concreto responde
+    la consulta, que es lo que el evaluador de ADL va a juzgar de verdad. Un
+    fragmento de bibliografia de un documento relevante puntua 1 aca y
+    probablemente 0 en la evaluacion real. **Sirve para comparar dos
+    configuraciones entre si, no para estimar la nota.**
+    """
+    ganancias = [1.0 if f["doc_id"] in relevantes else 0.0 for f in fragmentos[:k]]
+    dcg = sum(g / math.log2(i + 1) for i, g in enumerate(ganancias, start=1))
+    # El ideal se toma como los k cupos llenos de fragmentos relevantes. No
+    # sabemos cuantos fragmentos relevantes existen de verdad, y normalizar
+    # por los que uno mismo recupero seria tramposo: un sistema que devuelve
+    # un solo fragmento relevante en el puesto 1 sacaria 1.0. Con este ideal
+    # fijo, la metrica castiga tanto ordenar mal como traer pocos.
+    idcg = sum(1.0 / math.log2(i + 1) for i in range(1, k + 1))
+    return dcg / idcg
 
 
 def veredicto_signos(nombre_a: str, gana_a: int, nombre_b: str, gana_b: int) -> str:
@@ -120,20 +147,27 @@ def main() -> None:
         print(f"solo anotacion independiente: {len(gt)} de {antes} consultas\n")
 
     suma = 0.0
-    print(f"{'consulta':10s} {'P':>6s} {'R':>6s} {'F1':>6s}  aciertos")
+    suma_ndcg = 0.0
+    print(f"{'consulta':10s} {'P':>6s} {'R':>6s} {'F1':>6s} {'NDCG':>6s}  aciertos")
     for fila in gt:
         qid = fila["query_id"]
         relevantes = set(fila["docs_relevantes"])
         res = resultados.get(qid)
         if res is None:
-            print(f"{qid:10s} {'--':>6s} {'--':>6s} {'--':>6s}  (sin resultado)")
+            print(f"{qid:10s} {'--':>6s} {'--':>6s} {'--':>6s} {'--':>6s}  (sin resultado)")
             continue
         docs = [d["doc_id"] for d in res["documents"][: args.k]]
         p, r, valor = f1(docs, relevantes)
+        n = ndcg(res.get("fragments", []), relevantes)
         suma += valor
-        print(f"{qid:10s} {p:6.2f} {r:6.2f} {valor:6.2f}  {sorted(set(docs) & relevantes)}")
+        suma_ndcg += n
+        print(
+            f"{qid:10s} {p:6.2f} {r:6.2f} {valor:6.2f} {n:6.2f}  "
+            f"{sorted(set(docs) & relevantes)}"
+        )
 
     print(f"\nF1@{args.k} promedio sobre {len(gt)} consultas: {suma / len(gt):.3f}")
+    print(f"NDCG@10 aproximado (relevancia heredada del documento): {suma_ndcg / len(gt):.3f}")
 
     if args.comparar_con:
         otros = {r["query_id"]: r for r in cargar_jsonl(args.comparar_con)}

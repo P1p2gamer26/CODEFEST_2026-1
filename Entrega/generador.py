@@ -929,7 +929,14 @@ def main() -> None:
     parser.add_argument("--formato", default=None)
     parser.add_argument("--idioma", default=None)
     parser.add_argument("--min-score", type=float, default=None)
-    parser.add_argument("--agg-strategy", default="sum", choices=["max", "sum", "mean"])
+    # topM (top2, top3, top5...) suma solo los M mejores fragmentos de cada
+    # documento. La rama ya existia en aggregate_documents; el CLI no la
+    # exponia. El default no cambia: sigue siendo "sum".
+    parser.add_argument(
+        "--agg-strategy",
+        default="sum",
+        choices=["max", "sum", "mean", "top2", "top3", "top5", "top10"],
+    )
     parser.add_argument(
         "--use-graph",
         action="store_true",
