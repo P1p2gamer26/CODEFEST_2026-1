@@ -7,6 +7,12 @@ lo que se intentó —eso está en la sección "Medido y descartado" de
 
 ---
 
+> **CORRECCIÓN IMPORTANTE (2 ago 2026, más tarde el mismo día).** Un análisis
+> de poder estadístico posterior mostró que **las lecciones 1 y 3 estaban
+> sobrecorregidas** y que el instrumento con el que se descartaron nueve
+> hipótesis **no podía detectarlas**. Leer primero la sección "Corrección: el
+> instrumento no medía" al final. Las lecciones 2 y 4 a 10 siguen en pie.
+
 ## 1. Contar victorias por consulta, nunca promedios
 
 El caso testigo del día es `top5`: promedia **0,354** contra los **0,344** de
@@ -125,12 +131,79 @@ se funden. Medir contra etiquetas de modelo premia parecerse a un modelo.
 
 ---
 
-## Lo que este método NO puede resolver
+---
 
-Con ~41 consultas anotadas, la mayoría de los efectos reales caen dentro del
-ruido de muestreo. Cuando siete experimentos seguidos dan "no concluyente", la
-lectura correcta **no** es "no hay nada que mejorar": es **"la muestra no
-resuelve diferencias de este tamaño"**.
+# Corrección: el instrumento no medía
 
-La única salida es más ground truth. Todo lo demás es refinar la medición de
-algo que no se puede medir.
+Un análisis de poder estadístico sobre el propio diseño dio vuelta buena parte
+de lo anterior. Los números, calculados por enumeración binomial exacta sobre
+el ground truth real:
+
+**1. El F1@3 se mueve en escalones enormes.** Con 3 documentos entregados y
+`R` relevantes, cada acierto vale `2/(3+R)` — en promedio **0,315**. Una
+consulta no tiene valores intermedios: salta de golpe.
+
+**2. La prueba de signos tiene un piso duro.** Hacen falta **≥6 consultas
+discordantes** para bajar de p=0,05, gane como gane. La cascada de dos
+encoders dio **5-0 con p=0,062**: no fue "casi significativa", **estaba fuera
+del alcance del test antes de correrla**.
+
+**3. Con 41 consultas el instrumento es ciego.** Efecto mínimo detectable con
+potencia 0,80: **0,059** en el mejor caso imaginable (el cambio acierta
+siempre que actúa), e **inalcanzable a cualquier tamaño de efecto** con un
+cambio realista que acierte el 75% de las veces. Para detectar ΔF1 = 0,03
+harían falta **n = 140 a 455 consultas**, no 50.
+
+**Corolario que hay que tragarse:** nueve "no concluyente" seguidos con
+potencia ~0,3 es **exactamente lo que se espera aunque las nueve hipótesis
+fueran mejoras reales**. No son evidencia de que no haya efectos; son
+evidencia de que el test no los ve.
+
+**4. La regla "no adoptar nada que pierda consultas" estaba
+anti-correlacionada con la calidad.** Probabilidad de adoptar, según el efecto
+real:
+
+| ΔF1 verdadero | P(adoptar) |
+|---|---|
+| +0,016 (casi nulo) | **0,275** |
+| +0,032 | 0,073 |
+| +0,126 (mejora grande) | **0,073** |
+| moneda al aire que toca el 5% | 0,27 |
+
+La regla no filtraba por calidad sino por **cuán poco tocaba el sistema**:
+premiaba los cambios inocuos y rechazaba los grandes. Y no controlaba el error
+tipo I.
+
+## Qué se usa ahora
+
+**Criterio principal: el delta pareado con su intervalo de confianza**, por
+bootstrap sobre los deltas por consulta (`eval_mini.py`, funciones
+`bootstrap_delta` y `veredicto_bootstrap`). No tiene el piso de la prueba de
+signos y se lee aunque contenga el cero: *"el efecto está entre −0,01 y
++0,09"* es accionable; *"no concluyente"* no lo es.
+
+**Umbral asimétrico, porque esto es un torneo y no una publicación.** El coste
+de adoptar una mejora que resulta nula es ~0; el de rechazar una real es
+perder posiciones. Por eso el criterio no es *probar que mejora* sino
+**descartar solo lo que probablemente daña**: se adopta si el IC al 90%
+excluye una pérdida de 0,02, **y** el cambio tiene una justificación mecánica
+anterior al experimento (esto último es lo que impide adoptar ruido).
+
+**Decidir con NDCG@10 cuando el cambio toca los fragmentos.** F1@3 tiene 3-5
+valores por consulta; NDCG@10 sobre 10 fragmentos es casi continuo. Para
+detectar Δ=0,03 hacen falta **260 consultas con F1@3 contra 27-43 con
+NDCG@10**: un factor de 6 a 9, gratis, sin anotar una etiqueta más.
+
+**Límite encontrado al aplicarlo, que el análisis no preveía:** el Δ de
+NDCG@10 es **exactamente 0,000** para cambios de agregación a documento
+(`top3`, `top5`), porque la lista de fragmentos no depende de la estrategia de
+agregación. **NDCG solo da resolución extra a los experimentos que tocan
+fragmentos.** Para los de nivel documento seguimos atados a F1@3 y a su piso.
+
+## Lo que sigue sin tener solución
+
+Que el ground truth llegue a 50 **no arregla nada**: el MDE pasa de 0,059 a
+0,049. La salida realista es cribar sobre 200-400 consultas etiquetadas por
+agentes y confirmar solo las sobrevivientes contra las anotadas a mano —
+midiendo primero el acuerdo (κ) entre agente y humano sobre las 41 que ya
+existen, que es lo que decide si el cribado es utilizable.

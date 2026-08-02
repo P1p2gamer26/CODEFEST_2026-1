@@ -86,6 +86,51 @@ def ndcg(fragmentos: list[dict], relevantes: set[str], k: int = 10) -> float:
     return dcg / idcg
 
 
+def bootstrap_delta(deltas: list[float], reps: int = 10000, semilla: int = 0) -> tuple[float, float, float]:
+    """IC al 90% de la media del delta pareado, por bootstrap.
+
+    Reemplaza a la prueba de signos como criterio principal. La prueba de
+    signos tira la MAGNITUD de cada delta y tiene un piso duro: con menos de
+    6 consultas discordantes no puede bajar de p=0.05 aunque se ganen todas
+    (la cascada dio 5-0, p=0.062, y estaba fuera de alcance antes de
+    correrla). El IC no tiene ese piso y se puede leer aunque contenga el
+    cero: "el efecto esta entre -0.01 y +0.09" es accionable, "no
+    concluyente" no lo es.
+    """
+    import random
+
+    if not deltas:
+        return 0.0, 0.0, 0.0
+    rnd = random.Random(semilla)
+    n = len(deltas)
+    medias = sorted(
+        sum(rnd.choice(deltas) for _ in range(n)) / n for _ in range(reps)
+    )
+    return (
+        sum(deltas) / n,
+        medias[int(0.05 * reps)],
+        medias[int(0.95 * reps) - 1],
+    )
+
+
+def veredicto_bootstrap(media: float, bajo: float, alto: float, dano: float = -0.02) -> str:
+    """Criterio de adopcion para un torneo, no para una publicacion.
+
+    El coste de adoptar una mejora que en realidad es nula es ~0; el de
+    rechazar una real es perder posiciones. Por eso el umbral no es "probar
+    que mejora" sino **descartar solo lo que probablemente dana**: se adopta
+    si el IC al 90% excluye una perdida de `dano`.
+    """
+    if bajo > dano:
+        return f"  -> ADOPTABLE: el IC al 90% [{bajo:+.3f}, {alto:+.3f}] excluye una perdida de {dano:+.2f}."
+    if alto < 0:
+        return f"  -> DESCARTAR: el IC al 90% [{bajo:+.3f}, {alto:+.3f}] esta enteramente por debajo de cero."
+    return (
+        f"  -> NO ADOPTABLE todavia: el IC al 90% [{bajo:+.3f}, {alto:+.3f}] "
+        f"admite una perdida mayor que {dano:+.2f}."
+    )
+
+
 def veredicto_signos(nombre_a: str, gana_a: int, nombre_b: str, gana_b: int) -> str:
     """Prueba de signos sobre las consultas en que dos configuraciones difieren.
 
@@ -175,6 +220,8 @@ def main() -> None:
         b = args.comparar_con.name
         gana_a = gana_b = empate = 0
         suma_b = 0.0
+        deltas_f1: list[float] = []
+        deltas_ndcg: list[float] = []
         for fila in gt:
             qid = fila["query_id"]
             relevantes = set(fila["docs_relevantes"])
@@ -183,6 +230,11 @@ def main() -> None:
             va = f1([d["doc_id"] for d in resultados[qid]["documents"][: args.k]], relevantes)[2]
             vb = f1([d["doc_id"] for d in otros[qid]["documents"][: args.k]], relevantes)[2]
             suma_b += vb
+            deltas_f1.append(va - vb)
+            deltas_ndcg.append(
+                ndcg(resultados[qid].get("fragments", []), relevantes)
+                - ndcg(otros[qid].get("fragments", []), relevantes)
+            )
             if abs(va - vb) < 1e-9:
                 empate += 1
             elif va > vb:
@@ -192,6 +244,15 @@ def main() -> None:
         print(f"\n{b}: F1@{args.k} promedio {suma_b / len(gt):.3f}")
         print(f"\n{a} gana en {gana_a}, {b} gana en {gana_b}, empatan {empate}")
         print(veredicto_signos(a, gana_a, b, gana_b))
+
+        # Criterio principal: el delta pareado con su intervalo. El F1@3 se
+        # mueve en escalones de ~0.32 y con 41 consultas no detecta nada por
+        # debajo de 0.06; el NDCG@10 por fragmento es casi continuo y vale
+        # como 6-9 veces mas consultas para la misma decision.
+        for etiqueta, deltas in (("F1@3", deltas_f1), ("NDCG@10", deltas_ndcg)):
+            media, bajo, alto = bootstrap_delta(deltas)
+            print(f"\ndelta pareado en {etiqueta} ({a} menos {b}): {media:+.3f}")
+            print(veredicto_bootstrap(media, bajo, alto))
 
 
 if __name__ == "__main__":
