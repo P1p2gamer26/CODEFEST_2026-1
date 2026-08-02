@@ -194,11 +194,13 @@ están ahí y la agregación no los encuentra.
 
 Ideas no probadas, en orden de costo:
 
-- **Pseudo-relevance feedback denso (Rocchio en el espacio de embeddings).**
-  Centroide del top-5, `q1 = normalize(q0 + β·c)`, y **unión** de pools (no
-  reemplazo). Los vectores ya están en el índice, se leen con
-  `reconstruct(fila)`: **no se codifica ni un pasaje**. Es la técnica clásica
-  para el fallo de vocabulario, que es literalmente el caso NBQR→CBRN.
+- ~~**Pseudo-relevance feedback denso**~~ — **medido el 2 ago, no acumulable.**
+  PRF sobre MiniLM solo sube de 0,300 a **0,333** en las independientes
+  (gana 1, pierde 0) — pero eso es **exactamente lo que ya da la cascada**, y
+  PRF *sobre* la cascada **pierde 3-0** (0,333 → 0,233). Son dos vías al mismo
+  techo. Se conserva la medición como alternativa **si alguna vez hay que
+  renunciar al segundo encoder**: PRF consigue lo mismo sin construir ni
+  publicar un índice de 395 MB.
 - **Desempate intra-colección con el grafo**, que está construido y sin usar.
   El dato que lo motiva: **acertamos la colección el 74% de las veces y el
   documento solo el 33%**. Lo que falta es elegir entre hermanos de la misma
