@@ -22,3 +22,9 @@ dev/corpus_meta/*.zip
 
 # Renders del grafo generados con dev/scripts/ver_grafo.py --out
 /grafo.png
+
+# Binarios de la base vectorial: van por GitHub Release, no por el repo.
+# Ver .gitattributes y README seccion 1.1.
+Entrega/base_vectorial/**/*.faiss
+Entrega/base_vectorial/**/*.jsonl
+Entrega/base_vectorial/**/*.graphml

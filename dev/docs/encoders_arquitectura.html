@@ -359,19 +359,16 @@
         <div class="flow-row">
           <div class="flow-box">Consulta<span>lenguaje natural</span></div>
           <div class="flow-arrow">→</div>
-          <div class="flow-split">
-            <div class="flow-box small a">Encoder A<span>→ búsqueda índice A</span></div>
-            <div class="flow-box small b">Encoder B<span>→ búsqueda índice B</span></div>
-          </div>
+          <div class="flow-box small a">Encoder A<span>→ 200 candidatos (índice A)</span></div>
           <div class="flow-arrow">→</div>
-          <div class="flow-box">Fusión RRF<span>sin LLM</span></div>
+          <div class="flow-box small b">Encoder B<span>re-puntúa, peso 0,25</span></div>
           <div class="flow-arrow">→</div>
           <div class="flow-box">Agregación<span>a nivel documento</span></div>
           <div class="flow-arrow">→</div>
           <div class="flow-box highlight">resultados.jsonl<span>3 docs + 10 fragmentos</span></div>
         </div>
       </div>
-      <p class="note">La fusión ocurre solo sobre rankings y puntuaciones numéricas (Reciprocal Rank Fusion, Sección 8.4 del PDF) — nunca se combinan los vectores de los dos encoders en un mismo espacio, porque viven en dimensiones y geometrías distintas.</p>
+      <p class="note">Los dos encoders se combinan <b>en cascada</b>, no por fusión simétrica: el primario genera los candidatos y el secundario solo los re-puntúa (Sección 8.4 del PDF, sin LLM). La fusión RRF simétrica se implementó y se midió, pero <b>pierde</b>: los dos encoders comparten apenas el 11,3% de los documentos del top-3, y RRF premia el acuerdo entre listas — con ese desacuerdo intercala la lista buena con la mala. Nunca se combinan los vectores de los dos encoders en un mismo espacio, porque viven en dimensiones y geometrías distintas.</p>
     </div>
 
     <div class="foot">Boceto exploratorio para alinear al equipo — no representa aún resultados reales de evaluación (corpus pendiente de ADL).</div>
