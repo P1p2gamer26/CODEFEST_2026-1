@@ -28,3 +28,5 @@ dev/corpus_meta/*.zip
 Entrega/base_vectorial/**/*.faiss
 Entrega/base_vectorial/**/*.jsonl
 Entrega/base_vectorial/**/*.graphml
+# Copias comprimidas para los assets del Release: artefactos de transporte.
+Entrega/base_vectorial/**/*.gz
