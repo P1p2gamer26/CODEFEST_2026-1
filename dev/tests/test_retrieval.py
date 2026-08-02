@@ -1,7 +1,7 @@
 """Pruebas del modulo de recuperacion: agregacion a documento, fusion RRF y
 el limite de 250 palabras por fragmento respetando oraciones completas."""
 
-from src.retrieval.aggregate import aggregate_documents
+from src.retrieval.aggregate import aggregate_documents, filtrar_por_fenomeno_dominante
 from src.retrieval.fusion import reciprocal_rank_fusion
 from src.retrieval.search import Hit
 from src.retrieval.truncate import enforce_word_limit
@@ -19,6 +19,26 @@ def _hit(chunk_id, doc_id, score, texto="texto de prueba.", idioma="es", fenomen
         fenomeno=fenomeno,
         idioma=idioma,
     )
+
+
+def test_filtro_fenomeno_descarta_el_minoritario():
+    hits = [_hit("c1", "docA", 0.9, fenomeno=2), _hit("c2", "docB", 0.8, fenomeno=2),
+            _hit("c3", "docC", 0.1, fenomeno=3)]
+    assert [h.doc_id for h in filtrar_por_fenomeno_dominante(hits, umbral=0.5)] == ["docA", "docB"]
+
+
+def test_filtro_fenomeno_se_abstiene_si_el_pool_esta_repartido():
+    # Ningun fenomeno llega al 90% del score: devuelve el pool intacto.
+    hits = [_hit("c1", "docA", 0.5, fenomeno=1), _hit("c2", "docB", 0.5, fenomeno=2)]
+    assert filtrar_por_fenomeno_dominante(hits, umbral=0.9) == hits
+
+
+def test_filtro_fenomeno_pondera_por_score_no_por_conteo():
+    # Tres fragmentos flojos del fenomeno 3 no le ganan a uno excelente del 2.
+    hits = [_hit("c1", "docA", 0.95, fenomeno=2)] + [
+        _hit(f"c{i}", "docB", 0.2, fenomeno=3) for i in range(2, 5)
+    ]
+    assert [h.doc_id for h in filtrar_por_fenomeno_dominante(hits)] == ["docA"]
 
 
 def test_aggregate_documents_max_pooling_orders_by_best_chunk():

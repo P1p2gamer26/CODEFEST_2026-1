@@ -17,6 +17,45 @@ class DocumentHit:
     score: float
 
 
+def filtrar_por_fenomeno_dominante(
+    hits: list[Hit], umbral: float = 0.0
+) -> list[Hit]:
+    """Descarta del pool los fragmentos que no son del fenomeno dominante.
+
+    La sec. 8.7 permite post-filtrar por metadata, y el fenomeno es la senal
+    mas barata que hay: **37 de las 41 consultas anotadas tienen TODOS sus
+    documentos relevantes en un solo fenomeno**, y sin filtrar se gastan 17 de
+    123 cupos (14%) en documentos del fenomeno equivocado.
+
+    El fenomeno se decide por VOTO PONDERADO POR SCORE del propio pool, no por
+    conteo: un fragmento en rank 1 debe pesar mas que uno en rank 60.
+
+    `umbral` es la fraccion del score total que el fenomeno ganador debe
+    superar para que se aplique el filtro. Por debajo de eso **se abstiene** y
+    devuelve el pool intacto: con voto simple el filtro ganaba 4 consultas
+    pero perdia 2, y las que perdia son justamente aquellas donde el pool esta
+    repartido y el ganador no es de fiar. `umbral=0` filtra siempre (voto
+    simple); `umbral=1` no filtra nunca.
+    """
+    if not hits:
+        return hits
+
+    peso: dict[int, float] = defaultdict(float)
+    for hit in hits:
+        if hit.fenomeno is not None:
+            peso[hit.fenomeno] += max(hit.score, 0.0)
+    if not peso:
+        return hits
+
+    total = sum(peso.values())
+    ganador, mejor = max(peso.items(), key=lambda kv: kv[1])
+    if total <= 0 or mejor / total < umbral:
+        return hits
+
+    filtrados = [h for h in hits if h.fenomeno == ganador]
+    return filtrados or hits
+
+
 def aggregate_documents(
     hits: list[Hit], top_n: int = 3, strategy: AggregationStrategy = "sum"
 ) -> list[DocumentHit]:
