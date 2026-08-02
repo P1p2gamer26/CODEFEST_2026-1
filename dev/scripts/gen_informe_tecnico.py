@@ -121,6 +121,24 @@ def build_story() -> list:
         "lowercasing ni stemming &mdash; porque la evaluacion compara el campo "
         "<i>text</i> de forma textual contra el ground truth."
     ))
+    story.append(p(
+        "<b>Reparacion del guion de fin de linea.</b> Las fuentes incrustadas de "
+        "muchos PDF no mapean el guion de corte a Unicode y el extractor lo entrega "
+        "como U+FFFE, partiendo la palabra: <i>satel&#65534;lites</i>, "
+        "<i>weap&#65534;ons</i>. Afectaba al <b>30% de los fragmentos</b> (38.397 de "
+        "128.526, en 613 documentos) y degradaba las dos metricas a la vez: rompe "
+        "para el tokenizer justo los terminos de dominio que discriminan la consulta, "
+        "y entrega al evaluador un fragmento con el texto partido. La reparacion "
+        "decide entre unir (<i>satellites</i>) y conservar el guion "
+        "(<i>AI-related</i>) contando en el propio corpus cual de las dos formas "
+        "aparece mas veces &mdash; 23.177 cortes quedaron resueltos con esa "
+        "evidencia &mdash; y solo cae en una heuristica cuando ninguna forma esta "
+        "atestiguada. Medido sobre el ground truth propio, la reparacion no cambia "
+        "F1@3 de forma significativa (0.306 a 0.310; gana 3 consultas, pierde 3, "
+        "empata 35): se adopta porque corrige un defecto del dato y limpia los 166 "
+        "fragmentos entregados que salian partidos, no por una ganancia de "
+        "recuperacion que la muestra no puede sostener."
+    ))
     story.append(h2("1.1 Identificacion de documentos (doc_id)"))
     story.append(p(
         "El emparejamiento a nivel documento se hace con el <b>DOC_ID que suministra "
@@ -271,6 +289,17 @@ def build_story() -> list:
     ]))
     story.append(comp_tbl)
     story.append(Spacer(1, 8))
+    story.append(p(
+        "<b>Re-medicion tras reparar los guiones (seccion 1).</b> La tabla anterior se "
+        "midio sobre el texto previo a esa correccion. Reconstruidos los dos indices "
+        "sobre el texto reparado, la comparacion que decide la entrega se sostiene y "
+        "mejora: el primario solo pasa a <b>0,310</b> (41 consultas) y <b>0,300</b> "
+        "(10 independientes), y la cascada a <b>0,344</b> y <b>0,333</b>. Por consulta "
+        "la cascada <b>gana 4-0 y 1-0, sin perder ninguna</b> en ninguna de las dos "
+        "muestras. La prueba de signos no alcanza significancia (p = 0,125), pero el "
+        "criterio fijado antes de medir era conservar la cascada mientras no perdiera "
+        "consultas, no maximizar el promedio; se aplica ese criterio."
+    ))
     story.append(p(
         "Antes de nada se verifico que el segundo encoder no estuviera mal empleado, "
         "porque la familia E5 degrada en silencio si se omiten sus prefijos: la "

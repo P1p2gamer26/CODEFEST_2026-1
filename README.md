@@ -1,8 +1,8 @@
 # CODEFEST AD ASTRA 2026 — Etapa 1: Base de Conocimiento Vectorial
 
 Implementación completa de la Etapa 1 del reto: extracción, limpieza,
-chunking, embeddings, índice FAISS, recuperación (con fusión multi-encoder y
-grafo de conocimiento bonus) y generación de `resultados.jsonl` a partir de
+chunking, embeddings, índice FAISS, recuperación (con cascada de dos encoders
+y grafo de conocimiento bonus) y generación de `resultados.jsonl` a partir de
 consultas en lenguaje natural. Especificación completa en
 `Material de apoyo/CODEFEST_2026-1.pdf`.
 
@@ -53,6 +53,43 @@ Dentro de `dev/`:
 > fuera del repo con `PYTHONPATH` vacío y falla si dejó de ser autónomo.
 
 Ver la [sección 8](#8-estructura-del-proyecto) para el detalle módulo por módulo.
+
+### 1.1 Los índices no están en el repo: se bajan de un Release
+
+`index.faiss`, `metadata.jsonl` y `grafo.graphml` suman ~930 MB y **no viajan
+con el clon**. Están publicados como assets de un [GitHub
+Release](https://github.com/P1p2gamer26/CODEFEST_2026-1/releases), que admite
+2 GiB por archivo sin cuota de almacenamiento ni de ancho de banda — al
+contrario de Git LFS, que en el plan gratuito da 1 GB total y **no permite
+recuperar el espacio** una vez subido algo (los objetos quedan atados al
+historial del repositorio).
+
+Después de clonar, para dejar `Entrega/base_vectorial/` completa:
+
+```bash
+gh release download indices-v2 -D /tmp/idx
+
+MINILM=Entrega/base_vectorial/encoder_paraphrase-multilingual-MiniLM-L12-v2
+E5=Entrega/base_vectorial/encoder_multilingual-e5-base
+mkdir -p $MINILM $E5 Entrega/base_vectorial/grafo
+
+cp /tmp/idx/minilm-index.faiss $MINILM/index.faiss
+cp /tmp/idx/e5-index.faiss     $E5/index.faiss
+gunzip -c /tmp/idx/metadata.jsonl.gz  | tee $MINILM/metadata.jsonl > $E5/metadata.jsonl
+gunzip -c /tmp/idx/grafo.graphml.gz   > Entrega/base_vectorial/grafo/grafo.graphml
+
+python dev/scripts/validar_entrega.py   # comprueba que quedo bien
+```
+
+Un solo `metadata.jsonl` para los dos encoders porque es **byte-idéntico**:
+el chunking se hace una sola vez y ambos índices comparten el orden de filas.
+
+> **La carpeta `Entrega/` nunca lleva archivos comprimidos.** La Sección 1.4
+> de la especificación exige `index.faiss` "directamente cargable con
+> `faiss.read_index()` sin dependencias adicionales" y `metadata.jsonl` "en
+> formato JSON Lines, con exactamente un objeto JSON por línea". El `.gz` es
+> solo el formato de transporte del Release; lo que se entrega son los
+> archivos crudos, y `generador.py` no sabe —ni debe saber— descomprimir.
 
 ## 2. Requisitos previos
 
@@ -153,7 +190,7 @@ normal a internet (PyPI); no funciona en entornos con proxy restringido.
 pytest dev/tests -v
 ```
 
-Debería dar **`48 passed`**. Estos tests usan un encoder falso y determinista
+Debería dar **`81 passed`**. Estos tests usan un encoder falso y determinista
 (`HashingFakeEncoder`) solo para validar la mecánica del pipeline sin
 depender de red ni de calidad semántica real — es normal y esperado que
 corran sin conexión.
@@ -274,27 +311,50 @@ print('esquema OK')
 "
 ```
 
-### Paso 3b (opcional) — Multi-encoder con fusión RRF
+### Paso 3b — Cascada de dos encoders (esto es lo que se entrega)
 
 La especificación permite construir la base con más de un encoder (sec. 4.4)
-y combinar sus rankings sin modelos generativos (sec. 8.4). El pipeline lo
-soporta pasando varios `--encoder-name`:
+y combinar sus rankings sin modelos generativos (sec. 8.4). La entrega usa
+**dos encoders en cascada**, y va **activada por defecto**: correr
+`generador.py` sin flags reproduce `resultados.jsonl`.
 
 ```bash
 # OFFLINE: construye un índice por encoder, cada uno en su carpeta
 python dev/scripts/build_corpus_index.py --with-graph \
   --encoder-name paraphrase-multilingual-MiniLM-L12-v2 multilingual-e5-base
 
-# ONLINE: busca en ambos índices y fusiona los rankings con RRF
-python Entrega/generador.py --consultas <archivo> --use-graph \
-  --encoder-name paraphrase-multilingual-MiniLM-L12-v2 multilingual-e5-base
+# ONLINE: la cascada ya es el comportamiento por defecto
+python Entrega/generador.py --consultas <archivo>
+
+# ...y se apaga para volver a un solo encoder
+python Entrega/generador.py --consultas <archivo> --rerank-encoder none
 ```
 
-El segundo encoder (`intfloat/multilingual-e5-base`, MIT, 768 dim) se eligió
-por **diversidad, no por ser "mejor"**: está entrenado para recuperación
-densa mientras que el primario está afinado para similitud de paráfrasis, así
-que sus errores no están correlacionados — que es la condición para que
-fusionar dos rankings aporte algo.
+Cómo funciona: el primario (`paraphrase-multilingual-MiniLM-L12-v2`) genera
+**200 candidatos** y el secundario (`intfloat/multilingual-e5-base`, MIT,
+768 dim) solo los **re-puntúa**, sumando su coseno al del primario con peso
+**0,25** (`dev/src/retrieval/rerank.py`). El vector del secundario se lee del
+índice con `reconstruct(fila)` — los dos índices comparten el orden de filas,
+así que no se recodifica ningún pasaje: el costo por consulta es una
+vectorización más.
+
+**Por qué cascada y no fusión RRF simétrica.** La fusión simétrica se
+implementó, se midió y **se descartó**: los dos encoders comparten apenas el
+11,3% de los documentos del top-3, y RRF premia el acuerdo entre listas — con
+ese desacuerdo no fusiona, intercala la lista buena con la mala. Lo que el
+secundario hace mal es el *recall*; puntuar candidatos que el primario ya
+encontró es otro trabajo.
+
+| | F1@3 (10 indep.) | F1@3 (41) | victorias vs. primario solo |
+|---|---|---|---|
+| MiniLM solo | 0,300 | 0,306 | — |
+| e5 solo | 0,133 | 0,182 | pierde 2-5 y 7-17 |
+| fusión RRF simétrica | 0,167 | 0,268 | pierde 1-5 y 8-13 |
+| **cascada 0,25 @ 200** | **0,300** | **0,352** | **gana 5-0** |
+
+El peso 0,25 **no** es el que maximiza el promedio (0,5 y 1,0 dan más sobre
+las 41), pero es el único que **no empeora ninguna consulta de ninguna de las
+dos muestras**. Reproducible con `dev/scripts/barrido_dos_encoders.py`.
 
 **Detalle importante:** el chunking se hace **una sola vez** (con el tokenizer
 del primer encoder) y esos mismos fragmentos se indexan con todos. Si cada
@@ -308,8 +368,9 @@ Para saber si el segundo encoder aporta algo antes de pagar su costo:
 python dev/scripts/compare_encoders.py
 ```
 
-Reporta cuánto se solapan los rankings de ambos. Si son casi idénticos,
-fusionar no aporta y conviene entregar un solo encoder.
+Reporta cuánto se solapan los rankings de ambos. Es el diagnóstico que llevó a
+descartar la fusión simétrica: con solapamiento muy bajo, RRF no fusiona nada
+útil y la cascada es la forma correcta de aprovechar el segundo encoder.
 
 > Al probar con `--use-fake-encoder` y varios encoders, pasar **siempre**
 > `--out-base dev/intermedios/<algo>` (y `--index-base` en el generador) para no

@@ -7,6 +7,7 @@ linea por vector, en ese mismo orden (sec. 5.3), para que el id interno de
 FAISS devuelto por una busqueda mapee a la linea correcta del metadata.
 """
 
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -23,6 +24,16 @@ logger = logging.getLogger(__name__)
 # Filas por bloque de codificacion. Solo fija cada cuanto se graba el
 # checkpoint; el batch real lo maneja sentence-transformers.
 BLOQUE_EMBEDDING = 4096
+
+
+def _huella(records: list[ChunkRecord]) -> str:
+    """Hash del texto ya codificado, para invalidar el cache si el texto
+    cambio sin cambiar el chunk_id."""
+    h = hashlib.blake2b(digest_size=16)
+    for r in records:
+        h.update(r.texto.encode("utf-8"))
+        h.update(b"\0")
+    return h.hexdigest()
 
 
 def encode_records(
@@ -51,13 +62,20 @@ def encode_records(
         # codificadas corresponderian a otros textos y el indice saldria
         # corrupto en silencio, que es el peor final posible tras horas de CPU.
         # Por eso el .progreso guarda tambien el chunk_id de la ultima fila.
+        # Y tampoco basta el chunk_id: al reparar los guiones de fin de linea
+        # (ver src/cleaning/clean.py) cambio el TEXTO de 38.423 chunks sin
+        # cambiar ni su cantidad ni su chunk_id, asi que el cache viejo se
+        # habria dado por bueno y el indice habria quedado con los vectores
+        # del texto roto. Por eso el .progreso guarda un hash del texto.
         guardado = progreso_path.read_text().splitlines()
         candidatas = int(guardado[0]) if guardado else 0
         chunk_id_esperado = guardado[1] if len(guardado) > 1 else None
+        huella_esperada = guardado[2] if len(guardado) > 2 else None
         alineado = (
             embeddings.shape == forma
             and 0 < candidatas <= len(records)
             and chunk_id_esperado == records[candidatas - 1].chunk_id
+            and huella_esperada == _huella(records[:candidatas])
         )
         if alineado:
             hechas = candidatas
@@ -79,7 +97,7 @@ def encode_records(
             [r.texto for r in records[inicio:fin]]
         )
         embeddings.flush()
-        progreso_path.write_text(f"{fin}\n{records[fin - 1].chunk_id}")
+        progreso_path.write_text(f"{fin}\n{records[fin - 1].chunk_id}\n{_huella(records[:fin])}")
         logger.info("codificados %d/%d chunks (%s)", fin, forma[0], encoder.name)
 
     return np.asarray(embeddings)
