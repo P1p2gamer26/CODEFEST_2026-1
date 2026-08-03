@@ -172,20 +172,14 @@ B=Entrega/base_vectorial
 
 # 1. Comprimir SOLO las copias que van al Release. -k conserva el original,
 #    que es el que se entrega. Los .faiss NO se comprimen: son floats casi
-#    aleatorios y no bajan nada. El texto sí: medido 4,4x.
+#    aleatorios y no bajan nada. El texto sí: medido 4,4x (325 MB -> 49 MB).
 gzip -6 -k $B/encoder_paraphrase-multilingual-MiniLM-L12-v2/metadata.jsonl
 gzip -6 -k $B/grafo/grafo.graphml
 
-# 2. Publicar. Un solo metadata: los tres encoders lo tienen byte-identico
-#    porque comparten el chunking unico.
-gh release create indices-v3 \
-   --title "Indices v3 (cascada de tres encoders)" \
-   --notes "MiniLM + gte + e5 sobre 128.526 chunks. F1@3 0,386 y NDCG@10 0,406 sobre las 41 consultas anotadas." \
-   $B/encoder_paraphrase-multilingual-MiniLM-L12-v2/index.faiss#minilm-index.faiss \
-   $B/encoder_gte-multilingual-base/index.faiss#gte-index.faiss \
-   $B/encoder_multilingual-e5-base/index.faiss#e5-index.faiss \
-   $B/encoder_paraphrase-multilingual-MiniLM-L12-v2/metadata.jsonl.gz#metadata.jsonl.gz \
-   $B/grafo/grafo.graphml.gz#grafo.graphml.gz
+# 2. Publicar. El script comprueba que los cinco archivos existan antes de
+#    intentar nada, y sube un solo metadata: los tres encoders lo tienen
+#    byte-identico porque comparten el chunking unico.
+bash dev/scripts/publicar_release.sh indices-v3
 
 # 3. Borrar los .gz de la carpeta de entrega: eran solo para subir.
 rm $B/encoder_paraphrase-multilingual-MiniLM-L12-v2/metadata.jsonl.gz \
@@ -193,14 +187,24 @@ rm $B/encoder_paraphrase-multilingual-MiniLM-L12-v2/metadata.jsonl.gz \
 python dev/scripts/validar_entrega.py    # tiene que quedar en verde
 ```
 
+**El paso 3 no es opcional.** La sec. 1.4 exige que `Entrega/` lleve los
+archivos **crudos**: un `.jsonl.gz` no cumple. `validar_entrega.py` falla si
+sobra alguno, precisamente porque en una publicación anterior quedaron dos
+`.gz` olvidados ahí.
+
 Cosas que conviene saber:
 
 - **La sintaxis `archivo#nombre`** renombra el asset al subirlo. Hace falta
   porque el Release es plano: sin eso, los tres `index.faiss` chocarían.
-- **Son ~1,1 GB de subida.** Con conexión doméstica puede tardar bastante;
+- **Son ~990 MB de subida.** Con conexión doméstica puede tardar bastante;
   `gh` muestra el progreso y se puede reintentar el mismo comando.
-- **Si el tag ya existe**, `gh release create` falla. Para reemplazar assets
-  de un release existente: `gh release upload indices-v3 <archivo> --clobber`.
+- **Si el tag ya existe**, `gh release create` falla. Ahí conviene
+  `gh release delete <tag> --yes` y repetir, o subir assets sueltos con
+  `gh release upload <tag> <archivo>#<nombre> --clobber`.
+- **Autenticación:** `gh auth login` es interactivo y no corre bien desde un
+  script. Si el token venció, el síntoma es un 401 en cualquier comando de
+  `gh`; se arregla con `gh auth login --web`, que da un código de un solo uso
+  para pegar en <https://github.com/login/device>.
 - **No usar Git LFS.** El plan gratuito da 1 GB y **no se puede recuperar el
   espacio**: los objetos quedan atados al historial aunque se borre el
   archivo, `git lfs prune` solo limpia el disco local, y las únicas salidas
