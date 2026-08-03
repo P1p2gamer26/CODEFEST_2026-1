@@ -62,6 +62,55 @@ def _clave_dedup(texto: str) -> str:
     return " ".join(texto.split()).lower()
 
 
+# Idiomas que el evaluador de ADL puede leer. El corpus trae informes de
+# SIPRI y SWF traducidos al coreano, ruso, arabe, chino y aleman, y sus chunks
+# compiten por los mismos 10 cupos: 45 de los 500 fragmentos entregados salian
+# en un idioma ilegible, y q006 gastaba 5 de sus 10 cupos asi.
+IDIOMAS_LEGIBLES = frozenset({"es", "en", "pt"})
+
+
+def ordenar_para_fragmentos(
+    hits: list[Hit],
+    doc_ids_prioritarios: list[str] | None = None,
+    priorizar_idioma: bool = True,
+) -> list[Hit]:
+    """Reordena los hits ANTES de armar los fragmentos. No filtra nada.
+
+    Dos criterios, en este orden:
+
+    1. **Alineacion con los documentos entregados.** `build_result_object`
+       calculaba las dos mitades de la respuesta por caminos independientes:
+       los documentos por agregacion del pool, los fragmentos por score crudo
+       de chunk. Resultado medido sobre las 41 consultas anotadas a mano:
+       **solo el 31% de los fragmentos venia de los 3 documentos que la propia
+       respuesta declaraba mas relevantes**, con una mediana de 9 documentos
+       distintos entre los 10 fragmentos. La respuesta se contradecia a si
+       misma, y un fragmento de un documento que uno mismo dejo fuera del
+       top-3 es casi seguro un cero en NDCG@10.
+    2. **Idioma legible**, dentro de cada grupo (ver IDIOMAS_LEGIBLES). Es un
+       post-filtro por metadata, que la sec. 8.7 autoriza; no interviene
+       ningun modelo generativo.
+
+    Reordena, NO descarta: si el top-3 no tiene 10 chunks, los de mas abajo
+    completan igual, y si todos los chunks de una consulta fueran ilegibles se
+    entregan esos. Asi el esquema de la sec. 1.4 (exactamente 10 fragmentos)
+    no puede romperse por este cambio.
+
+    `sorted` es estable, asi que el tercer criterio de desempate es el orden
+    de entrada, o sea el score. No hace falta pasarlo explicito.
+    """
+    if not doc_ids_prioritarios and not priorizar_idioma:
+        return hits
+    top = set(doc_ids_prioritarios or ())
+
+    def clave(hit: Hit) -> tuple[int, int]:
+        fuera_del_top = 1 if (top and hit.doc_id not in top) else 0
+        ilegible = 1 if (priorizar_idioma and hit.idioma not in IDIOMAS_LEGIBLES) else 0
+        return (fuera_del_top, ilegible)
+
+    return sorted(hits, key=clave)
+
+
 def enforce_word_limit(
     hits: list[Hit],
     max_fragments: int = N_FRAGMENTS_PER_QUERY,

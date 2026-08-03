@@ -4,7 +4,7 @@ el limite de 250 palabras por fragmento respetando oraciones completas."""
 from src.retrieval.aggregate import aggregate_documents, filtrar_por_fenomeno_dominante
 from src.retrieval.fusion import reciprocal_rank_fusion
 from src.retrieval.search import Hit
-from src.retrieval.truncate import enforce_word_limit
+from src.retrieval.truncate import enforce_word_limit, ordenar_para_fragmentos
 
 
 def _hit(chunk_id, doc_id, score, texto="texto de prueba.", idioma="es", fenomeno=1):
@@ -93,6 +93,53 @@ def test_reciprocal_rank_fusion_rewards_consistent_items():
     # c1 y c2 aparecen en ambas listas con buen rango -> deberian ir primero
     assert set(fused_ids[:2]) == {"c1", "c2"}
     assert "c3" in fused_ids and "c4" in fused_ids
+
+
+def test_ordenar_para_fragmentos_pone_primero_los_del_top3():
+    """Las dos mitades de la respuesta tienen que coincidir: entregar un
+    fragmento de un documento que uno mismo dejo fuera del top-3 es casi
+    seguro un cero en NDCG@10. Medido: solo el 31% de los fragmentos
+    entregados venia de los 3 documentos declarados."""
+    hits = [
+        _hit("c1", "otro1", 0.99),
+        _hit("c2", "top1", 0.50),
+        _hit("c3", "otro2", 0.98),
+        _hit("c4", "top2", 0.40),
+    ]
+    ordenado = ordenar_para_fragmentos(hits, doc_ids_prioritarios=["top1", "top2"])
+    assert [h.chunk_id for h in ordenado] == ["c2", "c4", "c1", "c3"]
+
+
+def test_ordenar_para_fragmentos_no_descarta_nada():
+    """Reordena, NO filtra. Si el top-3 no tiene suficientes chunks, los de
+    mas abajo completan igual: la sec. 1.4 exige EXACTAMENTE 10 fragmentos y
+    este cambio no puede romper eso."""
+    hits = [_hit("c1", "otro", 0.9), _hit("c2", "top", 0.8)]
+    ordenado = ordenar_para_fragmentos(hits, doc_ids_prioritarios=["top"])
+    assert len(ordenado) == 2
+    assert {h.chunk_id for h in ordenado} == {"c1", "c2"}
+
+
+def test_ordenar_para_fragmentos_manda_al_final_los_idiomas_ilegibles():
+    """45 de los 500 fragmentos entregados salian en coreano, ruso, arabe,
+    chino o aleman. El evaluador de ADL no los lee, asi que son ceros
+    seguros; se posponen, no se descartan (sec. 8.7, filtro por metadata)."""
+    hits = [_hit("c1", "d", 0.9, idioma="ko"), _hit("c2", "d", 0.5, idioma="es")]
+    ordenado = ordenar_para_fragmentos(hits, priorizar_idioma=True)
+    assert [h.chunk_id for h in ordenado] == ["c2", "c1"]
+    # ...pero si TODOS son ilegibles se entregan igual, no se pierde el cupo
+    solo_ko = [_hit("c1", "d", 0.9, idioma="ko")]
+    assert len(ordenar_para_fragmentos(solo_ko, priorizar_idioma=True)) == 1
+
+
+def test_ordenar_para_fragmentos_el_documento_manda_sobre_el_idioma():
+    """El orden de los criterios importa: la alineacion con el top-3 es la
+    ganancia medida (+0.114 de NDCG), el idioma es un desempate dentro del
+    grupo. Un chunk legible de un documento descartado NO debe adelantar a
+    uno ilegible del top-3."""
+    hits = [_hit("c1", "otro", 0.9, idioma="es"), _hit("c2", "top", 0.8, idioma="ko")]
+    ordenado = ordenar_para_fragmentos(hits, doc_ids_prioritarios=["top"], priorizar_idioma=True)
+    assert [h.chunk_id for h in ordenado] == ["c2", "c1"]
 
 
 def test_enforce_word_limit_keeps_short_chunks_intact():
