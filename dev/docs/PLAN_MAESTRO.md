@@ -19,12 +19,23 @@ Bogotá **18-19 de septiembre**.
 | `resultados.jsonl` | 50 consultas, 3 documentos + 10 fragmentos cada una |
 | Fragmentos que exceden 250 palabras | **0** |
 | Fragmentos con palabras partidas | **0** (eran 166) |
-| `base_vectorial/` | 2 encoders × 128.526 vectores, metadata alineada |
+| `base_vectorial/` | **3 encoders** × 128.526 vectores, metadata alineada |
 | Grafo (bonus) | 224.101 nodos, 754.876 aristas |
 | `informe_tecnico.pdf` | 8 de 8 páginas |
-| `validar_entrega.py` | ✅ en verde |
-| `pytest dev/tests` | ✅ 89 passed |
-| **Corrida en frío** | ✅ **reproduce byte a byte** (sha256 `c6abdb91…`) |
+| `validar_entrega.py` | ✅ en verde (ahora falla también ante archivos de más) |
+| `pytest dev/tests` | ✅ **94 passed** |
+| `pruebas_robustez.py` | ✅ todas — el script corrido como lo correrá ADL |
+| **Corrida en frío** | ✅ **reproduce byte a byte** (sha256 `295ec0f7…`) |
+
+**Dos fallos que habrían excluido la entrega, encontrados y corregidos el
+2 ago 2026** — ninguno se veía corriendo el camino feliz:
+
+- **Sintaxis de Python 3.10** (`X | None`) sin `from __future__ import
+  annotations`, cuando ADL evalúa con **≥ 3.9.5**. El script moría en el
+  import. No se detectaba porque el venv local corre 3.13.
+- **BOM en el archivo de consultas.** Se leía con `utf-8`; cualquier archivo
+  guardado con Excel o Bloc de notas en Windows lleva BOM y la primera línea
+  fallaba. El archivo lo entrega ADL y no controlamos cómo lo guardan.
 
 Esa última línea es la que evita la exclusión: la sec. 1.4 dice que si el
 evaluador no puede reproducir los resultados, el equipo queda fuera. Se
@@ -35,9 +46,19 @@ verifica corriendo `generador.py` desde un directorio fuera del repo, con
 
 | métrica | valor | sobre qué |
 |---|---|---|
-| **F1@3** | **0,344** | 41 consultas anotadas a mano |
+| **F1@3** | **0,386** | 41 consultas anotadas a mano |
 | **F1@3** | **0,333** | 10 consultas sin sesgo de pooling ← *el número que vale* |
-| **NDCG@10** | 0,206 | aproximado, relevancia heredada del documento |
+| **NDCG@10** | **0,406** | 41 anotadas; aproximado, relevancia heredada del documento |
+| **NDCG@10** | **0,360** | 10 sin sesgo de pooling |
+
+Al empezar el 2 de agosto eran 0,344 y **0,206**. El NDCG@10 casi se dobló y
+es la mitad del puntaje; había sido medido **una sola vez** y nunca
+optimizado, mientras todo el esfuerzo iba al F1@3.
+
+**Advertencia que hay que repetir cada vez:** el F1@3 subió en las 41 pero
+**no en las 10 independientes** (0,333 antes y después). Esa parte de la
+ganancia puede ser sesgo de pooling. Lo que mejoró en las dos muestras es el
+NDCG@10.
 
 **El techo alcanzable es 0,900, no 1,0.** Hay que entregar exactamente 3
 documentos: si una consulta tiene 1 solo relevante, el F1 máximo es 0,50; con
@@ -51,11 +72,19 @@ equipos, no el valor absoluto.
 
 **Offline:** extracción por formato (`pypdfium2` + OCR para escaneos,
 `mapbox-vector-tile` para los PBF) → limpieza → chunking híbrido → FAISS
-`IndexFlatIP` con vectores normalizados. **Online:** la consulta se vectoriza
-con MiniLM, se recuperan 200 candidatos, `multilingual-e5-base` los re-puntúa
-con peso 0,25 (cascada, no fusión), se agregan a documento sumando scores
-sobre un pool de 60, y se trunca a 250 palabras. **Sin modelos generativos en
-ningún punto** — lo prohíbe la sec. 8.3.
+`IndexFlatIP` con vectores normalizados, **un índice por encoder sobre los
+mismos chunks**.
+
+**Online:** la consulta se vectoriza con MiniLM y se recuperan 200
+candidatos; **`gte-multilingual-base` y `multilingual-e5-base` los re-puntúan**,
+cada uno sumando su similitud con peso 0,25 (cascada, no fusión); se agregan
+a documento sumando scores sobre un pool de 60; y **los fragmentos se ordenan
+para que salgan de esos mismos 3 documentos**, prefiriendo idiomas legibles,
+antes de truncar a 250 palabras.
+
+**Sin modelos generativos en ningún punto** — lo prohíbe la sec. 8.3, y por
+eso quedaron descartadas las familias Harrier y Qwen3-Embedding pese a
+encabezar los rankings de 2026: son decoder-only.
 
 ---
 

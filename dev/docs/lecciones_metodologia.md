@@ -200,6 +200,76 @@ NDCG@10 es **exactamente 0,000** para cambios de agregación a documento
 agregación. **NDCG solo da resolución extra a los experimentos que tocan
 fragmentos.** Para los de nivel documento seguimos atados a F1@3 y a su piso.
 
+---
+
+# Lecciones nuevas (2 ago 2026, jornada de gte)
+
+## 11. Un modelo puede estar roto y no fallar
+
+`gte-multilingual-base` se carga con dos buffers apuntando a memoria sin
+inicializar. Uno revienta con `IndexError`; el otro **no**: el modelo codifica
+sin información posicional y devuelve vectores normalizados, de la forma
+correcta y semánticamente basura. Con el modelo así se midió que un pasaje
+irrelevante puntuaba por encima de uno relevante, y **se emitió un veredicto
+de calidad sobre un modelo averiado**.
+
+Nos salvó que el otro buffer sí reventara. Si solo hubiera estado mal el
+silencioso, se habrían gastado 7 horas de GPU para concluir "gte es malo".
+
+**Antes de juzgar un modelo nuevo, comprobá que funciona.** Una prueba de tres
+líneas —una consulta, un pasaje relevante, un distractor obvio— cuesta
+segundos y detecta esto.
+
+## 12. Medí el coste, no lo extrapoles
+
+`plan_encoders.md` estimaba gte en ~6 h por regla de tres sobre el número de
+parámetros. Fueron **97 h**: 97× más lento que MiniLM, no 2,6×. Se multiplican
+parámetros, tokens efectivos y el tipo de atención, y la regla de tres solo
+veía el primero.
+
+Costó lanzar una corrida presupuestada en 23 minutos que eran 4,7 horas.
+**Medir ms/chunk sobre 64 chunks reales cuesta tres minutos.**
+
+## 13. El camino feliz no prueba nada
+
+La entrega pasaba tests, validador y corrida en frío, y aun así tenía **dos
+fallos que la habrían excluido**:
+
+- sintaxis de Python 3.10 con un evaluador que usa ≥ 3.9.5 — invisible porque
+  el venv local corre 3.13;
+- lectura con `utf-8` de un archivo que ADL puede guardar con BOM.
+
+Los dos aparecieron al correr el script **como lo va a correr el evaluador**:
+por subprocess, desde fuera del repo, con entradas que no preparamos nosotros.
+Eso es `scripts/pruebas_robustez.py`.
+
+**Probá el artefacto que entregás, en las condiciones en que lo van a usar, no
+las funciones que escribiste.**
+
+## 14. Un validador que solo busca lo que falta deja pasar lo que sobra
+
+`validar_entrega.py` comprobaba que estuvieran los archivos exigidos. No
+miraba si había otros. En la carpeta de entrega vivían un `__pycache__/` y
+dos `.gz` sobrantes de publicar el Release — y la sec. 1.4 fija una estructura
+exacta y avisa que incumplirla es penalización severa o exclusión.
+
+**Si una especificación dice "exactamente esto", validá ambos lados: que no
+falte y que no sobre.**
+
+## 15. El mejor promedio y el mejor sistema no son lo mismo
+
+`gte→MiniLM` daba el mejor F1@3 de las cinco estructuras sobre las 41
+consultas (0,385) y **0,200 sobre las 10 independientes**. Adoptarlo mirando
+el promedio habría empeorado el sistema de verdad.
+
+El mecanismo es siempre el mismo y conviene tenerlo presente: las 41 se
+anotaron sobre candidatos que propuso MiniLM, así que **premian estructuralmente
+a quien recupera lo mismo que MiniLM**. Cualquier cambio en el *primario* está
+midiéndose contra un patrón que le juega en contra.
+
+**Un cambio de primario necesita su propio pool anotado. Uno de re-puntuador
+no**, porque reordena exactamente los mismos candidatos que el pool cubrió.
+
 ## Lo que sigue sin tener solución
 
 Que el ground truth llegue a 50 **no arregla nada**: el MDE pasa de 0,059 a
