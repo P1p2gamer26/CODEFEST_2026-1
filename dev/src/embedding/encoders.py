@@ -14,6 +14,8 @@ import numpy as np
 from ..config import (
     E5_PASSAGE_PREFIX,
     E5_QUERY_PREFIX,
+    ENCODER_GTE_HF_ID,
+    ENCODER_GTE_NAME,
     ENCODER_PRIMARY_HF_ID,
     ENCODER_PRIMARY_NAME,
     ENCODER_SECONDARY_HF_ID,
@@ -56,6 +58,62 @@ class Encoder(ABC):
         return self.encode_one(text)
 
 
+def _reparar_buffers_no_persistentes(model) -> None:
+    """Re-inicializa `position_ids` en los modelos con codigo remoto.
+
+    Fallo real, no defensivo. `gte-multilingual-base` declara su buffer de
+    posiciones con `persistent=False` (modeling.py:309), asi que NO viaja en
+    el checkpoint; y transformers lo carga con `low_cpu_mem_usage` activado,
+    que crea los tensores en el dispositivo `meta` y los materializa desde el
+    checkpoint. Lo que no esta en el checkpoint queda apuntando a **memoria
+    sin inicializar**: medido aqui, `position_ids[0] = 2635600166912` en vez
+    de 0.
+
+    El sintoma es una excepcion, no una degradacion silenciosa -- por suerte:
+
+        IndexError: index 4104411873280 is out of bounds for dimension 0
+        with size 569   (modeling.py:392, rope_cos[position_ids])
+
+    La alternativa seria cargar con `low_cpu_mem_usage=False`, que materializa
+    el state dict entero y duplica el pico de RAM (~2,4 GB para 305 M). En una
+    maquina de 7,6 GB con 1,9 GB libres eso es cambiar un fallo por un OOM.
+    Reescribir el buffer cuesta 8192 enteros.
+    """
+    import torch
+
+    for modulo in model.modules():
+        pid = getattr(modulo, "position_ids", None)
+        if pid is not None and pid.dim() == 1 and pid.numel():
+            esperado = torch.arange(pid.numel(), device=pid.device, dtype=pid.dtype)
+            if not torch.equal(pid, esperado):
+                modulo.register_buffer("position_ids", esperado, persistent=False)
+
+        # RoPE: `inv_freq` sufre lo mismo y es MUCHO mas peligroso, porque no
+        # revienta -- degrada en silencio. Medido aqui antes de repararlo:
+        # inv_freq = [6.4e+20, 1.6e-42, 0.0] y cos_cached/sin_cached todo en
+        # ceros, o sea el modelo codificaba sin informacion posicional. Los
+        # vectores salian normalizados y de la forma correcta, y aun asi un
+        # pasaje irrelevante puntuaba por encima de uno relevante. Sin esta
+        # reparacion se habria descartado el encoder por "mala calidad"
+        # cuando en realidad estaba roto al cargarse.
+        inv = getattr(modulo, "inv_freq", None)
+        if inv is None or inv.dim() != 1 or not inv.numel():
+            continue
+        dim = getattr(modulo, "dim", inv.numel() * 2)
+        base = getattr(modulo, "base", 10000.0)
+        esperado = 1.0 / (base ** (torch.arange(0, dim, 2, device=inv.device).float() / dim))
+        if torch.allclose(inv.float(), esperado.to(inv.dtype).float(), rtol=1e-3, atol=1e-6):
+            continue
+        modulo.register_buffer("inv_freq", esperado.to(inv.dtype), persistent=False)
+        # Las cachas cos/sin se derivan de inv_freq, asi que hay que rehacerlas.
+        if hasattr(modulo, "_set_cos_sin_cache"):
+            modulo._set_cos_sin_cache(
+                seq_len=getattr(modulo, "max_position_embeddings", 512),
+                device=inv.device,
+                dtype=torch.get_default_dtype(),
+            )
+
+
 class SentenceTransformerEncoder(Encoder):
     """Encoder real de produccion: `sentence-transformers/paraphrase-
     multilingual-MiniLM-L12-v2` (Apache 2.0, 384 dim, ES/EN/PT nativo, limite
@@ -76,11 +134,38 @@ class SentenceTransformerEncoder(Encoder):
         name: str = ENCODER_PRIMARY_NAME,
         query_prefix: str = "",
         passage_prefix: str = "",
+        trust_remote_code: bool = False,
+        config_kwargs: dict | None = None,
+        max_seq_length: int | None = None,
     ):
         from sentence_transformers import SentenceTransformer
 
         self.name = name
-        self._model = SentenceTransformer(hf_id)
+        # trust_remote_code lo exige gte-multilingual-base, que define su
+        # arquitectura (NewModel) en el repo del modelo en vez de usar una de
+        # transformers. Sigue siendo encoder-only tipo BERT -- el flag es de
+        # empaquetado, no cambia la arquitectura ni reabre la sec. 8.3.
+        #
+        # config_kwargs existe por un fallo concreto: GTE trae activadas por
+        # defecto `unpad_inputs` y `use_memory_efficient_attention`, que
+        # asumen GPU con atencion eficiente. En CPU su ruta de desempaquetado
+        # arma `position_ids` con basura y revienta con
+        # "IndexError: index 4104411873280 is out of bounds". Hay que
+        # apagarlas por configuracion; no es opcional en esta maquina.
+        extra = {"trust_remote_code": trust_remote_code} if trust_remote_code else {}
+        if config_kwargs:
+            extra["config_kwargs"] = config_kwargs
+        self._model = SentenceTransformer(hf_id, **extra)
+        if trust_remote_code:
+            _reparar_buffers_no_persistentes(self._model)
+        # GTE declara max_seq_length=8192. No lo necesitamos: el p99 de los
+        # chunks es 466 tokens y el maximo 2.642. Y si importa: en CPU hay que
+        # desactivar la atencion eficiente, con lo que el coste es CUADRATICO
+        # en la longitud de padding. Recortarlo a 512 cubre el 99,3% de los
+        # chunks enteros -- la misma ventana que e5-base, que ya sabemos
+        # costear.
+        if max_seq_length:
+            self._model.max_seq_length = max_seq_length
         self.dim = self._model.get_sentence_embedding_dimension()
         self.query_prefix = query_prefix
         self.passage_prefix = passage_prefix
@@ -154,6 +239,16 @@ KNOWN_ENCODERS: dict[str, dict] = {
         "query_prefix": E5_QUERY_PREFIX,
         "passage_prefix": E5_PASSAGE_PREFIX,
     },
+    # GTE NO lleva prefijos: ponerselos degrada la calidad en silencio, igual
+    # que omitirlos degrada a E5. Son dos errores simetricos.
+    ENCODER_GTE_NAME: {
+        "hf_id": ENCODER_GTE_HF_ID,
+        "query_prefix": "",
+        "passage_prefix": "",
+        "trust_remote_code": True,
+        "config_kwargs": {"unpad_inputs": False, "use_memory_efficient_attention": False},
+        "max_seq_length": 512,
+    },
 }
 
 
@@ -173,4 +268,7 @@ def get_encoder(name: str = ENCODER_PRIMARY_NAME, use_fake: bool = False) -> Enc
         name=name,
         query_prefix=spec["query_prefix"],
         passage_prefix=spec["passage_prefix"],
+        trust_remote_code=spec.get("trust_remote_code", False),
+        config_kwargs=spec.get("config_kwargs"),
+        max_seq_length=spec.get("max_seq_length"),
     )
