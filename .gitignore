@@ -30,3 +30,8 @@ Entrega/base_vectorial/**/*.jsonl
 Entrega/base_vectorial/**/*.graphml
 # Copias comprimidas para los assets del Release: artefactos de transporte.
 Entrega/base_vectorial/**/*.gz
+
+# Lo crean nuestros propios scripts al importar generador.py (el evaluador,
+# que lo corre como __main__, no lo genera). La sec. 1.4 fija la estructura
+# exacta de Entrega/ y validar_entrega.py falla si aparece.
+Entrega/__pycache__/
