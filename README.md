@@ -18,6 +18,7 @@ encoder está donde está: `dev/docs/arquitectura_encoders.md`.
 
 ## Índice
 
+0. [Estado y resultados](#0-estado-y-resultados)
 1. [Qué hay en este repo](#1-qué-hay-en-este-repo)
 2. [Requisitos previos](#2-requisitos-previos)
 3. [Instalación (Windows / macOS / Linux)](#3-instalación-windows--macos--linux)
@@ -27,6 +28,65 @@ encoder está donde está: `dev/docs/arquitectura_encoders.md`.
 7. [Checklist de entregables frente a la especificación](#7-checklist-de-entregables-frente-a-la-especificación)
 8. [Estructura del proyecto](#8-estructura-del-proyecto)
 9. [Solución de problemas](#9-solución-de-problemas)
+
+## 0. Estado y resultados
+
+**La entrega está completa, válida y reproducible.**
+
+| verificación | estado |
+|---|---|
+| `pytest dev/tests` | 94 passed |
+| `python dev/scripts/validar_entrega.py` | en verde |
+| `python dev/scripts/pruebas_robustez.py` | todas pasan |
+| **corrida en frío** desde fuera del repo | **reproduce byte a byte** |
+| `informe_tecnico.pdf` | 8 de 8 páginas |
+
+### Métricas
+
+| métrica | valor | sobre qué |
+|---|---|---|
+| **F1@3** | **0,386** | 41 consultas anotadas a mano |
+| **F1@3** | 0,333 | 10 consultas sin sesgo de pooling ← *el número honesto* |
+| **NDCG@10** | **0,406** | 41 anotadas; aproximado |
+| **NDCG@10** | 0,360 | 10 sin sesgo de pooling |
+
+**Cómo leer esto, sin autoengaños:**
+
+- El ground truth es **propio y parcial** — ADL no lo publica. Un documento
+  no anotado cuenta como irrelevante aunque quizá no lo sea, así que el F1@3
+  real será **mayor o igual**. Los valores absolutos no significan gran cosa;
+  lo que importa es el orden entre configuraciones.
+- El **NDCG@10 es un proxy**: la relevancia de un fragmento se hereda de su
+  documento. Un fragmento de bibliografía de un documento relevante puntúa 1
+  acá y casi seguro 0 con ADL. Sirve para comparar dos configuraciones entre
+  sí, **no para estimar la nota**.
+- Las **10 consultas sin sesgo de pooling** son las que valen para comparar
+  encoders: sus candidatos no los propuso el recuperador, así que no le
+  juegan a favor.
+- El puntaje del concurso es **Conteo de Borda** entre NDCG@10 y F1@3:
+  posición relativa contra otros equipos, no un absoluto.
+
+### Qué se probó y no funcionó
+
+Están todas medidas, con sus números, en la sección "Medido y descartado" de
+`las notas del proyecto`. Las principales: híbrido BM25 + denso (pierde 15-4), fusión RRF
+simétrica de encoders (0,268 vs 0,306), invertir la cascada (0,250), filtrar
+el pool por fenómeno, deduplicar documentos, concatenar chunks vecinos,
+cribar el ground truth con anotadores-agente (F1 0,23 contra el humano).
+
+**Lo único que queda abierto es la construcción del pool.** El fallo
+documentado es entre idiomas: consulta en español, documento en inglés
+(NBQR/CBRN, "reabastecimiento en órbita"/*on-orbit servicing*).
+
+### Documentación
+
+| documento | para qué |
+|---|---|
+| `dev/docs/PLAN_MAESTRO.md` | **empezar por acá**: estado, todo lo probado, lo que queda |
+| `dev/docs/arquitectura_encoders.md` | cómo funcionan los tres encoders y por qué |
+| `dev/docs/lecciones_metodologia.md` | **cómo se decide si un cambio sirve** — leer antes de proponer mejoras |
+| `dev/docs/PROYECTO_EXPLICADO.md` | mapa módulo por módulo |
+| `dev/docs/Explicacion_reto_final.md` | Q&A con ADL y reglas |
 
 ## 1. Qué hay en este repo
 
@@ -45,7 +105,7 @@ Dentro de `dev/`:
 | `dev/src/` | Código reusable del pipeline (extracción, limpieza, chunking, embeddings, retrieval, grafo, GUI). No depende del corpus concreto. |
 | `dev/scripts/` | CLIs que orquestan `dev/src/`: construir el índice, generar el corpus sintético, inspeccionar resultados, validar la entrega, lanzar la GUI. |
 | `dev/tests/` | Suite de pytest que valida la mecánica de cada etapa sin depender de red. |
-| `dev/corpus_ejemplo/` | Corpus **sintético** provisional (ver sección 6). |
+| `dev/corpus/` | Corpus real de ADL: 1.837 archivos en tres carpetas por fenómeno. |
 | `dev/consultas_prueba/` | Consultas de prueba **provisionales** (ver sección 6), no las oficiales q001–q050. |
 | `dev/docs/` | Documentación adicional (arquitectura de encoders, Q&A con ADL). |
 | `dev/intermedios/` | Artefactos locales no versionados (historial de la GUI, índices de prueba). |
@@ -62,8 +122,8 @@ Ver la [sección 8](#8-estructura-del-proyecto) para el detalle módulo por mód
 
 ### 1.1 Los índices no están en el repo: se bajan de un Release
 
-`index.faiss`, `metadata.jsonl` y `grafo.graphml` suman ~930 MB y **no viajan
-con el clon**. Están publicados como assets de un [GitHub
+`index.faiss`, `metadata.jsonl` y `grafo.graphml` suman **~1,5 GB** y **no
+viajan con el clon**. Están publicados como assets de un [GitHub
 Release](https://github.com/P1p2gamer26/CODEFEST_2026-1/releases), que admite
 2 GiB por archivo sin cuota de almacenamiento ni de ancho de banda — al
 contrario de Git LFS, que en el plan gratuito da 1 GB total y **no permite
@@ -95,6 +155,62 @@ python dev/scripts/validar_entrega.py   # comprueba que quedo bien
 
 **Los `.gz` se descomprimen y se borran**: la carpeta de entrega lleva solo
 archivos crudos (sec. 1.4), y `validar_entrega.py` falla si sobra alguno.
+
+#### Cómo PUBLICAR el Release (cuando se regeneran los índices)
+
+Requiere [`gh`](https://cli.github.com/) autenticado una sola vez:
+
+```bash
+gh auth login          # elegí GitHub.com → HTTPS → autenticar en el navegador
+gh auth status         # comprueba que quedó
+```
+
+Después, desde la raíz del repo:
+
+```bash
+B=Entrega/base_vectorial
+
+# 1. Comprimir SOLO las copias que van al Release. -k conserva el original,
+#    que es el que se entrega. Los .faiss NO se comprimen: son floats casi
+#    aleatorios y no bajan nada. El texto sí: medido 4,4x.
+gzip -6 -k $B/encoder_paraphrase-multilingual-MiniLM-L12-v2/metadata.jsonl
+gzip -6 -k $B/grafo/grafo.graphml
+
+# 2. Publicar. Un solo metadata: los tres encoders lo tienen byte-identico
+#    porque comparten el chunking unico.
+gh release create indices-v3 \
+   --title "Indices v3 (cascada de tres encoders)" \
+   --notes "MiniLM + gte + e5 sobre 128.526 chunks. F1@3 0,386 y NDCG@10 0,406 sobre las 41 consultas anotadas." \
+   $B/encoder_paraphrase-multilingual-MiniLM-L12-v2/index.faiss#minilm-index.faiss \
+   $B/encoder_gte-multilingual-base/index.faiss#gte-index.faiss \
+   $B/encoder_multilingual-e5-base/index.faiss#e5-index.faiss \
+   $B/encoder_paraphrase-multilingual-MiniLM-L12-v2/metadata.jsonl.gz#metadata.jsonl.gz \
+   $B/grafo/grafo.graphml.gz#grafo.graphml.gz
+
+# 3. Borrar los .gz de la carpeta de entrega: eran solo para subir.
+rm $B/encoder_paraphrase-multilingual-MiniLM-L12-v2/metadata.jsonl.gz \
+   $B/grafo/grafo.graphml.gz
+python dev/scripts/validar_entrega.py    # tiene que quedar en verde
+```
+
+Cosas que conviene saber:
+
+- **La sintaxis `archivo#nombre`** renombra el asset al subirlo. Hace falta
+  porque el Release es plano: sin eso, los tres `index.faiss` chocarían.
+- **Son ~1,1 GB de subida.** Con conexión doméstica puede tardar bastante;
+  `gh` muestra el progreso y se puede reintentar el mismo comando.
+- **Si el tag ya existe**, `gh release create` falla. Para reemplazar assets
+  de un release existente: `gh release upload indices-v3 <archivo> --clobber`.
+- **No usar Git LFS.** El plan gratuito da 1 GB y **no se puede recuperar el
+  espacio**: los objetos quedan atados al historial aunque se borre el
+  archivo, `git lfs prune` solo limpia el disco local, y las únicas salidas
+  reales son reescribir el historial, borrar y recrear el repo, o esperar 30
+  días. El Release no tiene cuota ni de almacenamiento ni de descarga.
+- **Esto no afecta a la entrega.** La sec. 1.4 pide una *carpeta* con los
+  cuatro componentes; el enunciado no menciona GitHub en ninguna parte. El
+  repo es infraestructura nuestra y dónde vivan los binarios es decisión
+  libre. Lo que sí es obligatorio es que `Entrega/` tenga los archivos
+  **crudos**, nunca comprimidos.
 
 Un solo `metadata.jsonl` para los dos encoders porque es **byte-idéntico**:
 el chunking se hace una sola vez y ambos índices comparten el orden de filas.
@@ -223,7 +339,7 @@ porque reutiliza el índice ya construido).
 python dev/scripts/build_corpus_index.py --with-graph
 ```
 
-Toma `dev/corpus_ejemplo/` (o `--corpus-dir` apuntando al corpus real), extrae
+Toma `dev/corpus/` (o `--corpus-dir` apuntando a otra carpeta), extrae
 texto, limpia, fragmenta, codifica cada fragmento con el encoder real de
 HuggingFace (`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`,
 se descarga solo la primera vez) y escribe:
@@ -326,32 +442,57 @@ print('esquema OK')
 "
 ```
 
-### Paso 3b — Cascada de dos encoders (esto es lo que se entrega)
+### Paso 3b — Cascada de tres encoders (esto es lo que se entrega)
 
 La especificación permite construir la base con más de un encoder (sec. 4.4)
 y combinar sus rankings sin modelos generativos (sec. 8.4). La entrega usa
-**dos encoders en cascada**, y va **activada por defecto**: correr
-`generador.py` sin flags reproduce `resultados.jsonl`.
+**un encoder que busca y dos que corrigen**, y va **activada por defecto**:
+correr `generador.py` sin flags reproduce `resultados.jsonl`.
+
+```
+consulta
+   ├─ MiniLM la vectoriza ──► FAISS ──► 200 candidatos      [RECALL]
+   ├─ gte re-puntúa  ────────────────┤ +0,25 × similitud    [PRECISIÓN]
+   ├─ e5 re-puntúa   ────────────────┤ +0,25 × similitud    [PRECISIÓN]
+   ├─ agregar a documento ───────────► 3 documentos
+   └─ fragmentos hacia esos 3 docs ──► 10 fragmentos ≤250 palabras
+```
+
+| | papel | par. | ventana | dim | licencia |
+|---|---|---|---|---|---|
+| `paraphrase-multilingual-MiniLM-L12-v2` | **primario** | 118 M | 128 | 384 | Apache 2.0 |
+| `Alibaba-NLP/gte-multilingual-base` | re-puntuador | 305 M | 512 | 768 | Apache 2.0 |
+| `intfloat/multilingual-e5-base` | re-puntuador | 278 M | 512 | 768 | MIT |
 
 ```bash
-# OFFLINE: construye un índice por encoder, cada uno en su carpeta
-python dev/scripts/build_corpus_index.py --with-graph \
-  --encoder-name paraphrase-multilingual-MiniLM-L12-v2 multilingual-e5-base
-
 # ONLINE: la cascada ya es el comportamiento por defecto
 python Entrega/generador.py --consultas <archivo>
 
-# ...y se apaga para volver a un solo encoder
+# ...un solo re-puntuador, o ninguno
+python Entrega/generador.py --consultas <archivo> --rerank-encoder multilingual-e5-base
 python Entrega/generador.py --consultas <archivo> --rerank-encoder none
 ```
 
-Cómo funciona: el primario (`paraphrase-multilingual-MiniLM-L12-v2`) genera
-**200 candidatos** y el secundario (`intfloat/multilingual-e5-base`, MIT,
-768 dim) solo los **re-puntúa**, sumando su coseno al del primario con peso
-**0,25** (`dev/src/retrieval/rerank.py`). El vector del secundario se lee del
-índice con `reconstruct(fila)` — los dos índices comparten el orden de filas,
-así que no se recodifica ningún pasaje: el costo por consulta es una
-vectorización más.
+**El coste por consulta son tres vectorizaciones de una frase corta.** Los
+vectores de los *pasajes* no se recalculan nunca: se leen del índice del
+encoder correspondiente con `reconstruct(fila)`. Eso solo es posible porque
+los tres índices describen **los mismos chunks en el mismo orden** — el
+chunking se hace una sola vez y esos records se indexan con los tres.
+
+**Por qué MiniLM es el primario siendo el más chico.** Trunca en 128 tokens y
+el 96% de los chunks son más largos, así que suena a que debería perder. Se
+probó lo contrario dos veces: e5 como primario da **0,250** y gte **0,200**
+en las 10 consultas sin sesgo de pooling. Eso también cierra la idea de
+re-fragmentar el corpus a 128 tokens — si la ventana fuera el cuello de
+botella, los de ventana larga habrían ganado.
+
+**Por qué un encoder puede ser buen re-puntuador y mal primario.** Recall y
+precisión son trabajos distintos: el primario tiene que *traer* el documento
+correcto entre los 200; los re-puntuadores solo *reordenan* lo que ya llegó,
+así que no importa que recuperen mal.
+
+Detalle completo, con las cinco estructuras medidas y las trampas de gte:
+**`dev/docs/arquitectura_encoders.md`**.
 
 **Por qué cascada y no fusión RRF simétrica.** La fusión simétrica se
 implementó, se midió y **se descartó**: los dos encoders comparten apenas el
@@ -474,27 +615,30 @@ del reto). Para reiniciarlo, simplemente borrar ese archivo.
 
 ## 6. Qué es provisional vs. infraestructura reusable
 
-**Provisional (se reemplaza cuando ADL entregue lo oficial, sin tocar `dev/src/`):**
+> **Esta sección quedó casi vacía: ADL ya entregó todo.** El corpus real
+> (1.837 archivos) está en `dev/corpus/`, las 50 consultas oficiales en
+> `dev/consultas_prueba/consultas_50_oficiales.jsonl`, y los `doc_id` del
+> manifest de ADL están aplicados. El viejo `dev/corpus_ejemplo/` sintético
+> ya no existe.
 
-- `dev/corpus_ejemplo/`: 15 documentos **sintéticos** (PDF/HTML, ES/EN/PT),
-  redactados a mano con `dev/scripts/gen_synthetic_corpus.py` porque el proxy de
-  salida de este entorno de desarrollo bloquea la descarga de documentos
-  reales (ver `informe_tecnico.pdf`, sección de limitaciones, y
-  `dev/corpus_ejemplo/fuentes.md`). **No son documentos reales, no citar como
-  tales.**
-- `dev/consultas_prueba/consultas_prueba.jsonl`: 15 consultas de prueba ES/EN/PT
-  escritas a mano, NO son las 50 consultas oficiales q001–q050 (ADL aún no
-  las entrega). El formato exacto del archivo oficial de consultas tampoco
-  se conoce todavía; el adaptador está aislado en `load_consultas()` dentro
-  de `Entrega/generador.py`.
-- Los `doc_id` los suministra ADL junto con el corpus, y son la clave real
-  de emparejamiento con el ground truth (aclarado en la Q&A final; la
-  sec. 10.2.1 del PDF decía `fuente`, pero fue un error de versionamiento).
-  El pipeline ya lo soporta: pasar `--doc-id-manifest <archivo>` a
-  `dev/scripts/build_corpus_index.py` con el mapeo que entregue ADL
-  (JSON/JSONL/CSV). Sin manifest se usa un hash del contenido, suficiente
-  para el corpus de ejemplo pero **no empareja con el ground truth**. Ver
-  `dev/src/ingestion/doc_id.py`.
+**Lo que sigue siendo provisional:**
+
+- `dev/eval/ground_truth_mini.jsonl`: **ground truth propio**, no el de ADL,
+  que no se publica. Cubre las 50 consultas: 41 anotadas a mano y **9 por un
+  panel de anotadores-agente**, marcadas con `anotador: "panel-agentes"`.
+  Esas 9 **no son equivalentes** a las humanas —el panel reproduce al humano
+  con F1 0,23— así que para comparar contra cualquier medición anterior hay
+  que usar `eval_mini.py --solo-humanas`. Detalle en
+  `dev/eval/panel_agentes/README.md`.
+- `dev/consultas_prueba/consultas_50.jsonl`: las inventadas p001–p050 del
+  período previo. Sirven solo para probar multilingüe y tolerancia a typos;
+  **no son las del reto**.
+- Los `doc_id` los suministra ADL en `corpus_meta/Indice_Datos_Codefest.xlsx`.
+  `dev/scripts/manifest_desde_xlsx.py` lo convierte al CSV que consume
+  `--doc-id-manifest`. **La clave del manifest es la RUTA relativa, no el
+  nombre de archivo**: 59 nombres aparecen en dos carpetas con `doc_id`
+  distintos, e indexar por nombre le asignaría el `doc_id` equivocado a 127
+  documentos. Ver `dev/src/ingestion/doc_id.py`.
 - El campo `fuente` (Tabla 1, obligatorio) se deriva del nombre de archivo o
   la URL detectada (`derive_fuente()` en `dev/src/ingestion/pipeline.py`) y se
   conserva como trazabilidad — ajustar ahí si ADL usa otra convención.
@@ -502,7 +646,7 @@ del reto). Para reiniciarlo, simplemente borrar ese archivo.
 **Reusable sin cambios:** todo `dev/src/` (extraction, cleaning, chunking,
 embedding, retrieval, graph, ingestion), y la lógica central de
 `Entrega/generador.py`. Para usar el corpus real: colocarlo donde hoy está
-`dev/corpus_ejemplo/` (o apuntar `--corpus-dir` a otra carpeta) y volver a
+`dev/corpus/` (o apuntar `--corpus-dir` a otra carpeta) y volver a
 correr `dev/scripts/build_corpus_index.py`.
 
 ### Limitación de red de este entorno de desarrollo
@@ -548,7 +692,7 @@ Mapeo directo a la Sección 1.4 ("Entregables") de
 
 | # | Entregable exigido | Dónde está | Estado |
 |---|---|---|---|
-| 1 | Base vectorial: `index.faiss` + `metadata.jsonl` por encoder, en `base_vectorial/encoder_<nombre>/` | `Entrega/base_vectorial/encoder_paraphrase-multilingual-MiniLM-L12-v2/` | ✅ generado con el encoder real, `index.faiss` serializado con `faiss.write_index()`. Con multi-encoder (paso 3b) se crea una subcarpeta adicional por cada encoder, como permite la sec. 1.4 |
+| 1 | Base vectorial: `index.faiss` + `metadata.jsonl` por encoder, en `base_vectorial/encoder_<nombre>/` | `Entrega/base_vectorial/encoder_*/` (**tres**) | ✅ generados con encoders reales, `index.faiss` serializado con `faiss.write_index()`. La sec. 1.4 permite una subcarpeta por encoder; los tres `metadata.jsonl` son byte-idénticos porque comparten el chunking único |
 | 1b | Grafo de conocimiento (bonus) en `base_vectorial/grafo/grafo.graphml` | `Entrega/base_vectorial/grafo/grafo.graphml` | ✅ construido sobre el corpus real: **224.101 nodos, 754.876 aristas** de 1.687 documentos, y `validar_entrega.py` comprueba que todos sus `doc_id` estén indexados (trazabilidad, sec. 7.3). Se entrega el artefacto, pero `resultados.jsonl` se genera **sin** `--use-graph`: medida su fusión RRF, no mejora ninguna de las 10 consultas de anotación independiente (pierde 3-0) |
 | 2 | `resultados.jsonl`, 50 líneas, consultas q001–q050 | `Entrega/resultados.jsonl` | ✅ generado con las **50 consultas oficiales** (`dev/consultas_prueba/consultas_50_oficiales.jsonl`) sobre el índice del corpus real, y verificado reproducible byte a byte desde una carpeta aislada |
 | 3 | Documento técnico en PDF (máx. 8 páginas): chunking, encoder(s), tipo de índice FAISS, grafo | `Entrega/informe_tecnico.pdf` | ✅ |
@@ -567,9 +711,29 @@ Esquema del resultado por consulta (Sección 9 de la especificación: 3
 documentos con `rank`/`doc_id`, 10 fragmentos con `rank`/`chunk_id`/`doc_id`/
 `text` ≤250 palabras) se valida con el comando de la sección 4, paso 3.
 
-**Pendiente real (no técnico, de datos):** reemplazar corpus y consultas
-sintéticos por los oficiales de ADL en cuanto estén disponibles, y
-regenerar `Entrega/` con ellos antes de la entrega final (ver sección 6).
+### Dos requisitos que casi cuestan la exclusión
+
+Ninguno se veía corriendo el camino feliz; los encontró
+`dev/scripts/pruebas_robustez.py`, que ejercita `generador.py` **como lo va a
+correr el evaluador**: por subprocess, desde fuera del repo, con `PYTHONPATH`
+vacío y con entradas que no preparamos nosotros.
+
+- **Python ≥ 3.9.5** (Q&A final de ADL). El script anotaba tipos con la
+  sintaxis `X | None` de PEP 604, que es 3.10+, y sin
+  `from __future__ import annotations` esas anotaciones **se evalúan al
+  importar**: moría con `TypeError` antes de leer una consulta. No se
+  detectaba porque el venv local corre 3.13.
+- **BOM en el archivo de consultas.** Se leía con `utf-8`, y cualquier
+  archivo guardado con Excel, Bloc de notas o PowerShell en Windows lleva
+  BOM. El archivo lo entrega ADL y no controlamos cómo lo guardan. Ahora se
+  lee con `utf-8-sig`.
+
+**La lección, que vale más que los dos arreglos:** probá el artefacto que
+entregás, en las condiciones en que lo van a usar — no las funciones que
+escribiste.
+
+**Pendiente:** publicar los índices como Release (sección 1.1) cuando se
+regeneren.
 
 ## 8. Estructura del proyecto
 
@@ -598,15 +762,21 @@ dev/                        todo el desarrollo (NO se entrega)
     ingestion/              pipeline por documento (extraccion+limpieza+chunking) y doc_id/fuente
     config.py               constantes centrales (encoder por defecto, modelos spaCy, limites, rutas)
   scripts/
-    gen_synthetic_corpus.py   genera dev/corpus_ejemplo/ (dev only, no es parte del pipeline)
+    gen_synthetic_corpus.py   genera un corpus sintetico (dev only, el corpus real ya llego)
     build_corpus_index.py     OFFLINE: corpus -> indice FAISS + metadata + grafo
     inspect_results.py        inspeccion cualitativa manual de resultados.jsonl
     validar_entrega.py        valida Entrega/ contra la especificacion (correr antes de entregar)
+    pruebas_robustez.py       corre generador.py como lo correra ADL: fuera del repo, entradas raras
+    barrido_estructuras.py    compara estructuras de encoders con los indices ya construidos
+    indexar_desde_metadata.py construye el indice de un encoder nuevo, alineado por construccion
+    verificar_alineacion.py   OBLIGATORIO antes de usar un indice nuevo en la cascada
+    victorias_ndcg.py         cuenta victorias por consulta en NDCG@10 entre dos resultados
+    estado_corrida.ps1        informe de una corrida larga: cuanto lleva, cuanto falta, recursos
     compare_encoders.py       diagnostico: cuanto difieren dos encoders entre si
     gen_informe_tecnico.py    genera Entrega/informe_tecnico.pdf
     gui_app.py                lanza la interfaz grafica (Tkinter)
   tests/                    pytest (corren con HashingFakeEncoder, sin red)
-  corpus_ejemplo/           corpus de ejemplo SINTETICO (provisional, ver sec. 6)
+  corpus/                   corpus REAL de ADL: 1.837 archivos, 3 fenomenos
   corpus_real_ejemplo/      muestra del formato del corpus real
   consultas_prueba/         consultas de prueba (provisional, ver sec. 6)
   docs/                     documentacion adicional (arquitectura de encoders, Q&A con ADL)
