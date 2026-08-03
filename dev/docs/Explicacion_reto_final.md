@@ -329,6 +329,25 @@ para no perder consistencia.
 
 ## 5. Estado del proyecto frente a esta charla
 
+> **AVISO (2 ago 2026): las tablas y listas de esta sección se escribieron el
+> 28 de julio, ANTES de que ADL entregara el corpus, y varias afirmaciones ya
+> son falsas.** Se conservan como registro histórico; el estado real está en
+> `las notas del proyecto`. Lo que cambió:
+>
+> | decía acá | realidad hoy |
+> |---|---|
+> | PBF ❌ sin implementar | ✅ `pbf_extractor.py` — y **no son OSM**: son Mapbox Vector Tiles, así que `pyosmium`/`osmnx` (lo que recomendó ADL) **no sirven** |
+> | corpus no entregado | ✅ 1837 archivos en `dev/corpus/`, indexados |
+> | 50 consultas no publicadas | ✅ `consultas_50_oficiales.jsonl`, entrega generada |
+> | informe en 3 de 8 páginas | ✅ 8 de 8 |
+> | multi-encoder "detrás de flag" | ✅ cascada activa por defecto |
+> | `IndexFlatIP` sin validar a escala | ✅ medido: 5,7 ms p50 a 50k vectores |
+>
+> **Requisito de esta charla que nadie había verificado hasta hoy: Python
+> ≥ 3.9.5.** `generador.py` usaba sintaxis de 3.10+ y no habría arrancado en
+> el entorno del evaluador. Corregido con `from __future__ import
+> annotations`; ver el docstring del script.
+
 | Punto de la charla | Estado en el repo |
 |---|---|
 | Índice FAISS + metadata + `generador.py` + informe técnico | ✅ Ya existen en `Entrega/` |

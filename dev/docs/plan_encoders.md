@@ -139,6 +139,30 @@ a costa posible de la otra. **Medir antes de adoptar.**
   El costo escala con parámetros **y** con tokens efectivos. Un modelo de
   ~560 M con ventana de 512 se va a **12 h o más**. Cualquier candidato hay
   que evaluarlo con ese reloj en la mano, no por su puesto en MTEB.
+
+  > **CORRECCIÓN (2 ago 2026): la regla de tres por parámetros es
+  > inservible, y por mucho.** Medido sobre chunks reales del corpus, con
+  > `scratchpad/medir_ritmo.py`:
+  >
+  > | modelo | ms/chunk | índice completo (128.526) |
+  > |---|---|---|
+  > | MiniLM-L12 | 28 | **1,0 h** (confirma los 62 min) |
+  > | gte-multilingual-base | **2.716** | **97 h** |
+  >
+  > gte es **97× más lento por chunk**, no 2,6× como decía la extrapolación
+  > por parámetros de esta misma sección. Tres factores se multiplican:
+  > 2,6× de parámetros, 4× de tokens (MiniLM trunca en 128, gte procesa 512)
+  > y la atención **cuadrática y densa** que hay que activar para que gte
+  > funcione en CPU (`use_memory_efficient_attention=False`, obligatorio: sin
+  > eso el modelo directamente revienta).
+  >
+  > Parte de la ventaja de MiniLM es su truncación a 128 tokens — o sea que
+  > el defecto documentado en la sección 0 **es también lo que lo hace
+  > barato**. No hay almuerzo gratis ahí.
+  >
+  > **Regla nueva: medir ms/chunk sobre 64 chunks reales antes de lanzar
+  > cualquier corrida larga.** Cuesta tres minutos y habría evitado lanzar
+  > una corrida estimada en 23 minutos que en realidad eran 4,7 horas.
 - **Licencia permisiva** (Apache 2.0 o MIT) y **español nativo**, no
   traducción.
 - **La ventana debe cubrir 256 tokens**, o volvemos al problema de la
