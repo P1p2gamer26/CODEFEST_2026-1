@@ -1,10 +1,16 @@
 # CODEFEST AD ASTRA 2026 — Etapa 1: Base de Conocimiento Vectorial
 
 Implementación completa de la Etapa 1 del reto: extracción, limpieza,
-chunking, embeddings, índice FAISS, recuperación (con cascada de dos encoders
-y grafo de conocimiento bonus) y generación de `resultados.jsonl` a partir de
-consultas en lenguaje natural. Especificación completa en
+chunking, embeddings, índice FAISS, recuperación (con **cascada de tres
+encoders** y grafo de conocimiento bonus) y generación de `resultados.jsonl`
+a partir de consultas en lenguaje natural. Especificación completa en
 `Material de apoyo/CODEFEST_2026-1.pdf`.
+
+**Cómo recupera:** MiniLM trae 200 candidatos y los re-puntúan
+`gte-multilingual-base` y `multilingual-e5-base`; los 10 fragmentos se
+ordenan hacia los 3 documentos entregados. F1@3 **0,386** y NDCG@10
+**0,406** sobre las 41 consultas anotadas a mano. El detalle de por qué cada
+encoder está donde está: `dev/docs/arquitectura_encoders.md`.
 
 > Sin modelos generativos en ningún punto del pipeline (prohibido por la
 > sec. 8.3 de la especificación). Todo el sistema es recuperación pura sobre
@@ -67,19 +73,28 @@ historial del repositorio).
 Después de clonar, para dejar `Entrega/base_vectorial/` completa:
 
 ```bash
-gh release download indices-v2 -D /tmp/idx
+gh release download indices-v3 -D /tmp/idx
 
-MINILM=Entrega/base_vectorial/encoder_paraphrase-multilingual-MiniLM-L12-v2
-E5=Entrega/base_vectorial/encoder_multilingual-e5-base
-mkdir -p $MINILM $E5 Entrega/base_vectorial/grafo
+B=Entrega/base_vectorial
+MINILM=$B/encoder_paraphrase-multilingual-MiniLM-L12-v2
+E5=$B/encoder_multilingual-e5-base
+GTE=$B/encoder_gte-multilingual-base
+mkdir -p $MINILM $E5 $GTE $B/grafo
 
 cp /tmp/idx/minilm-index.faiss $MINILM/index.faiss
 cp /tmp/idx/e5-index.faiss     $E5/index.faiss
-gunzip -c /tmp/idx/metadata.jsonl.gz  | tee $MINILM/metadata.jsonl > $E5/metadata.jsonl
-gunzip -c /tmp/idx/grafo.graphml.gz   > Entrega/base_vectorial/grafo/grafo.graphml
+cp /tmp/idx/gte-index.faiss    $GTE/index.faiss
+# Los tres metadata.jsonl son byte-identicos: comparten el chunking unico.
+gunzip -c /tmp/idx/metadata.jsonl.gz > $MINILM/metadata.jsonl
+cp $MINILM/metadata.jsonl $E5/metadata.jsonl
+cp $MINILM/metadata.jsonl $GTE/metadata.jsonl
+gunzip -c /tmp/idx/grafo.graphml.gz  > $B/grafo/grafo.graphml
 
 python dev/scripts/validar_entrega.py   # comprueba que quedo bien
 ```
+
+**Los `.gz` se descomprimen y se borran**: la carpeta de entrega lleva solo
+archivos crudos (sec. 1.4), y `validar_entrega.py` falla si sobra alguno.
 
 Un solo `metadata.jsonl` para los dos encoders porque es **byte-idéntico**:
 el chunking se hace una sola vez y ambos índices comparten el orden de filas.

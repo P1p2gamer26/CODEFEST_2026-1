@@ -42,7 +42,7 @@ FASE ONLINE (cada vez que llega una consulta)
   consulta de texto
     -> src/embedding  (mismo encoder, vectoriza la consulta)
     -> src/retrieval/search.py    (top-k en FAISS con el encoder primario)
-    -> src/retrieval/rerank.py    (el segundo encoder re-puntua los candidatos)
+    -> src/retrieval/rerank.py    (gte y e5 re-puntuan los mismos candidatos)
     -> src/retrieval/aggregate.py (fragmentos -> 3 documentos)
     -> src/graph/graph_retrieval.py (fusiona con vecinos del grafo, opcional)
     -> src/retrieval/fusion.py + truncate.py (arma 10 fragmentos <=250 palabras)
@@ -83,9 +83,9 @@ FASE ONLINE (cada vez que llega una consulta)
   prefijos.
 - **`retrieval/`** — `search.py` busca los k vecinos más cercanos en FAISS;
   `aggregate.py` colapsa fragmentos a nivel de documento (para elegir los 3
-  documentos más relevantes); `rerank.py` implementa la **cascada de dos
-  encoders que se entrega** (el primario genera 200 candidatos, el secundario
-  los re-puntúa con peso 0,25 leyendo su vector del índice con
+  documentos más relevantes); `rerank.py` implementa la **cascada de tres
+  encoders que se entrega** (MiniLM genera 200 candidatos, y gte y e5 los
+  re-puntúan con peso 0,25 cada uno leyendo su vector del índice con
   `reconstruct()`, sin recodificar ningún pasaje); `fusion.py` implementa
   Reciprocal Rank Fusion
   (RRF) para combinar varias listas ordenadas —el grafo tratado como un
