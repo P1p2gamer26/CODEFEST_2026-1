@@ -990,21 +990,57 @@ DEFAULT_RERANK_ENCODERS = [ENCODER_RERANK_NAME, ENCODER_SECONDARY_NAME]
 
 
 def load_consultas(path: Path) -> list[dict]:
+    """Lee el archivo de consultas. Tolerante en la ENTRADA, estricto en la
+    salida: el formato exacto de q001-q050 lo define ADL y no lo controlamos.
+
+    `utf-8-sig` en vez de `utf-8` NO es cosmetico. Cualquier archivo guardado
+    con Excel, Bloc de notas o PowerShell en Windows lleva BOM, y con `utf-8`
+    la primera linea falla con "Unexpected UTF-8 BOM" -- el script muere antes
+    de la primera consulta y la sec. 1.4 excluye lo que no se puede
+    reproducir. `utf-8-sig` se come el BOM si esta y no molesta si no.
+
+    Los errores salen como mensaje, no como traceback: quien reciba solo esta
+    carpeta necesita saber QUE arreglar, y un volcado de pila parece un script
+    roto.
+    """
+    if not path.is_file():
+        raise SystemExit(f"error: no existe el archivo de consultas: {path}")
+
     consultas = []
-    with path.open(encoding="utf-8") as f:
+    with path.open(encoding="utf-8-sig") as f:
         for line_number, line in enumerate(f, start=1):
             line = line.strip()
             if not line:
                 continue
-            obj = json.loads(line)
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise SystemExit(
+                    f"error: {path}:{line_number} no es JSON valido ({exc.msg}).\n"
+                    f"  Se espera JSON Lines: un objeto por linea, sin comas entre lineas.\n"
+                    f"  Linea: {line[:120]}"
+                ) from exc
+            if not isinstance(obj, dict):
+                raise SystemExit(
+                    f"error: {path}:{line_number}: se esperaba un objeto JSON, "
+                    f"no {type(obj).__name__}"
+                )
             query_id = obj.get("query_id") or obj.get("id")
             text = obj.get("text") or obj.get("query") or obj.get("consulta")
             if query_id is None or text is None:
-                raise ValueError(
-                    f"{path}:{line_number}: se esperaban los campos "
-                    f"'query_id'/'id' y 'text'/'query'/'consulta'; linea: {obj}"
+                raise SystemExit(
+                    f"error: {path}:{line_number}: se esperaban los campos "
+                    f"'query_id'/'id' y 'text'/'query'/'consulta'; campos "
+                    f"encontrados: {sorted(obj)}"
                 )
             consultas.append({"query_id": str(query_id), "text": str(text)})
+
+    if not consultas:
+        raise SystemExit(
+            f"error: {path} no tiene ninguna consulta legible.\n"
+            f"  Formato esperado (JSON Lines):\n"
+            f'    {{"query_id": "q001", "text": "..."}}'
+        )
     return consultas
 
 
@@ -1065,6 +1101,24 @@ def build_result_object(
         )
         fragments = enforce_word_limit(
             hits_ordenados, max_fragments=max_fragments, max_words=max_words
+        )
+
+    # La sec. 9.2 exige EXACTAMENTE 3 documentos. Si el pool no contiene 3
+    # documentos distintos no hay de donde sacarlos, pero emitir una linea
+    # corta en silencio es peor: se avisa para que quien corra el script sepa
+    # que esa consulta sale malformada.
+    #
+    # Con las 50 consultas oficiales no ocurre (las 50 dan 3 documentos). Se
+    # reproduce con entradas degeneradas -- una consulta de 3.000 caracteres
+    # repetidos produce un vector que cae en un rincon del espacio donde los
+    # 60 chunks del pool salen todos del mismo documento.
+    if len(doc_hits) < top_docs:
+        logger.warning(
+            "%s: solo %d documento(s) distinto(s) en el pool, se esperaban %d; "
+            "la linea no cumple el esquema de la sec. 9.2",
+            query_id,
+            len(doc_hits),
+            top_docs,
         )
 
     return {
