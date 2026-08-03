@@ -225,6 +225,15 @@ def build_story() -> list:
 
     story.append(h2("3.1 Encoder secundario y fusion de rankings (sec. 4.4)"))
     story.append(p(
+        "<b>Actualizacion:</b> la entrega usa una cascada de <b>tres</b> encoders: "
+        "MiniLM trae los candidatos y los re-puntuan <b>gte-multilingual-base</b> "
+        "(encoder-only, Apache 2.0, 305 M, 768 dim) y E5, con peso 0,25 cada uno. "
+        "Elegida midiendo cinco estructuras: NDCG@10 sube de <b>0,338 a 0,406</b> "
+        "(41 consultas) y de 0,329 a 0,360 (10 independientes). GTE como "
+        "<i>primario</i> se descarto pese a su mejor F1 en las 41 (0,385) porque "
+        "cae a <b>0,200</b> en las independientes: sesgo de pooling."
+    ))
+    story.append(p(
         "El pipeline soporta construir la base con mas de un encoder. El "
         "secundario es <b>intfloat/multilingual-e5-base</b> (encoder tipo BERT, "
         "licencia MIT, 768 dimensiones, multilingue nativo, limite 512 tokens). "
