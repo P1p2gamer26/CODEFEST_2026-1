@@ -169,6 +169,14 @@ def main() -> None:
         "nunca recupero jamas pudieron marcarse como relevantes.",
     )
     parser.add_argument(
+        "--solo-humanas",
+        action="store_true",
+        help="Excluye las consultas etiquetadas por el panel de anotadores-agente. "
+        "Necesario para comparar contra cualquier medicion anterior al 2 ago 2026: "
+        "el panel reproduce al humano con F1 0.23, asi que sus etiquetas miden "
+        "parecido entre modelos, no acierto.",
+    )
+    parser.add_argument(
         "--comparar-con",
         type=Path,
         default=None,
@@ -191,9 +199,29 @@ def main() -> None:
         gt = [f for f in gt if not f.get("pool")]
         print(f"solo anotacion independiente: {len(gt)} de {antes} consultas\n")
 
+    # Una consulta con docs_relevantes vacio fue MIRADA y no tenia nada
+    # relevante en su pool. Promediarla como F1=0 castigaria al recuperador
+    # por no encontrar algo que el anotador tampoco encontro; excluirla es lo
+    # correcto y ademas mantiene el promedio comparable con las corridas
+    # anteriores, que simplemente no tenian esas consultas en el archivo.
+    vacias = [f["query_id"] for f in gt if not f["docs_relevantes"]]
+    if vacias:
+        gt = [f for f in gt if f["docs_relevantes"]]
+        print(f"excluidas {len(vacias)} consultas sin documento relevante en su pool: {' '.join(vacias)}\n")
+
+    if args.solo_humanas:
+        antes = len(gt)
+        gt = [f for f in gt if not f.get("anotador")]
+        print(f"solo etiquetas humanas: {len(gt)} de {antes} consultas\n")
+
     suma = 0.0
     suma_ndcg = 0.0
-    print(f"{'consulta':10s} {'P':>6s} {'R':>6s} {'F1':>6s} {'NDCG':>6s}  aciertos")
+    # Las etiquetas del panel de agentes reproducen al humano con F1 0.23
+    # (dev/eval/panel_agentes/README.md), asi que mezclarlas en el promedio
+    # sin separarlas volveria incomparable todo lo medido antes. Se reportan
+    # los dos numeros siempre.
+    por_origen: dict[str, list[float]] = {}
+    print(f"{'consulta':10s} {'P':>6s} {'R':>6s} {'F1':>6s} {'NDCG':>6s} {'quien':>6s}  aciertos")
     for fila in gt:
         qid = fila["query_id"]
         relevantes = set(fila["docs_relevantes"])
@@ -206,13 +234,25 @@ def main() -> None:
         n = ndcg(res.get("fragments", []), relevantes)
         suma += valor
         suma_ndcg += n
+        origen = "agente" if fila.get("anotador") else "humano"
+        por_origen.setdefault(origen, []).append(valor)
         print(
-            f"{qid:10s} {p:6.2f} {r:6.2f} {valor:6.2f} {n:6.2f}  "
+            f"{qid:10s} {p:6.2f} {r:6.2f} {valor:6.2f} {n:6.2f} {origen:>6s}  "
             f"{sorted(set(docs) & relevantes)}"
         )
 
     print(f"\nF1@{args.k} promedio sobre {len(gt)} consultas: {suma / len(gt):.3f}")
     print(f"NDCG@10 aproximado (relevancia heredada del documento): {suma_ndcg / len(gt):.3f}")
+    if len(por_origen) > 1:
+        print("\ndesglose por procedencia de la etiqueta:")
+        for origen in sorted(por_origen):
+            vs = por_origen[origen]
+            print(f"  {origen:7s} {len(vs):2d} consultas  F1@{args.k} {sum(vs) / len(vs):.3f}")
+        print(
+            "  las de 'agente' NO son comparables con las humanas: el panel reproduce\n"
+            "  al humano con F1 0.23 (dev/eval/panel_agentes/README.md). Para comparar\n"
+            "  configuraciones contra lo medido antes, usar --solo-humanas."
+        )
 
     if args.comparar_con:
         otros = {r["query_id"]: r for r in cargar_jsonl(args.comparar_con)}

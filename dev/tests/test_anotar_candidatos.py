@@ -30,11 +30,37 @@ def test_recolectar_toma_solo_los_marcados(tmp_path, monkeypatch, capsys):
 
     anotar_candidatos.recolectar(None)
 
-    filas = [json.loads(l) for l in gt.read_text(encoding="utf-8").splitlines() if l.strip()]
-    assert len(filas) == 1  # q002 no tiene marcas -> se omite
-    assert filas[0]["query_id"] == "q001"
+    filas = {f["query_id"]: f for f in (json.loads(l) for l in gt.read_text(encoding="utf-8").splitlines() if l.strip())}
     # mayuscula y minuscula valen; los no marcados no entran
-    assert filas[0]["docs_relevantes"] == ["F1-CSET-076", "F1-ILIA-009"]
+    assert filas["q001"]["docs_relevantes"] == ["F1-CSET-076", "F1-ILIA-009"]
+    # q002 se vio y no tenia nada relevante: entra con la lista VACIA, no se
+    # omite. Omitirla la hacia indistinguible de una consulta sin anotar, que
+    # es como las 9 consultas con cero marcas quedaron figurando como
+    # "pendientes de anotar" cuando en realidad ya se habian revisado.
+    assert filas["q002"]["docs_relevantes"] == []
+
+
+def test_recolectar_lee_la_procedencia_del_pool(tmp_path, monkeypatch):
+    """El campo `pool` viaja en el .md, no en un flag de --recolectar.
+
+    eval_mini --sin-pooling separa las consultas anotadas de forma
+    independiente de las sesgadas por el pool de un encoder. Si la procedencia
+    dependiera de que el anotador repita los mismos flags horas despues, se
+    perderia en silencio y la comparacion entre encoders quedaria sesgada sin
+    que nada avisara.
+    """
+    candidatos = _escribir_candidatos(
+        tmp_path,
+        "<!-- pool: minilm+bm25 -->\n\n## q003\n\n- [x] `F1-CSET-001` &mdash; a.pdf\n      x...\n",
+    )
+    gt = tmp_path / "gt.jsonl"
+    monkeypatch.setattr(anotar_candidatos, "CANDIDATOS_PATH", candidatos)
+    monkeypatch.setattr(anotar_candidatos, "GROUND_TRUTH_PATH", gt)
+
+    anotar_candidatos.recolectar(None)
+
+    fila = json.loads(gt.read_text(encoding="utf-8").strip())
+    assert fila["pool"] == "minilm+bm25"
 
 
 def test_recolectar_preserva_lo_ya_anotado_a_mano(tmp_path, monkeypatch):

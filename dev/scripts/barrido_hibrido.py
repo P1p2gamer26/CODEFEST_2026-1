@@ -61,6 +61,13 @@ def main() -> None:
         "pooling salieron de los candidatos que propuso el recuperador denso, asi "
         "que favorecen al denso frente a cualquier alternativa.",
     )
+    parser.add_argument(
+        "--solo-humanas",
+        action="store_true",
+        help="Excluye las 9 consultas etiquetadas por el panel de anotadores-agente "
+        "(F1 0.23 contra el humano). Obligatorio para comparar con lo medido antes "
+        "del 2 ago 2026.",
+    )
     args = parser.parse_args()
 
     gt = {}
@@ -69,6 +76,10 @@ def main() -> None:
             if linea.strip():
                 fila = json.loads(linea)
                 if args.sin_pooling and fila.get("pool"):
+                    continue
+                if args.solo_humanas and fila.get("anotador"):
+                    continue
+                if not fila["docs_relevantes"]:
                     continue
                 gt[fila["query_id"]] = set(fila["docs_relevantes"])
 
@@ -94,7 +105,7 @@ def main() -> None:
     # comparables. rebuild_hits_from_fusion reemplaza ambos por el score RRF,
     # que si lo es. Sin este paso la fusion la decide BM25 por magnitud.
     metadata_by_chunk_id = {m["chunk_id"]: m for m in metadata}
-    variantes = {"denso": {}, "bm25": {}, "hibrido": {}}
+    variantes = {"denso": {}, "bm25": {}, "hibrido": {}, "union": {}}
     for qid, texto in consultas.items():
         densos = search(texto, encoder, index, metadata, k=kp)
         lexicos = bm25.search(texto, k=kp)
@@ -103,9 +114,20 @@ def main() -> None:
             metadata_by_chunk_id,
             limit=kp,
         )
+        # UNION: distinta de `hibrido`. La fusion RRF trunca a kp, asi que lo
+        # lexico DESPLAZA candidatos densos; la union se queda con los kp
+        # densos y le AGREGA los lexicos. Es el rescate tal como funcionaria
+        # en produccion -- no puede empeorar por perdida de recall, solo por
+        # dilucion del pool.
+        union = rebuild_hits_from_fusion(
+            reciprocal_rank_fusion([densos, lexicos], key=lambda h: h.chunk_id),
+            metadata_by_chunk_id,
+            limit=kp * 2,
+        )
         variantes["denso"][qid] = docs_de(densos, kp)
         variantes["bm25"][qid] = docs_de(lexicos, kp)
         variantes["hibrido"][qid] = docs_de(fusion, kp)
+        variantes["union"][qid] = docs_de(union, kp * 2)
 
     puntajes = {
         nombre: {qid: f1(docs, gt[qid])[2] for qid, docs in por_consulta.items()}
@@ -120,7 +142,7 @@ def main() -> None:
         + " ".join(f"{sum(puntajes[n].values()) / len(gt):9.3f}" for n in variantes)
     )
 
-    for retador in ("bm25", "hibrido"):
+    for retador in ("bm25", "hibrido", "union"):
         gana_a = gana_b = empate = 0
         for qid in consultas:
             va, vb = puntajes["denso"][qid], puntajes[retador][qid]
