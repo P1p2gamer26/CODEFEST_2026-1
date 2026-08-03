@@ -74,6 +74,29 @@ def validar_estructura() -> list[Path]:
     if not (base / "grafo" / "grafo.graphml").is_file():
         aviso("sin grafo/grafo.graphml: se pierde el puntaje del bonus (sec. 7)")
 
+    # Archivos que NO deberian estar. La sec. 1.4 dibuja una estructura exacta
+    # y avisa que incumplirla es penalizacion severa o exclusion. Encontrados
+    # a mano el 2 ago 2026: un Entrega/__pycache__/ que dejo una corrida, y
+    # los .gz que se habian generado para publicar el Release y quedaron
+    # dentro de la carpeta de entrega. Ninguno lo detectaba este validador.
+    ESPERADOS_RAIZ = {"resultados.jsonl", "generador.py", "informe_tecnico.pdf", "base_vectorial"}
+    for hijo in ENTREGA.iterdir():
+        if hijo.name not in ESPERADOS_RAIZ:
+            fallo(f"sobra Entrega/{hijo.name}: la sec. 1.4 fija la estructura exacta")
+
+    for d in encoder_dirs:
+        for hijo in d.iterdir():
+            if hijo.name not in ("index.faiss", "metadata.jsonl"):
+                fallo(f"sobra {d.relative_to(ENTREGA)}/{hijo.name}")
+    grafo_dir = base / "grafo"
+    if grafo_dir.is_dir():
+        for hijo in grafo_dir.iterdir():
+            if hijo.name != "grafo.graphml":
+                fallo(f"sobra grafo/{hijo.name} (los .gz van al Release, no a la entrega)")
+    for hijo in base.iterdir():
+        if hijo.name != "grafo" and not hijo.name.startswith("encoder_"):
+            fallo(f"sobra base_vectorial/{hijo.name}")
+
     return encoder_dirs
 
 
