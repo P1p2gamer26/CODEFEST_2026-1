@@ -81,6 +81,15 @@ ENCODER_SECONDARY_HF_ID = "intfloat/multilingual-e5-base"
 E5_QUERY_PREFIX = "query: "
 E5_PASSAGE_PREFIX = "passage: "
 
+# Candidato en evaluacion (2 ago 2026). Encoder-only tipo BERT, NO decoder:
+# cumple la sec. 8.3 igual que los otros dos, a diferencia de la familia
+# Harrier/Qwen3-Embedding, que son decoder-only y quedan descartadas por
+# riesgo de incumplimiento aunque encabecen los rankings de 2026.
+# Apache 2.0, 305 M parametros, ventana 8192 (MiniLM trunca en 128 y el 96%
+# de los chunks son mas largos), 768 dim, sin prefijos de consulta/pasaje.
+ENCODER_GTE_NAME = "gte-multilingual-base"
+ENCODER_GTE_HF_ID = "Alibaba-NLP/gte-multilingual-base"
+
 
 def encoder_dir(encoder_name: str) -> Path:
     return BASE_VECTORIAL_DIR / f"encoder_{encoder_name}"
