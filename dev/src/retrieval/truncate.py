@@ -10,6 +10,7 @@ informe_tecnico.pdf.
 
 from ..chunking.sentence_split import split_sentences
 from ..config import MAX_FRAGMENT_WORDS, N_FRAGMENTS_PER_QUERY
+from .calidad_chunk import fraccion_aparato
 from .search import Hit
 
 
@@ -68,11 +69,20 @@ def _clave_dedup(texto: str) -> str:
 # en un idioma ilegible, y q006 gastaba 5 de sus 10 cupos asi.
 IDIOMAS_LEGIBLES = frozenset({"es", "en", "pt"})
 
+# A partir de que fraccion de aparato bibliografico se considera que el
+# fragmento no le dice nada al evaluador. Barrido sobre los 500 fragmentos de
+# la entrega, modelando que ADL puntua 0 un fragmento asi: 0.50 y 0.60 dan
+# exactamente el mismo resultado (ningun fragmento cae entre ambos), 0.75
+# degrada 3 menos y gana un poco menos, 0.90 se queda corto. Se toma 0.60 por
+# ser el mas conservador de los dos empatados.
+UMBRAL_APARATO = 0.60
+
 
 def ordenar_para_fragmentos(
     hits: list[Hit],
     doc_ids_prioritarios: list[str] | None = None,
     priorizar_idioma: bool = True,
+    degradar_aparato: bool = True,
 ) -> list[Hit]:
     """Reordena los hits ANTES de armar los fragmentos. No filtra nada.
 
@@ -90,23 +100,40 @@ def ordenar_para_fragmentos(
     2. **Idioma legible**, dentro de cada grupo (ver IDIOMAS_LEGIBLES). Es un
        post-filtro por metadata, que la sec. 8.7 autoriza; no interviene
        ningun modelo generativo.
+    3. **No ser aparato bibliografico.** La sec. 10.2.1 dice que la relevancia
+       del fragmento se juzga sobre su campo `text`, asi que un chunk que es
+       una lista de notas al pie puntua 0 aunque venga de un documento
+       relevante. Medido sobre la entrega actual: 11 de 500 fragmentos son
+       bibliografia, dos de ellos en rank 2 y 3.
+
+       EFECTO PEQUENO Y MEDIDO: +0.003 de NDCG@10 modelando que el evaluador
+       les da 0. Se aplica porque no puede perder (solo mueve casos claros al
+       fondo de los mismos 10) y cuesta cero en CPU, no porque mueva la aguja.
+       El proxy binario de eval_mini no puede ver esta mejora -- le da 1 a la
+       bibliografia de un documento relevante --, por eso se justifica contra
+       el reglamento y se mide con `ndcg_penalizado`.
 
     Reordena, NO descarta: si el top-3 no tiene 10 chunks, los de mas abajo
     completan igual, y si todos los chunks de una consulta fueran ilegibles se
     entregan esos. Asi el esquema de la sec. 1.4 (exactamente 10 fragmentos)
     no puede romperse por este cambio.
 
-    `sorted` es estable, asi que el tercer criterio de desempate es el orden
+    `sorted` es estable, asi que el ultimo criterio de desempate es el orden
     de entrada, o sea el score. No hace falta pasarlo explicito.
     """
-    if not doc_ids_prioritarios and not priorizar_idioma:
+    if not doc_ids_prioritarios and not priorizar_idioma and not degradar_aparato:
         return hits
     top = set(doc_ids_prioritarios or ())
 
-    def clave(hit: Hit) -> tuple[int, int]:
+    def clave(hit: Hit) -> tuple[int, int, int]:
         fuera_del_top = 1 if (top and hit.doc_id not in top) else 0
         ilegible = 1 if (priorizar_idioma and hit.idioma not in IDIOMAS_LEGIBLES) else 0
-        return (fuera_del_top, ilegible)
+        aparato = (
+            1
+            if (degradar_aparato and fraccion_aparato(hit.texto) >= UMBRAL_APARATO)
+            else 0
+        )
+        return (fuera_del_top, ilegible, aparato)
 
     return sorted(hits, key=clave)
 

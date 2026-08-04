@@ -56,6 +56,7 @@ import argparse
 import hashlib
 import json
 import logging
+import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Callable, Sequence
@@ -568,6 +569,98 @@ def aggregate_documents(
     ]
 
 
+# --- Prior de recencia (sec. 8.7) -------------------------------------------
+#
+# La sec. 8.7 autoriza post-filtros por metadata incluyendo rango de fechas. No
+# hace falta indexar nada nuevo: `fuente` ya guarda el nombre de archivo
+# original y 509 de los 1826 documentos (28%) llevan el anio ahi.
+#
+# ALCANCE MEDIDO: solo 6 de las 50 consultas tienen marcador temporal, y apenas
+# dos devuelven material claramente mas viejo que el relevante (q029: los
+# relevantes son 2021-2026 y se entregan 2019, 2019, 2025). El techo son 2
+# consultas.
+#
+# APAGADO POR DEFECTO (--prior-recencia 0). No se pudo validar contra el indice
+# cuando se escribio; encenderlo y decidir con eval_mini.py --comparar-con.
+
+_MARCADOR_TEMPORAL = re.compile(
+    r"\brecient|\bactual|\búltim|\bultim|\bhoy\b|\bnuevo|\bemergent|\bcoyuntur"
+    r"|\bvigente|\bahora\b|\bmoderno|\brecent\b|\bcurrent\b|\blatest\b"
+    r"|\bde los ultimos\b|\bde los últimos\b|\b20[12]\d\b",
+    re.IGNORECASE,
+)
+
+_ANIO_MIN, _ANIO_MAX = 1990, 2026
+_ANIO = re.compile(r"(?:19|20)\d{2}")
+
+
+def tiene_marcador_temporal(consulta: str) -> bool:
+    """True si la consulta pide explicitamente material reciente.
+
+    Deliberadamente conservador: activarlo de mas castiga documentos viejos que
+    son la respuesta correcta (un tratado de 1967 sigue siendo el tratado).
+    """
+    return bool(_MARCADOR_TEMPORAL.search(consulta or ""))
+
+
+def anio_de_fuente(fuente: str) -> int | None:
+    """Anio de publicacion inferido del nombre de archivo, o None.
+
+    Se toma el MAYOR de los presentes: los nombres del corpus a veces traen dos
+    ("informe-2019-actualizado-2021") y el mas reciente fecha el documento.
+    """
+    candidatos = [
+        int(a) for a in _ANIO.findall(fuente or "") if _ANIO_MIN <= int(a) <= _ANIO_MAX
+    ]
+    return max(candidatos) if candidatos else None
+
+
+def anios_por_documento(hits: list[Hit]) -> dict[str, int]:
+    """Mapa doc_id -> anio, a partir del `fuente` que ya trae cada Hit."""
+    anios: dict[str, int] = {}
+    for hit in hits:
+        anio = anio_de_fuente(getattr(hit, "fuente", ""))
+        if anio is not None and anio > anios.get(hit.doc_id, 0):
+            anios[hit.doc_id] = anio
+    return anios
+
+
+def aplicar_prior_recencia(
+    doc_hits: list[DocumentHit],
+    anios: dict[str, int],
+    peso: float = 0.05,
+    anio_referencia: int = _ANIO_MAX,
+) -> list[DocumentHit]:
+    """Reordena candidatos a documento favoreciendo los mas recientes.
+
+    Es un REORDENAMIENTO, no un filtro: un documento sin anio conocido (el 72%
+    del corpus) conserva su puntaje tal cual. Con 28% de cobertura, filtrar por
+    fecha tiraria material bueno por no tener el anio en el nombre.
+
+    El bonus es `peso * (1 - (referencia - anio) / 36)`, acotado a [0, peso], de
+    modo que un documento fechado nunca queda por debajo de uno sin fecha con el
+    mismo puntaje. `peso` es chico a proposito: la senal semantica manda y esto
+    solo desempata.
+    """
+    if not doc_hits or peso <= 0:
+        return list(doc_hits)
+
+    rango = max(1, anio_referencia - _ANIO_MIN)
+
+    def puntaje(dh: DocumentHit) -> float:
+        anio = anios.get(dh.doc_id)
+        if anio is None:
+            return dh.score
+        cercania = max(0.0, min(1.0, 1.0 - (anio_referencia - anio) / rango))
+        return dh.score + peso * cercania
+
+    ordenados = sorted(doc_hits, key=puntaje, reverse=True)
+    return [
+        DocumentHit(rank=i, doc_id=dh.doc_id, score=dh.score)
+        for i, dh in enumerate(ordenados, start=1)
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Segmentacion de oraciones -- de src/chunking/sentence_split.py
 # ---------------------------------------------------------------------------
@@ -684,17 +777,143 @@ def _clave_dedup(texto: str) -> str:
     return " ".join(texto.split()).lower()
 
 
+# --- Deteccion de aparato bibliografico -------------------------------------
+#
+# La sec. 10.2.1 dice que la relevancia de cada fragmento se juzga sobre su
+# **contenido textual** (campo `text`) y que el `chunk_id` NO es la clave de
+# emparejamiento. O sea: el evaluador lee el texto que le entregamos, y un
+# chunk que es una lista de notas al pie de un documento relevante vale 0
+# aunque el documento sea el correcto. Medido sobre los 500 fragmentos de la
+# entrega: 11 lo son, dos de ellos en rank 2 y 3.
+#
+# Se puntua POR SEGMENTO y no por chunk porque el caso frecuente no es el chunk
+# 100% bibliografia sino el mixto: prosa util que termina en una cola de notas,
+# porque el chunker corta por ventana de tokens y no respeta la frontera
+# cuerpo/notas. Un umbral sobre el chunk entero los clasifica mal en los dos
+# sentidos.
+#
+# Sin modelo: son patrones tipograficos. No hay embedding, ni clasificador
+# entrenado, ni nada que se parezca a un decoder (sec. 8.3).
+
+# Una URL dentro de un segmento corto es la senal mas fiable: la prosa de estos
+# informes cita por numero, no pegando el enlace en medio de la frase.
+_URL = re.compile(r"https?://|www\.\w|doi\.org/|\bdoi:", re.IGNORECASE)
+
+# Marcador de nota al pie al principio del segmento: "[1047] ", "140 ", "12 ".
+_MARCADOR = re.compile(r"^\s*(?:\[\d{1,4}\]|\d{1,4})[.,]?\s+[\"“«A-ZÀ-ÞА-Я]")
+
+# Titulo entrecomillado seguido de coma: la forma canonica de cita en el corpus.
+_TITULO_CITADO = re.compile(r"[\"“«][^\"”»]{12,}[\"”»]\s*[,.]")
+
+# Mes en ingles/espanol/portugues seguido de anio: "September 27, 2018".
+_MES_ANIO = re.compile(
+    r"\b(?:January|February|March|April|May|June|July|August|September|October"
+    r"|November|December|enero|febrero|marzo|abril|mayo|junio|julio|agosto"
+    r"|septiembre|setiembre|octubre|noviembre|diciembre|janeiro|fevereiro"
+    r"|mar[cç]o|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)"
+    r"\s+\d{1,2},?\s+\d{4}\b",
+    re.IGNORECASE,
+)
+
+# Vocabulario de aparato: paginacion, edicion, acceso. Multilingue.
+_VOCAB_APARATO = re.compile(
+    r"\bet al\.|\baccessed\b|\bconsultado\b|\bacesso em\b|\bvol\.|\bno\.\s*\d"
+    r"|\bpp?\.\s*\d|\bibid\b|\bop\. cit\.|\bed[s]?\.\,|\bretrieved\b"
+    r"|\bdisponible en\b|\bavailable at\b",
+    re.IGNORECASE,
+)
+
+# Corta en fin de oracion y tambien justo antes de un marcador de nota al pie.
+# La segunda alternativa es la que mas trabajo hace: la extraccion pega la
+# llamada a la nota al final de la palabra sin espacio ("...miniaturization of
+# electronics.222 Despite..."), asi que despues del punto no hay blanco y la
+# regla de fin-de-oracion no dispara. Sin ella el segmento de prosa se traga el
+# bloque de notas que le sigue y hereda su URL: F2-SWF-078-c0242 daba 0.92 de
+# aparato en vez de 0.44.
+_CORTE = re.compile(
+    r"(?<=[.!?;])\s+(?=[\"“«A-ZÀ-ÞА-Я\[\d])"
+    r"|(?<=[.!?][0-9])\s+|(?<=[.!?][0-9]{2})\s+|(?<=[.!?][0-9]{3})\s+"
+    r"|\s+(?=\[\d{1,4}\]\s*[\"“«A-ZÀ-Þ])"
+    r"|\s+(?=\d{1,4}\s+[\"“«])"
+    r"|\s+(?=\d{1,4}\s+[A-ZÀ-Þ][a-zà-þ]+[,\s])"
+)
+
+# Un segmento mas corto que esto se arrastra al anterior: evita que un "Jr." o
+# un "S." partan una cita en trozos que por si solos no disparan nada.
+_MIN_PALABRAS_SEGMENTO = 4
+
+
+def segmentar(texto: str) -> list[str]:
+    """Parte el texto en unidades juzgables (oracion o entrada bibliografica).
+
+    Los chunks vienen sin saltos de linea -- la limpieza los colapsa -- asi que
+    la unica frontera disponible es tipografica.
+    """
+    crudos = [s.strip() for s in _CORTE.split(texto) if s and s.strip()]
+    if not crudos:
+        return []
+    fusionados: list[str] = [crudos[0]]
+    for seg in crudos[1:]:
+        if len(seg.split()) < _MIN_PALABRAS_SEGMENTO:
+            fusionados[-1] = f"{fusionados[-1]} {seg}"
+        else:
+            fusionados.append(seg)
+    return fusionados
+
+
+def _es_referencia(segmento: str) -> bool:
+    """True si el segmento parece aparato bibliografico y no prosa.
+
+    La URL sola alcanza. El resto de senales necesitan dos coincidencias, para
+    no marcar prosa que simplemente cita una fecha o usa comillas. El
+    contraejemplo que guio el diseno es F1-CSET-098-c0070: 22% de tokens con
+    digito y contenido legitimo ("Conduct cybersecurity threat assessments to
+    identify potential threat actors [359, 360]"). Por eso el peso fuerte esta
+    en la URL y el marcador de nota, no en los digitos sueltos.
+    """
+    if _URL.search(segmento):
+        return True
+    senales = sum(
+        bool(patron.search(segmento))
+        for patron in (_MARCADOR, _TITULO_CITADO, _MES_ANIO, _VOCAB_APARATO)
+    )
+    return senales >= 2
+
+
+def fraccion_aparato(texto: str) -> float:
+    """Fraccion de palabras del fragmento que caen en segmentos bibliograficos.
+
+    Devuelve un valor en [0, 1]. 0 = prosa limpia, 1 = solo bibliografia. Un
+    texto vacio devuelve 1.0: no aporta nada al evaluador.
+    """
+    segmentos = segmentar(texto)
+    total = sum(len(s.split()) for s in segmentos)
+    if total == 0:
+        return 1.0
+    aparato = sum(len(s.split()) for s in segmentos if _es_referencia(s))
+    return aparato / total
+
+
 # Idiomas que el evaluador de ADL puede leer. El corpus trae informes de
 # SIPRI y SWF traducidos al coreano, ruso, arabe, chino y aleman, y sus chunks
 # compiten por los mismos 10 cupos: 45 de los 500 fragmentos entregados salian
 # en un idioma ilegible, y q006 gastaba 5 de sus 10 cupos asi.
 IDIOMAS_LEGIBLES = frozenset({"es", "en", "pt"})
 
+# A partir de que fraccion de aparato se considera que el fragmento no le dice
+# nada al evaluador. Barrido sobre los 500 fragmentos de la entrega, modelando
+# que ADL puntua 0 un fragmento asi: 0.50 y 0.60 dan exactamente el mismo
+# resultado (ningun fragmento cae entre ambos), 0.75 degrada 3 menos y gana
+# menos, 0.90 se queda corto. Se toma 0.60 por ser el mas conservador de los
+# dos empatados.
+UMBRAL_APARATO = 0.60
+
 
 def ordenar_para_fragmentos(
     hits: list[Hit],
     doc_ids_prioritarios: list[str] | None = None,
     priorizar_idioma: bool = True,
+    degradar_aparato: bool = True,
 ) -> list[Hit]:
     """Reordena los hits ANTES de armar los fragmentos. No filtra nada.
 
@@ -712,23 +931,38 @@ def ordenar_para_fragmentos(
     2. **Idioma legible**, dentro de cada grupo (ver IDIOMAS_LEGIBLES). Es un
        post-filtro por metadata, que la sec. 8.7 autoriza; no interviene
        ningun modelo generativo.
+    3. **No ser aparato bibliografico** (ver `fraccion_aparato`). La sec. 10.2.1
+       juzga el fragmento por su campo `text`, asi que una lista de notas al pie
+       puntua 0 aunque venga de un documento relevante.
+
+       EFECTO PEQUENO Y MEDIDO: +0.003 de NDCG@10 modelando que el evaluador les
+       da 0. Se aplica porque no puede perder (solo mueve casos claros al fondo
+       de los mismos 10) y cuesta cero en CPU, no porque mueva la aguja. El
+       proxy binario de eval_mini no puede ver esta mejora -- le da 1 a la
+       bibliografia de un documento relevante --, por eso se justifica contra el
+       reglamento y se mide con `ndcg_penalizado`.
 
     Reordena, NO descarta: si el top-3 no tiene 10 chunks, los de mas abajo
     completan igual, y si todos los chunks de una consulta fueran ilegibles se
     entregan esos. Asi el esquema de la sec. 1.4 (exactamente 10 fragmentos)
     no puede romperse por este cambio.
 
-    `sorted` es estable, asi que el tercer criterio de desempate es el orden
+    `sorted` es estable, asi que el ultimo criterio de desempate es el orden
     de entrada, o sea el score. No hace falta pasarlo explicito.
     """
-    if not doc_ids_prioritarios and not priorizar_idioma:
+    if not doc_ids_prioritarios and not priorizar_idioma and not degradar_aparato:
         return hits
     top = set(doc_ids_prioritarios or ())
 
-    def clave(hit: Hit) -> tuple[int, int]:
+    def clave(hit: Hit) -> tuple[int, int, int]:
         fuera_del_top = 1 if (top and hit.doc_id not in top) else 0
         ilegible = 1 if (priorizar_idioma and hit.idioma not in IDIOMAS_LEGIBLES) else 0
-        return (fuera_del_top, ilegible)
+        aparato = (
+            1
+            if (degradar_aparato and fraccion_aparato(hit.texto) >= UMBRAL_APARATO)
+            else 0
+        )
+        return (fuera_del_top, ilegible, aparato)
 
     return sorted(hits, key=clave)
 
@@ -1058,8 +1292,16 @@ def build_result_object(
     alinear_fragmentos: bool = True,
     priorizar_idioma: bool = True,
     cupo_alineado: int = N_FRAGMENTS_PER_QUERY,
+    # Peso del prior de recencia (sec. 8.7). 0 = apagado, que es el default:
+    # no se pudo validar contra el indice cuando se escribio. Ver
+    # `aplicar_prior_recencia`.
+    prior_recencia: float = 0.0,
 ) -> dict:
     doc_hits = aggregate_documents(hits, top_n=top_docs, strategy=agg_strategy)
+    if prior_recencia > 0:
+        doc_hits = aplicar_prior_recencia(
+            doc_hits, anios_por_documento(hits), peso=prior_recencia
+        )
     # Los fragmentos se ordenan DESPUES de saber cuales son los documentos
     # entregados, para que las dos mitades de la respuesta no se contradigan.
     # Solo reordena el pool: `doc_hits` ya esta calculado y no se toca, asi
@@ -1232,6 +1474,16 @@ def main() -> None:
         action="store_true",
         help="No manda al final los fragmentos en idiomas que el evaluador no lee "
         "(ver IDIOMAS_LEGIBLES).",
+    )
+    parser.add_argument(
+        "--prior-recencia",
+        type=float,
+        default=0.0,
+        metavar="PESO",
+        help="Peso del prior de recencia (sec. 8.7), aplicado SOLO a las consultas "
+        "con marcador temporal. 0 = apagado, que es el default: afecta a 6 de las 50 "
+        "consultas y no se pudo validar contra el indice. Probar con 0.05 y decidir "
+        "con eval_mini.py --comparar-con.",
     )
     parser.add_argument(
         "--use-graph",
@@ -1420,6 +1672,14 @@ def main() -> None:
                 alinear_fragmentos=not args.sin_alinear_fragmentos,
                 priorizar_idioma=not args.sin_priorizar_idioma,
                 cupo_alineado=args.cupo_alineado,
+                # Solo donde la consulta pide material reciente. Aplicarlo a
+                # todas castigaria documentos viejos que son la respuesta
+                # correcta -- un tratado de 1967 sigue siendo el tratado.
+                prior_recencia=(
+                    args.prior_recencia
+                    if tiene_marcador_temporal(consulta["text"])
+                    else 0.0
+                ),
             )
         )
 
