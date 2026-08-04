@@ -41,7 +41,8 @@ FASE OFFLINE (una vez por corpus, "compilar")
 FASE ONLINE (cada vez que llega una consulta)
   consulta de texto
     -> src/embedding  (mismo encoder, vectoriza la consulta)
-    -> src/retrieval/search.py    (top-k en FAISS)
+    -> src/retrieval/search.py    (top-k en FAISS con el encoder primario)
+    -> src/retrieval/rerank.py    (gte y e5 re-puntuan los mismos candidatos)
     -> src/retrieval/aggregate.py (fragmentos -> 3 documentos)
     -> src/graph/graph_retrieval.py (fusiona con vecinos del grafo, opcional)
     -> src/retrieval/fusion.py + truncate.py (arma 10 fragmentos <=250 palabras)
@@ -82,9 +83,15 @@ FASE ONLINE (cada vez que llega una consulta)
   prefijos.
 - **`retrieval/`** — `search.py` busca los k vecinos más cercanos en FAISS;
   `aggregate.py` colapsa fragmentos a nivel de documento (para elegir los 3
-  documentos más relevantes); `fusion.py` implementa Reciprocal Rank Fusion
-  (RRF) para combinar varias listas ordenadas —uno o varios encoders, más el
-  grafo tratado como un "índice" adicional (sec. 8.5)—; `truncate.py` recorta
+  documentos más relevantes); `rerank.py` implementa la **cascada de tres
+  encoders que se entrega** (MiniLM genera 200 candidatos, y gte y e5 los
+  re-puntúan con peso 0,25 cada uno leyendo su vector del índice con
+  `reconstruct()`, sin recodificar ningún pasaje); `fusion.py` implementa
+  Reciprocal Rank Fusion
+  (RRF) para combinar varias listas ordenadas —el grafo tratado como un
+  "índice" adicional (sec. 8.5); la fusión RRF *simétrica de dos encoders*
+  existe pero **se midió y se descartó** en favor de la cascada—;
+  `truncate.py` recorta
   cada fragmento a <=250 palabras según pide el esquema de entrega.
 
   RRF se eligió sobre CombSUM/CombMNZ porque solo mira posiciones, no

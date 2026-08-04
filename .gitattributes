@@ -1,0 +1,9 @@
+# Los binarios de la base vectorial NO viajan con el repo: son ~930 MB y la
+# cuota gratuita de Git LFS es de 1 GB que ademas no se puede liberar (los
+# objetos quedan atados al historial aunque se borre el archivo). Se publican
+# como assets de un GitHub Release, que admite 2 GiB por archivo sin cuota de
+# almacenamiento ni de ancho de banda. Como bajarlos: README seccion 1.1.
+#
+# Esto es valido porque la entrega a ADL es una CARPETA, no un repositorio
+# (sec. 1.4: "empaquetados en un unico directorio"). El repo es solo nuestra
+# infraestructura de trabajo.

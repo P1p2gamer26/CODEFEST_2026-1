@@ -38,7 +38,19 @@ Formato esperado del archivo de consultas (PROVISIONAL -- ver
 `load_consultas()`; el formato oficial de q001-q050 aun no lo entrega ADL):
 JSON Lines, un objeto por linea, con los campos `query_id` (o `id`) y `text`
 (o `query`/`consulta`).
+
+COMPATIBILIDAD: ADL evalua con **Python >= 3.9.5** (Q&A final), y este archivo
+anota tipos con la sintaxis `X | None` de PEP 604, que es 3.10+. En 3.9 las
+anotaciones se EVALUAN al definir la funcion, asi que sin la linea de abajo el
+script muere con `TypeError: unsupported operand type(s) for |` en el import
+-- antes de leer una sola consulta, y la sec. 1.4 excluye lo que no es
+reproducible. `from __future__ import annotations` las difiere a texto (PEP
+563) y funciona desde 3.7. Auditado con AST: las 11 uniones del archivo son
+todas de anotacion, ninguna se evalua en ejecucion, y no hay otra sintaxis
+posterior a 3.9. **No quitar esta linea ni mover imports por encima de ella.**
 """
+
+from __future__ import annotations
 
 import argparse
 import hashlib
@@ -71,6 +83,12 @@ ENCODER_PRIMARY_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 ENCODER_PRIMARY_HF_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 ENCODER_SECONDARY_NAME = "multilingual-e5-base"
 ENCODER_SECONDARY_HF_ID = "intfloat/multilingual-e5-base"
+# Re-puntuador de la cascada. Encoder-only tipo BERT, NO decoder: cumple la
+# sec. 8.3 igual que los otros dos. Apache 2.0, 305 M parametros, 768 dim.
+# Reemplazo a multilingual-e5-base tras medirlo: NDCG@10 +0.055 sobre las 41
+# consultas anotadas y +0.033 sobre las 10 independientes.
+ENCODER_RERANK_NAME = "gte-multilingual-base"
+ENCODER_RERANK_HF_ID = "Alibaba-NLP/gte-multilingual-base"
 
 # La familia E5 exige estos prefijos: sin ellos la calidad cae de forma
 # silenciosa (el modelo fue entrenado siempre con ellos). Consulta y pasaje
@@ -133,6 +151,53 @@ class Encoder(ABC):
         return self.encode_one(text)
 
 
+def _reparar_buffers_no_persistentes(model) -> None:
+    """Re-inicializa los buffers posicionales de los modelos con codigo remoto.
+
+    Fallo real y medido, no codigo defensivo. `gte-multilingual-base` declara
+    sus buffers de RoPE con `persistent=False`, asi que NO viajan en el
+    checkpoint; y transformers los carga con `low_cpu_mem_usage`, que crea los
+    tensores en el dispositivo `meta` y los materializa desde el checkpoint.
+    Lo que no esta en el checkpoint queda apuntando a **memoria sin
+    inicializar**:
+
+        position_ids[0] = 2635600166912   (deberia ser 0)
+        inv_freq        = [6.4e+20, 1.6e-42, 0.0]
+
+    El primero revienta con `IndexError` al codificar. **El segundo NO
+    revienta**: el modelo codifica sin informacion posicional y devuelve
+    vectores normalizados, de la forma correcta y semanticamente basura. Sin
+    esta funcion, este script produciria resultados degradados en silencio.
+
+    Solo reescribe si el contenido difiere del esperado, asi que en una
+    version de transformers que ya no tenga el problema es un no-op.
+    """
+    import torch
+
+    for modulo in model.modules():
+        pid = getattr(modulo, "position_ids", None)
+        if pid is not None and pid.dim() == 1 and pid.numel():
+            esperado = torch.arange(pid.numel(), device=pid.device, dtype=pid.dtype)
+            if not torch.equal(pid, esperado):
+                modulo.register_buffer("position_ids", esperado, persistent=False)
+
+        inv = getattr(modulo, "inv_freq", None)
+        if inv is None or inv.dim() != 1 or not inv.numel():
+            continue
+        dim = getattr(modulo, "dim", inv.numel() * 2)
+        base = getattr(modulo, "base", 10000.0)
+        esperado = 1.0 / (base ** (torch.arange(0, dim, 2, device=inv.device).float() / dim))
+        if torch.allclose(inv.float(), esperado.to(inv.dtype).float(), rtol=1e-3, atol=1e-6):
+            continue
+        modulo.register_buffer("inv_freq", esperado.to(inv.dtype), persistent=False)
+        if hasattr(modulo, "_set_cos_sin_cache"):  # las cachas derivan de inv_freq
+            modulo._set_cos_sin_cache(
+                seq_len=getattr(modulo, "max_position_embeddings", 512),
+                device=inv.device,
+                dtype=torch.get_default_dtype(),
+            )
+
+
 class SentenceTransformerEncoder(Encoder):
     """Encoder real de produccion. Requiere descargar los pesos desde
     huggingface.co la primera vez; despues funciona desde la cache local."""
@@ -143,11 +208,30 @@ class SentenceTransformerEncoder(Encoder):
         name: str = ENCODER_PRIMARY_NAME,
         query_prefix: str = "",
         passage_prefix: str = "",
+        trust_remote_code: bool = False,
+        config_kwargs: dict | None = None,
+        max_seq_length: int | None = None,
     ):
         from sentence_transformers import SentenceTransformer
 
         self.name = name
-        self._model = SentenceTransformer(hf_id)
+        # trust_remote_code lo exige gte-multilingual-base, que define su
+        # arquitectura (NewModel) en el repo del modelo. Sigue siendo
+        # encoder-only tipo BERT: el flag es de empaquetado, no reabre la
+        # prohibicion de modelos generativos de la sec. 8.3.
+        extra = {"trust_remote_code": trust_remote_code} if trust_remote_code else {}
+        if config_kwargs:
+            # GTE trae activadas `unpad_inputs` y `use_memory_efficient_attention`,
+            # que asumen GPU con atencion eficiente. En CPU su ruta de
+            # desempaquetado arma position_ids con basura y revienta.
+            extra["config_kwargs"] = config_kwargs
+        self._model = SentenceTransformer(hf_id, **extra)
+        if trust_remote_code:
+            _reparar_buffers_no_persistentes(self._model)
+        if max_seq_length:
+            # GTE declara 8192. El p99 de los chunks es 466 tokens, y con la
+            # atencion densa el coste es cuadratico en el padding.
+            self._model.max_seq_length = max_seq_length
         self.dim = self._model.get_sentence_embedding_dimension()
         self.query_prefix = query_prefix
         self.passage_prefix = passage_prefix
@@ -209,6 +293,16 @@ KNOWN_ENCODERS: dict[str, dict] = {
         "query_prefix": E5_QUERY_PREFIX,
         "passage_prefix": E5_PASSAGE_PREFIX,
     },
+    # GTE NO lleva prefijos: ponerselos degrada la calidad en silencio, igual
+    # que omitirlos degrada a E5. Son dos errores simetricos.
+    ENCODER_RERANK_NAME: {
+        "hf_id": ENCODER_RERANK_HF_ID,
+        "query_prefix": "",
+        "passage_prefix": "",
+        "trust_remote_code": True,
+        "config_kwargs": {"unpad_inputs": False, "use_memory_efficient_attention": False},
+        "max_seq_length": 512,
+    },
 }
 
 
@@ -228,6 +322,9 @@ def get_encoder(name: str = ENCODER_PRIMARY_NAME, use_fake: bool = False) -> Enc
         name=name,
         query_prefix=spec["query_prefix"],
         passage_prefix=spec["passage_prefix"],
+        trust_remote_code=spec.get("trust_remote_code", False),
+        config_kwargs=spec.get("config_kwargs"),
+        max_seq_length=spec.get("max_seq_length"),
     )
 
 
@@ -277,6 +374,10 @@ class Hit:
     formato: str
     fenomeno: int | None
     idioma: str | None
+    # Fila del chunk en el indice FAISS. La usa la cascada de dos encoders para
+    # leer el vector del MISMO chunk en el otro indice sin recodificar el
+    # pasaje. Los hits que no vienen de FAISS (grafo, fusion) no tienen fila.
+    fila: int = -1
 
 
 def search(
@@ -330,6 +431,7 @@ def search(
                 formato=meta["formato"],
                 fenomeno=meta.get("fenomeno"),
                 idioma=meta.get("idioma"),
+                fila=int(idx),
             )
         )
         if len(hits) >= k:
@@ -338,6 +440,79 @@ def search(
     for i, hit in enumerate(hits, start=1):
         hit.rank = i
     return hits
+
+
+# ---------------------------------------------------------------------------
+# Cascada de dos encoders -- de src/retrieval/rerank.py
+# ---------------------------------------------------------------------------
+
+
+def rerank_por_segundo_encoder(
+    hits: list[Hit],
+    index_secundario: faiss.Index,
+    vector_consulta: np.ndarray,
+    peso: float,
+) -> list[Hit]:
+    """Reordena `hits` mezclando su score con el del encoder secundario:
+
+        score = cos_primario + peso * cos_secundario
+
+    El primario genera los candidatos (conserva su recall) y el secundario solo
+    los re-puntua. Se hace asi, y no fusionando las dos listas con RRF, porque
+    RRF premia el acuerdo entre listas y los dos encoders casi no coinciden
+    (11,3% de los documentos del top-3): fusionarlos intercala la lista buena
+    con la mala. Ver la seccion 3.1 del informe tecnico.
+
+    Los dos terminos son cosenos, misma escala, asi que sumarlos es legitimo.
+    El vector del chunk se lee del otro indice por su FILA, sin recodificar el
+    pasaje: los dos indices se construyen sobre los mismos records en el mismo
+    orden. Los hits sin fila (grafo, fusion) conservan su score primario.
+    """
+    if not hits:
+        return []
+
+    consulta = np.asarray(vector_consulta, dtype="float32").reshape(-1)
+
+    puntuados: list[tuple[float, Hit]] = []
+    for hit in hits:
+        score = hit.score
+        if peso and hit.fila >= 0:
+            vector = index_secundario.reconstruct(hit.fila)
+            score += peso * float(np.dot(consulta, vector))
+        puntuados.append((score, hit))
+
+    # sorted es estable: ante empates se conserva el orden del primario.
+    puntuados.sort(key=lambda par: par[0], reverse=True)
+
+    return [
+        Hit(
+            rank=rank,
+            score=score,
+            chunk_id=hit.chunk_id,
+            doc_id=hit.doc_id,
+            fuente=hit.fuente,
+            texto=hit.texto,
+            formato=hit.formato,
+            fenomeno=hit.fenomeno,
+            idioma=hit.idioma,
+            fila=hit.fila,
+        )
+        for rank, (score, hit) in enumerate(puntuados, start=1)
+    ]
+
+
+def verificar_alineacion(metadata_a: list[dict], metadata_b: list[dict]) -> None:
+    """Aborta si los dos indices no describen los mismos chunks en el mismo
+    orden: la cascada re-puntuaria el chunk equivocado en silencio."""
+    if len(metadata_a) != len(metadata_b):
+        raise ValueError(
+            f"los indices tienen distinto numero de chunks: {len(metadata_a)} vs {len(metadata_b)}"
+        )
+    for i, (a, b) in enumerate(zip(metadata_a, metadata_b)):
+        if a["chunk_id"] != b["chunk_id"]:
+            raise ValueError(
+                f"los indices divergen en la fila {i}: {a['chunk_id']!r} vs {b['chunk_id']!r}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -353,10 +528,17 @@ class DocumentHit:
 
 
 def aggregate_documents(
-    hits: list[Hit], top_n: int = N_DOCUMENTS_PER_QUERY, strategy: str = "max"
+    hits: list[Hit], top_n: int = N_DOCUMENTS_PER_QUERY, strategy: str = "sum"
 ) -> list[DocumentHit]:
     """Agrega las puntuaciones de los fragmentos por documento (sec. 8.6).
-    Solo aritmetica sobre los scores de FAISS."""
+    Solo aritmetica sobre los scores de FAISS.
+
+    Por defecto "sum", no "max": un documento relevante suele tener VARIOS
+    pasajes relevantes, mientras que "max" premia al que tiene un unico chunk
+    afortunado. La eleccion se apoya en ese argumento, no en la medicion: sobre
+    el ground truth propio sum promedia mas que max, pero contando por consulta
+    el reparto es 16-8 con 17 empates (prueba de signos p=0.15), o sea que la
+    ventaja no alcanza significancia con esa muestra."""
     scores_by_doc: dict[str, list[float]] = defaultdict(list)
     for hit in hits:
         scores_by_doc[hit.doc_id].append(hit.score)
@@ -367,6 +549,15 @@ def aggregate_documents(
         agg_scores = {doc_id: sum(scores) for doc_id, scores in scores_by_doc.items()}
     elif strategy == "mean":
         agg_scores = {doc_id: sum(scores) / len(scores) for doc_id, scores in scores_by_doc.items()}
+    elif strategy.startswith("top") and strategy[3:].isdigit():
+        # Suma solo los M mejores fragmentos del documento: "sum" no tiene tope
+        # y un documento con muchos fragmentos mediocres desplaza a uno con un
+        # solo fragmento excelente. Medido y no adoptado (ver informe, sec. 7);
+        # se mantiene aqui para que esta copia no diverja de src/retrieval/.
+        m = int(strategy[3:])
+        agg_scores = {
+            doc_id: sum(sorted(scores, reverse=True)[:m]) for doc_id, scores in scores_by_doc.items()
+        }
     else:
         raise ValueError(f"estrategia de agregacion desconocida: {strategy}")
 
@@ -449,6 +640,23 @@ def _split_oversized(hit: Hit, max_words: int) -> list[dict]:
     if not sentences:
         sentences = [hit.texto]
 
+    # Una sola "oracion" puede superar por si sola el limite: pasa con texto
+    # de OCR o de PDF mal extraido, donde no queda puntuacion aprovechable y
+    # el splitter devuelve un bloque entero. Ahi el corte por palabras es la
+    # unica salida; sin esto el fragmento sale con mas de 250 palabras y la
+    # sec. 9.3.2 lo penaliza o lo descarta.
+    trozos: list[str] = []
+    for sent in sentences:
+        palabras = sent.split()
+        if len(palabras) > max_words:
+            trozos += [
+                " ".join(palabras[i : i + max_words])
+                for i in range(0, len(palabras), max_words)
+            ]
+        else:
+            trozos.append(sent)
+    sentences = trozos
+
     sub_fragments: list[dict] = []
     current: list[str] = []
     current_words = 0
@@ -469,12 +677,77 @@ def _split_oversized(hit: Hit, max_words: int) -> list[dict]:
     return sub_fragments
 
 
+def _clave_dedup(texto: str) -> str:
+    """Normaliza solo espacios y mayusculas: la comparacion sigue siendo de
+    texto exacto. Deliberadamente NO se hace similitud difusa, que podria
+    descartar fragmentos distintos que comparten un parrafo."""
+    return " ".join(texto.split()).lower()
+
+
+# Idiomas que el evaluador de ADL puede leer. El corpus trae informes de
+# SIPRI y SWF traducidos al coreano, ruso, arabe, chino y aleman, y sus chunks
+# compiten por los mismos 10 cupos: 45 de los 500 fragmentos entregados salian
+# en un idioma ilegible, y q006 gastaba 5 de sus 10 cupos asi.
+IDIOMAS_LEGIBLES = frozenset({"es", "en", "pt"})
+
+
+def ordenar_para_fragmentos(
+    hits: list[Hit],
+    doc_ids_prioritarios: list[str] | None = None,
+    priorizar_idioma: bool = True,
+) -> list[Hit]:
+    """Reordena los hits ANTES de armar los fragmentos. No filtra nada.
+
+    Dos criterios, en este orden:
+
+    1. **Alineacion con los documentos entregados.** `build_result_object`
+       calculaba las dos mitades de la respuesta por caminos independientes:
+       los documentos por agregacion del pool, los fragmentos por score crudo
+       de chunk. Resultado medido sobre las 41 consultas anotadas a mano:
+       **solo el 31% de los fragmentos venia de los 3 documentos que la propia
+       respuesta declaraba mas relevantes**, con una mediana de 9 documentos
+       distintos entre los 10 fragmentos. La respuesta se contradecia a si
+       misma, y un fragmento de un documento que uno mismo dejo fuera del
+       top-3 es casi seguro un cero en NDCG@10.
+    2. **Idioma legible**, dentro de cada grupo (ver IDIOMAS_LEGIBLES). Es un
+       post-filtro por metadata, que la sec. 8.7 autoriza; no interviene
+       ningun modelo generativo.
+
+    Reordena, NO descarta: si el top-3 no tiene 10 chunks, los de mas abajo
+    completan igual, y si todos los chunks de una consulta fueran ilegibles se
+    entregan esos. Asi el esquema de la sec. 1.4 (exactamente 10 fragmentos)
+    no puede romperse por este cambio.
+
+    `sorted` es estable, asi que el tercer criterio de desempate es el orden
+    de entrada, o sea el score. No hace falta pasarlo explicito.
+    """
+    if not doc_ids_prioritarios and not priorizar_idioma:
+        return hits
+    top = set(doc_ids_prioritarios or ())
+
+    def clave(hit: Hit) -> tuple[int, int]:
+        fuera_del_top = 1 if (top and hit.doc_id not in top) else 0
+        ilegible = 1 if (priorizar_idioma and hit.idioma not in IDIOMAS_LEGIBLES) else 0
+        return (fuera_del_top, ilegible)
+
+    return sorted(hits, key=clave)
+
+
 def enforce_word_limit(
     hits: list[Hit],
     max_fragments: int = N_FRAGMENTS_PER_QUERY,
     max_words: int = MAX_FRAGMENT_WORDS,
 ) -> list[dict]:
+    """Los 10 fragmentos de la consulta, sin repetir texto.
+
+    El corpus de ADL trae documentos duplicados (el mismo informe de CSIS bajo
+    dos doc_id, series que reeditan capitulos enteros), asi que dos chunks
+    distintos pueden tener texto identico. Entregar el mismo texto dos veces
+    no puede sumar en NDCG@10 -- el ranking ideal no lo contiene -- y ademas
+    desplaza fuera del top-10 a un candidato que si podria sumar. Medido sobre
+    las 50 consultas oficiales: 17 de 500 fragmentos eran duplicados exactos."""
     fragments: list[dict] = []
+    vistos: set[str] = set()
 
     for hit in hits:
         if len(fragments) >= max_fragments:
@@ -482,12 +755,18 @@ def enforce_word_limit(
 
         n_words = len(hit.texto.split())
         if n_words <= max_words:
-            fragments.append({"chunk_id": hit.chunk_id, "doc_id": hit.doc_id, "text": hit.texto})
+            candidatos = [{"chunk_id": hit.chunk_id, "doc_id": hit.doc_id, "text": hit.texto}]
         else:
-            for sub in _split_oversized(hit, max_words):
-                if len(fragments) >= max_fragments:
-                    break
-                fragments.append(sub)
+            candidatos = _split_oversized(hit, max_words)
+
+        for sub in candidatos:
+            if len(fragments) >= max_fragments:
+                break
+            clave = _clave_dedup(sub["text"])
+            if clave in vistos:
+                continue
+            vistos.add(clave)
+            fragments.append(sub)
 
     fragments = fragments[:max_fragments]
     for i, frag in enumerate(fragments, start=1):
@@ -663,27 +942,105 @@ def graph_search(query: str, graph, lang: str | None = None, k: int = 10) -> lis
 # CLI
 # ---------------------------------------------------------------------------
 
-DEFAULT_K_POOL = 30  # candidatos usados para agregar a nivel documento (sec. 8.6);
+DEFAULT_K_POOL = 60  # candidatos usados para agregar a nivel documento (sec. 8.6);
 # mayor que los 10 fragmentos que se devuelven, para que la relevancia de un
 # documento no dependa solo de si su mejor chunk entro en el top-10 mostrado.
 
+# Cascada de dos encoders. Ambos valores estan MEDIDOS, no supuestos, con
+# scripts/barrido_dos_encoders.py sobre el mini ground truth (ver informe,
+# sec. 7). Peso 0,25: los pesos mayores rinden mas en promedio sobre las 41
+# consultas anotadas pero empiezan a perder en las 10 de anotacion
+# independiente, que es la senal clasica de sobreajuste al pooling. Con 0,25 la
+# cascada no empeora NINGUNA consulta de ninguna de las dos muestras.
+DEFAULT_RERANK_WEIGHT = 0.25
+DEFAULT_RERANK_DEPTH = 200
+
+# La cascada viene ACTIVADA por defecto porque es la configuracion con la que
+# se genero resultados.jsonl: correr este script sin flags tiene que reproducir
+# la entrega (punto 4 de la sec. 1.4), no una variante parecida. Se apaga con
+# --rerank-encoder none, y se apaga sola con --use-fake-encoder.
+#
+# Cascada de TRES encoders: MiniLM trae los candidatos y los re-puntuan gte y
+# e5, cada uno sumando su similitud con el mismo peso. Estructura elegida
+# midiendo cinco alternativas con los tres indices ya construidos
+# (scripts/barrido_estructuras.py), coste cero de codificacion:
+#
+#   | estructura      | F1(41) | NDCG(41) | F1(10) | NDCG(10) |
+#   |-----------------|--------|----------|--------|----------|
+#   | MiniLM->e5      | 0.344  |  0.338   | 0.333  |  0.329   |
+#   | MiniLM->gte     | 0.378  |  0.393   | 0.333  |  0.362   |
+#   | gte solo        | 0.311  |  0.309   | 0.333  |  0.287   |
+#   | gte->MiniLM     | 0.385  |  0.393   | 0.200  |  0.202   |
+#   | gte->e5         | 0.339  |  0.341   | 0.400  |  0.322   |
+#   | MiniLM->gte+e5  | 0.386  |  0.406   | 0.333  |  0.360   |
+#
+# **gte como primario se derrumba en la muestra independiente** (F1 0.200)
+# mientras luce bien en las 41: es sesgo de pooling, porque esas 41 se
+# anotaron sobre candidatos que propuso MiniLM. Descartada por eso, no por el
+# promedio.
+#
+# La triple es la unica ADOPTABLE en las cuatro mediciones por el criterio del
+# proyecto (IC al 90% que excluya una perdida de 0,02). Ojo: la ganancia sobre
+# MiniLM->gte es CHICA -- +0,014 de NDCG en las 41 y -0,002 en las 10.
+#
+# **El orden de los re-puntuadores no altera el resultado**: cada uno suma su
+# similitud sobre la misma lista y la suma es conmutativa. El recorte a
+# rerank_depth se hace una sola vez, antes del primero.
+DEFAULT_RERANK_ENCODERS = [ENCODER_RERANK_NAME, ENCODER_SECONDARY_NAME]
+
 
 def load_consultas(path: Path) -> list[dict]:
+    """Lee el archivo de consultas. Tolerante en la ENTRADA, estricto en la
+    salida: el formato exacto de q001-q050 lo define ADL y no lo controlamos.
+
+    `utf-8-sig` en vez de `utf-8` NO es cosmetico. Cualquier archivo guardado
+    con Excel, Bloc de notas o PowerShell en Windows lleva BOM, y con `utf-8`
+    la primera linea falla con "Unexpected UTF-8 BOM" -- el script muere antes
+    de la primera consulta y la sec. 1.4 excluye lo que no se puede
+    reproducir. `utf-8-sig` se come el BOM si esta y no molesta si no.
+
+    Los errores salen como mensaje, no como traceback: quien reciba solo esta
+    carpeta necesita saber QUE arreglar, y un volcado de pila parece un script
+    roto.
+    """
+    if not path.is_file():
+        raise SystemExit(f"error: no existe el archivo de consultas: {path}")
+
     consultas = []
-    with path.open(encoding="utf-8") as f:
+    with path.open(encoding="utf-8-sig") as f:
         for line_number, line in enumerate(f, start=1):
             line = line.strip()
             if not line:
                 continue
-            obj = json.loads(line)
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise SystemExit(
+                    f"error: {path}:{line_number} no es JSON valido ({exc.msg}).\n"
+                    f"  Se espera JSON Lines: un objeto por linea, sin comas entre lineas.\n"
+                    f"  Linea: {line[:120]}"
+                ) from exc
+            if not isinstance(obj, dict):
+                raise SystemExit(
+                    f"error: {path}:{line_number}: se esperaba un objeto JSON, "
+                    f"no {type(obj).__name__}"
+                )
             query_id = obj.get("query_id") or obj.get("id")
             text = obj.get("text") or obj.get("query") or obj.get("consulta")
             if query_id is None or text is None:
-                raise ValueError(
-                    f"{path}:{line_number}: se esperaban los campos "
-                    f"'query_id'/'id' y 'text'/'query'/'consulta'; linea: {obj}"
+                raise SystemExit(
+                    f"error: {path}:{line_number}: se esperaban los campos "
+                    f"'query_id'/'id' y 'text'/'query'/'consulta'; campos "
+                    f"encontrados: {sorted(obj)}"
                 )
             consultas.append({"query_id": str(query_id), "text": str(text)})
+
+    if not consultas:
+        raise SystemExit(
+            f"error: {path} no tiene ninguna consulta legible.\n"
+            f"  Formato esperado (JSON Lines):\n"
+            f'    {{"query_id": "q001", "text": "..."}}'
+        )
     return consultas
 
 
@@ -693,10 +1050,76 @@ def build_result_object(
     top_docs: int = N_DOCUMENTS_PER_QUERY,
     max_fragments: int = N_FRAGMENTS_PER_QUERY,
     max_words: int = MAX_FRAGMENT_WORDS,
-    agg_strategy: str = "max",
+    # "sum" es la configuracion entregada, asi que tiene que ser el default:
+    # src/gui/runner.py llama a esta funcion sin pasar la estrategia y con el
+    # default anterior ("max") la GUI mostraba documentos distintos a los de
+    # resultados.jsonl. El CLI siempre la pasa explicita, por eso no se veia.
+    agg_strategy: str = "sum",
+    alinear_fragmentos: bool = True,
+    priorizar_idioma: bool = True,
+    cupo_alineado: int = N_FRAGMENTS_PER_QUERY,
 ) -> dict:
     doc_hits = aggregate_documents(hits, top_n=top_docs, strategy=agg_strategy)
-    fragments = enforce_word_limit(hits, max_fragments=max_fragments, max_words=max_words)
+    # Los fragmentos se ordenan DESPUES de saber cuales son los documentos
+    # entregados, para que las dos mitades de la respuesta no se contradigan.
+    # Solo reordena el pool: `doc_hits` ya esta calculado y no se toca, asi
+    # que este cambio NO puede mover el F1@3.
+    top_ids = [d.doc_id for d in doc_hits] if alinear_fragmentos else None
+    if top_ids and 0 < cupo_alineado < max_fragments:
+        # Cobertura: reservar `cupo_alineado` cupos para el top-3 y dejar el
+        # resto abierto al pool. Alinear los 10 cupos amplifica el ranking de
+        # documentos en las dos direcciones -- medido sobre las 41 anotadas,
+        # gana en 25 consultas (todas con F1@3 > 0) y pierde en 12, de las
+        # cuales 11 tienen F1@3 = 0. O sea que cuando el top-3 se equivoca,
+        # concentrar ahi los 10 fragmentos entrega diez ceros seguros. Los
+        # cupos libres son el seguro contra eso.
+        del_top = enforce_word_limit(
+            ordenar_para_fragmentos(
+                [h for h in hits if h.doc_id in set(top_ids)],
+                doc_ids_prioritarios=top_ids,
+                priorizar_idioma=priorizar_idioma,
+            ),
+            max_fragments=cupo_alineado,
+            max_words=max_words,
+        )
+        vistos = {f["chunk_id"] for f in del_top}
+        del_resto = enforce_word_limit(
+            ordenar_para_fragmentos(
+                [h for h in hits if h.chunk_id not in vistos],
+                doc_ids_prioritarios=None,
+                priorizar_idioma=priorizar_idioma,
+            ),
+            max_fragments=max_fragments - len(del_top),
+            max_words=max_words,
+        )
+        fragments = del_top + del_resto
+        for i, frag in enumerate(fragments, start=1):
+            frag["rank"] = i
+    else:
+        hits_ordenados = ordenar_para_fragmentos(
+            hits, doc_ids_prioritarios=top_ids, priorizar_idioma=priorizar_idioma
+        )
+        fragments = enforce_word_limit(
+            hits_ordenados, max_fragments=max_fragments, max_words=max_words
+        )
+
+    # La sec. 9.2 exige EXACTAMENTE 3 documentos. Si el pool no contiene 3
+    # documentos distintos no hay de donde sacarlos, pero emitir una linea
+    # corta en silencio es peor: se avisa para que quien corra el script sepa
+    # que esa consulta sale malformada.
+    #
+    # Con las 50 consultas oficiales no ocurre (las 50 dan 3 documentos). Se
+    # reproduce con entradas degeneradas -- una consulta de 3.000 caracteres
+    # repetidos produce un vector que cae en un rincon del espacio donde los
+    # 60 chunks del pool salen todos del mismo documento.
+    if len(doc_hits) < top_docs:
+        logger.warning(
+            "%s: solo %d documento(s) distinto(s) en el pool, se esperaban %d; "
+            "la linea no cumple el esquema de la sec. 9.2",
+            query_id,
+            len(doc_hits),
+            top_docs,
+        )
 
     return {
         "query_id": query_id,
@@ -741,13 +1164,75 @@ def main() -> None:
         help="Carpeta base que contiene las subcarpetas encoder_<nombre>/. Por defecto "
         "base_vectorial/ junto a este script.",
     )
+    parser.add_argument(
+        "--rerank-encoder",
+        nargs="+",
+        default=list(DEFAULT_RERANK_ENCODERS),
+        help="Encoders en CASCADA (sec. 4.4): el primario genera los candidatos y "
+        "estos los re-puntuan, cada uno sumando su similitud con el mismo peso. "
+        "Acepta varios. Es la forma de usar mas de un encoder que si mejora; "
+        "fusionar sus listas con RRF (--encoder-name A B) medido empeora. "
+        "Activado por defecto (es la configuracion de la entrega); 'none' lo apaga.",
+    )
+    parser.add_argument(
+        "--rerank-index-dir",
+        type=Path,
+        default=None,
+        help="Indice del encoder en cascada. Por defecto base_vectorial/encoder_<nombre>. "
+        "Existe aparte de --index-base para poder probar la cascada con el indice "
+        "primario oficial y el secundario en otra carpeta.",
+    )
+    parser.add_argument(
+        "--rerank-weight",
+        type=float,
+        default=DEFAULT_RERANK_WEIGHT,
+        help="Autoridad del segundo encoder en la mezcla de scores.",
+    )
+    parser.add_argument(
+        "--rerank-depth",
+        type=int,
+        default=DEFAULT_RERANK_DEPTH,
+        help="Candidatos que genera el primario antes del re-puntaje. Con la misma "
+        "profundidad que --k-pool la cascada apenas cambia nada: el margen esta en "
+        "dejar que el secundario ascienda documentos que el primario dejo mas abajo.",
+    )
     parser.add_argument("--out", type=Path, default=RESULTADOS_PATH)
     parser.add_argument("--k-pool", type=int, default=DEFAULT_K_POOL)
     parser.add_argument("--fenomeno", type=int, default=None, choices=[1, 2, 3])
     parser.add_argument("--formato", default=None)
     parser.add_argument("--idioma", default=None)
     parser.add_argument("--min-score", type=float, default=None)
-    parser.add_argument("--agg-strategy", default="max", choices=["max", "sum", "mean"])
+    # topM (top2, top3, top5...) suma solo los M mejores fragmentos de cada
+    # documento. La rama ya existia en aggregate_documents; el CLI no la
+    # exponia. El default no cambia: sigue siendo "sum".
+    parser.add_argument(
+        "--agg-strategy",
+        default="sum",
+        choices=["max", "sum", "mean", "top2", "top3", "top5", "top10"],
+    )
+    # Las dos banderas siguientes APAGAN comportamientos activos por defecto.
+    # Existen para poder medir cada uno por separado contra la entrega
+    # anterior; correr el script sin flags reproduce lo que se entrega.
+    parser.add_argument(
+        "--sin-alinear-fragmentos",
+        action="store_true",
+        help="Vuelve al comportamiento viejo: los 10 fragmentos se toman por score "
+        "crudo de chunk, sin preferir los de los 3 documentos entregados.",
+    )
+    parser.add_argument(
+        "--cupo-alineado",
+        type=int,
+        default=N_FRAGMENTS_PER_QUERY,
+        help="Cuantos de los 10 cupos de fragmento se reservan para los 3 documentos "
+        "entregados. El resto queda abierto al pool, como seguro para las consultas "
+        "cuyo top-3 esta equivocado.",
+    )
+    parser.add_argument(
+        "--sin-priorizar-idioma",
+        action="store_true",
+        help="No manda al final los fragmentos en idiomas que el evaluador no lee "
+        "(ver IDIOMAS_LEGIBLES).",
+    )
     parser.add_argument(
         "--use-graph",
         action="store_true",
@@ -783,6 +1268,63 @@ def main() -> None:
     metadata = encoders_indices[0][2]
     metadata_by_chunk_id = {m["chunk_id"]: m for m in metadata}
 
+    # Encoders en cascada (opcional): no aportan candidatos propios, solo
+    # re-puntuan los del primario, asi que se cargan aparte de
+    # encoders_indices. Pueden ser VARIOS: cada uno suma su similitud con el
+    # mismo peso sobre la misma lista de candidatos. Medido, no supuesto --
+    # ver DEFAULT_RERANK_ENCODERS.
+    reranks: list = []
+    nombres_rerank = list(args.rerank_encoder or [])
+    if len(nombres_rerank) == 1 and nombres_rerank[0].lower() == "none":
+        nombres_rerank = []
+    if args.use_fake_encoder:
+        # El encoder falso no tiene un indice secundario real que re-puntuar.
+        nombres_rerank = []
+    for nombre_r in nombres_rerank:
+        try:
+            enc_r = get_encoder(name=nombre_r, use_fake=args.use_fake_encoder)
+        except Exception as exc:  # noqa: BLE001
+            # gte-multilingual-base necesita `trust_remote_code` y descargar
+            # ~1,2 GB de huggingface.co. Si el entorno lo impide, un traceback
+            # crudo no le dice al evaluador que hacer. Esto si:
+            raise SystemExit(
+                f"\nNo se pudo cargar el re-puntuador {nombre_r!r}: "
+                f"{type(exc).__name__}: {exc}\n\n"
+                "gte-multilingual-base define su arquitectura en el repositorio del "
+                "modelo, asi que necesita `trust_remote_code=True` y acceso a "
+                "huggingface.co.\n"
+                "Si este entorno no lo permite, la entrega incluye el indice del "
+                "re-puntuador anterior; volve a correr con:\n\n"
+                f"    python generador.py --consultas <archivo> "
+                f"--rerank-encoder {ENCODER_SECONDARY_NAME}\n\n"
+                "Los resultados NO seran identicos a resultados.jsonl (esa variante "
+                "da NDCG@10 0.338 en vez de 0.406), pero el sistema funciona.\n"
+                "Para desactivar la cascada del todo: --rerank-encoder none\n"
+            ) from exc
+        if args.rerank_index_dir is not None:
+            rerank_dir = args.rerank_index_dir
+        elif args.index_base is not None:
+            rerank_dir = args.index_base / f"encoder_{enc_r.name}"
+        else:
+            rerank_dir = None
+        idx_r, meta_r = load_index(enc_r.name, index_dir=rerank_dir)
+        # La cascada lee el vector del chunk por su FILA en el otro indice: si
+        # los indices no describen los mismos chunks en el mismo orden,
+        # re-puntuaria el chunk equivocado y los resultados serian plausibles
+        # pero mal fundados. Mejor abortar.
+        try:
+            verificar_alineacion(metadata, meta_r)
+        except ValueError as exc:
+            parser.exit(2, f"error: {exc}\n")
+        reranks.append((enc_r, idx_r))
+        logger.info(
+            "cascada: %s re-puntua los %d candidatos de %s (peso %.2f)",
+            enc_r.name,
+            args.rerank_depth,
+            encoders_indices[0][0].name,
+            args.rerank_weight,
+        )
+
     # Los indices deben compartir exactamente los mismos chunks: RRF fusiona
     # por chunk_id y la metadata se lee de uno solo. Si no coinciden, alguien
     # construyo los indices por separado (fragmentando dos veces) y los
@@ -800,6 +1342,10 @@ def main() -> None:
     if args.use_graph:
         import networkx as nx
 
+        # --use-graph es opcional (bonus): si el grafo no esta, conviene decirlo
+        # en una linea y no con un traceback de networkx.
+        if not args.graph_path.is_file():
+            parser.exit(2, f"error: no existe el grafo {args.graph_path}; correr sin --use-graph\n")
         graph = nx.read_graphml(args.graph_path)
         logger.info(
             "grafo cargado: %d nodos, %d aristas",
@@ -811,6 +1357,10 @@ def main() -> None:
     logger.info("consultas cargadas: %d", len(consultas))
 
     resultados = []
+    # Con cascada el primario genera mas candidatos de los que se agregan, para
+    # que el secundario pueda ascender documentos que quedaron por debajo del
+    # pool. Sin cascada, k_pool de siempre.
+    k_busqueda = max(args.k_pool, args.rerank_depth) if reranks else args.k_pool
     for consulta in consultas:
         # Una lista de candidatos por encoder (sec. 8.4).
         ranked_lists = [
@@ -819,7 +1369,7 @@ def main() -> None:
                 enc,
                 idx,
                 meta,
-                k=args.k_pool,
+                k=k_busqueda,
                 fenomeno=args.fenomeno,
                 formato=args.formato,
                 idioma=args.idioma,
@@ -827,6 +1377,19 @@ def main() -> None:
             )
             for enc, idx, meta in encoders_indices
         ]
+
+        # Cada re-puntuador suma su similitud sobre la MISMA lista, uno tras
+        # otro. El recorte a rerank_depth se hace una sola vez, antes del
+        # primero: repetirlo por cada re-puntuador iria descartando candidatos
+        # entre pasadas y el resultado dependeria del orden de los encoders.
+        if reranks:
+            ranked_lists = [lista[: args.rerank_depth] for lista in ranked_lists]
+            for enc_r, idx_r in reranks:
+                qv = enc_r.encode_query(consulta["text"])
+                ranked_lists = [
+                    rerank_por_segundo_encoder(lista, idx_r, qv, peso=args.rerank_weight)
+                    for lista in ranked_lists
+                ]
 
         # El grafo entra como una lista mas a fusionar (sec. 8.5: "RRF
         # tratando el grafo como un indice adicional").
@@ -843,8 +1406,21 @@ def main() -> None:
             fused = reciprocal_rank_fusion(ranked_lists, key=lambda h: h.chunk_id)
             hits = rebuild_hits_from_fusion(fused, metadata_by_chunk_id, limit=args.k_pool)
 
+        # La agregacion a documento usa siempre k_pool candidatos. Con cascada
+        # la lista viene con rerank_depth (200): recortarla aqui es lo que hace
+        # que la profundidad extra sirva para REORDENAR y no para ampliar el
+        # pool, que es un cambio distinto y no medido.
+        hits = hits[: args.k_pool]
+
         resultados.append(
-            build_result_object(consulta["query_id"], hits, agg_strategy=args.agg_strategy)
+            build_result_object(
+                consulta["query_id"],
+                hits,
+                agg_strategy=args.agg_strategy,
+                alinear_fragmentos=not args.sin_alinear_fragmentos,
+                priorizar_idioma=not args.sin_priorizar_idioma,
+                cupo_alineado=args.cupo_alineado,
+            )
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

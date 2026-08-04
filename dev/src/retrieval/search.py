@@ -22,6 +22,12 @@ class Hit:
     formato: str
     fenomeno: int | None
     idioma: str | None
+    # Fila del chunk en el indice FAISS. La necesita src/retrieval/rerank.py
+    # para leer el vector del MISMO chunk en el indice de otro encoder sin
+    # volver a codificar el pasaje (los indices comparten el orden de filas,
+    # ver el invariante del chunking unico en las notas del proyecto). Opcional: los hits
+    # que no vienen de FAISS (grafo, fusion) no tienen fila.
+    fila: int = -1
 
 
 def search(
@@ -75,6 +81,7 @@ def search(
                 formato=meta["formato"],
                 fenomeno=meta.get("fenomeno"),
                 idioma=meta.get("idioma"),
+                fila=int(idx),
             )
         )
         if len(hits) >= k:

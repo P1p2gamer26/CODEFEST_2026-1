@@ -67,7 +67,13 @@ def dibujar(g: nx.Graph, top: int, out: Path | None) -> None:
     etiquetas = {n: g.nodes[n].get("label", n) for n in g.nodes}
 
     plt.figure(figsize=(14, 10))
-    pos = nx.spring_layout(g, k=0.6, seed=42)  # seed fija -> dibujo reproducible
+    # Si el GraphML ya trae posiciones (export_graphml las escribe), se usan
+    # esas; si no, spring layout determinista de respaldo.
+    pos = None
+    if g.nodes and all("x" in g.nodes[n] and "y" in g.nodes[n] for n in g.nodes):
+        pos = {n: (float(g.nodes[n]["x"]), float(g.nodes[n]["y"])) for n in g.nodes}
+    if pos is None:
+        pos = nx.spring_layout(g, k=0.6, seed=42)  # seed fija -> dibujo reproducible
     nx.draw_networkx_edges(g, pos, alpha=0.3, edge_color="#888888")
     nx.draw_networkx_nodes(
         g,
