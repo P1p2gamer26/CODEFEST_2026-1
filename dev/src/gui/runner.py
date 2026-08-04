@@ -17,7 +17,9 @@ from typing import Callable, Optional
 
 from ..config import (
     CORPUS_DIR,
+    ENCODER_GTE_NAME,
     ENCODER_PRIMARY_NAME,
+    ENCODER_SECONDARY_NAME,
     GRAFO_PATH,
     RESULTADOS_PATH,
 )
@@ -25,7 +27,14 @@ from ..embedding.build_index import build_and_persist, load_index
 from ..embedding.encoders import get_encoder
 from ..ingestion.pipeline import iter_corpus_files, process_document, write_chunks_jsonl
 from ..retrieval.fusion import rebuild_hits_from_fusion, reciprocal_rank_fusion
+from ..retrieval.rerank import rerank_por_segundo_encoder, verificar_alineacion
 from ..retrieval.search import search
+
+# Mismos valores que Entrega/generador.py (DEFAULT_RERANK_*): la GUI tiene que
+# responder lo mismo que se entrega, no una configuracion parecida.
+RERANK_NAMES = (ENCODER_GTE_NAME, ENCODER_SECONDARY_NAME)
+RERANK_WEIGHT = 0.25
+RERANK_DEPTH = 200
 
 ENTREGA_DIR = Path(__file__).resolve().parents[3] / "Entrega"  # <raiz>/Entrega
 
@@ -134,6 +143,7 @@ def _answer_one(
     graph,
     generador,
     k_pool: int,
+    reranks: list = (),
 ) -> tuple[dict, int, float]:
     """Responde una sola consulta -- misma logica que usa `run_online()` en
     lote y `Session.ask()` en modo interactivo (chat), para no duplicar la
@@ -147,8 +157,24 @@ def _answer_one(
     unica senal disponible para distinguir una respuesta bien fundamentada de
     una donde no habia nada realmente parecido."""
     tokens = encoder.count_tokens(query_text)
-    hits = search(query_text, encoder, index, metadata, k=k_pool)
+    # Mismo glosario bilingue que usa la entrega, y aplicado en el MISMO punto:
+    # antes de vectorizar y para todos los encoders. Se hace aca, en el unico
+    # sitio por el que pasan tanto el lote como el chat, para que la GUI no
+    # pueda desfasarse de resultados.jsonl. Una consulta sin terminos del
+    # glosario se devuelve identica.
+    query_text = generador.expandir_consulta(query_text)
+    k_busqueda = max(k_pool, RERANK_DEPTH) if reranks else k_pool
+    hits = search(query_text, encoder, index, metadata, k=k_busqueda)
     best_score = hits[0].score if hits else 0.0
+
+    # Cascada triple, igual que generador.py: el recorte a RERANK_DEPTH se hace
+    # UNA sola vez, antes del primer re-puntuador (ver punto 0 de CLAUDE.md).
+    if reranks:
+        hits = hits[:RERANK_DEPTH]
+        for enc_r, idx_r in reranks:
+            hits = rerank_por_segundo_encoder(
+                hits, idx_r, enc_r.encode_query(query_text), peso=RERANK_WEIGHT
+            )
 
     if graph is not None:
         from ..graph.graph_retrieval import graph_search
@@ -162,6 +188,9 @@ def _answer_one(
             # veces garantiza que tarde o temprano diverjan.
             hits = rebuild_hits_from_fusion(fused, metadata_by_chunk_id, limit=k_pool)
 
+    # La agregacion a documento usa siempre k_pool: la profundidad extra de la
+    # cascada sirve para REORDENAR, no para ampliar el pool.
+    hits = hits[:k_pool]
     return generador.build_result_object(query_id, hits), tokens, best_score
 
 
@@ -173,7 +202,7 @@ def run_online(
     index_dir: Path | None = None,
     graph_path: Path = GRAFO_PATH,
     out_path: Path = RESULTADOS_PATH,
-    k_pool: int = 60,
+    k_pool: int = 100,
     progress_cb: ProgressCallback = None,
 ) -> RunSummary:
     generador = _load_generador_module()
@@ -242,12 +271,33 @@ class Session:
         use_graph: bool = False,
         index_dir: Path | None = None,
         graph_path: Path = GRAFO_PATH,
-        k_pool: int = 60,
+        k_pool: int = 100,
+        rerank_names: tuple = RERANK_NAMES,
+        progress_cb: ProgressCallback = None,
     ):
         self.generador = _load_generador_module()
         self.encoder = get_encoder(name=encoder_name, use_fake=use_fake_encoder)
         self.index, self.metadata = load_index(self.encoder.name, index_dir=index_dir)
         self.metadata_by_chunk_id = {m["chunk_id"]: m for m in self.metadata}
+
+        # Los dos re-puntuadores de la cascada entregada. Si alguno no se puede
+        # cargar (gte baja ~1,2 GB de HuggingFace) se sigue sin el y se avisa:
+        # aca degradar es aceptable porque la GUI es exploratoria, a diferencia
+        # de generador.py, que aborta para no entregar algo distinto a lo medido.
+        self.reranks: list = []
+        for nombre_r in rerank_names if not use_fake_encoder else ():
+            try:
+                enc_r = get_encoder(name=nombre_r)
+                idx_r, meta_r = load_index(enc_r.name)
+                verificar_alineacion(self.metadata, meta_r)
+            except Exception as exc:  # noqa: BLE001
+                if progress_cb:
+                    progress_cb({"tipo": "encoder_omitido", "nombre": nombre_r, "mensaje": str(exc)})
+                continue
+            self.reranks.append((enc_r, idx_r))
+            if progress_cb:
+                progress_cb({"tipo": "encoder_listo", "nombre": enc_r.name})
+
         self.graph = None
         if use_graph:
             import networkx as nx
@@ -266,6 +316,7 @@ class Session:
         resultado, tokens, best_score = _answer_one(
             query_text, query_id, self.encoder, self.index, self.metadata,
             self.metadata_by_chunk_id, self.graph, self.generador, self.k_pool,
+            self.reranks,
         )
         self.tokens_totales += tokens
         return resultado, tokens, time.time() - start, best_score

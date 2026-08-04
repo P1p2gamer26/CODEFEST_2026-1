@@ -57,6 +57,7 @@ import hashlib
 import json
 import logging
 import re
+import unicodedata
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Callable, Sequence
@@ -567,6 +568,92 @@ def aggregate_documents(
         DocumentHit(rank=i, doc_id=doc_id, score=score)
         for i, (doc_id, score) in enumerate(ranked, start=1)
     ]
+
+
+# --- Glosario bilingue -- de src/retrieval/glosario.py ----------------------
+#
+# Las 50 consultas oficiales estan todas en espanol y el corpus de los
+# fenomenos 1 y 2 (IA y espacio: CSET, SWF, SIPRI, CSIS) esta casi todo en
+# ingles. Los encoders son multilingues y en general tienden el puente, pero
+# hay terminos de dominio donde el puente NO EXISTE EN EL DATO. Contado sobre
+# los 128.526 chunks del indice entregado:
+#
+#     termino de la consulta (ES)        chunks    forma inglesa       chunks
+#     NBQR                                    0    CBRN                   66
+#     reabastecimiento en orbita              0    on-orbit servicing    113
+#     enjambres de drones                     0    drone swarm            81
+#     desechos orbitales                      1    space debris        1.947
+#     semiconductores                         4    semiconductor         408
+#     antisatelite                            8    ASAT                3.813
+#     energia dirigida                       16    directed energy       522
+#     guerra electronica                     29    electronic warfare  1.226
+#     contraespacial                         60    counterspace        3.595
+#
+# Todos entre 30 y 2.000 veces mas raros que su forma inglesa, y varios
+# ausentes. Es una propiedad del corpus, medible sin ground truth.
+#
+# LEGALIDAD (sec. 8.3): es una tabla escrita a mano. No hay modelo generativo,
+# ni traductor automatico, ni clasificador -- la consulta se concatena con las
+# formas inglesas de los terminos que contiene y se vectoriza una sola vez. La
+# sec. 8.7 permite ademas trabajar la consulta antes de la busqueda.
+#
+# EFECTO NULO DONDE NO APLICA: una consulta sin ningun termino de la tabla se
+# devuelve identica, asi que su vector -- y su respuesta -- no cambian.
+
+GLOSARIO: tuple[tuple[str, str], ...] = (
+    ("nbqr", "CBRN chemical biological radiological nuclear"),
+    ("contraespacial", "counterspace"),
+    ("contraespaciales", "counterspace"),
+    ("guerra electronica", "electronic warfare jamming"),
+    # "maniobras de proximidad" -> "rendezvous and proximity operations" NO
+    # esta, y la ausencia es deliberada: la unica consulta que lo usa (q021) ya
+    # trae la sigla RPO, que el corpus usa 871 veces, asi que ya hablaba el
+    # idioma del corpus. Expandirla solo diluia -- medido, F1 0.33 -> 0.00. El
+    # criterio de entrada a la tabla es que la CONSULTA no tenga ningun puente,
+    # no solo que el termino espanol sea raro.
+    ("energia dirigida", "directed energy weapons"),
+    ("antisatelite", "anti-satellite ASAT"),
+    ("desechos orbitales", "orbital debris space debris"),
+    ("reabastecimiento en orbita", "on-orbit servicing refueling"),
+    ("servicio y reabastecimiento", "on-orbit servicing"),
+    ("operaciones espaciales dinamicas", "dynamic space operations"),
+    ("enjambres de drones", "drone swarms"),
+    ("semiconductores", "semiconductors"),
+)
+
+
+def _normalizar_glosario(texto: str) -> str:
+    """Minusculas y sin acentos, para que la tabla no dependa de la tilde."""
+    descompuesto = unicodedata.normalize("NFD", texto.lower())
+    return "".join(c for c in descompuesto if unicodedata.category(c) != "Mn")
+
+
+def terminos_expandidos(consulta: str) -> list[str]:
+    """Formas inglesas que le corresponden a esta consulta, sin repetir.
+
+    Se conserva el orden de la tabla para que la expansion sea determinista:
+    dos corridas con la misma consulta tienen que producir el mismo texto y
+    por tanto el mismo vector, que es lo que exige el punto 4 de la sec. 1.4.
+    """
+    normalizada = _normalizar_glosario(consulta or "")
+    vistos: set[str] = set()
+    fuera: list[str] = []
+    for termino, expansion in GLOSARIO:
+        if termino in normalizada and expansion not in vistos:
+            vistos.add(expansion)
+            fuera.append(expansion)
+    return fuera
+
+
+def expandir_consulta(consulta: str) -> str:
+    """La consulta con sus terminos ingleses anexados, o tal cual si no aplica.
+
+    Se ANEXA en vez de reemplazar: la consulta en espanol sigue siendo la mayor
+    parte del texto y los documentos en espanol (todo el fenomeno 3) no tienen
+    por que perder.
+    """
+    extras = terminos_expandidos(consulta)
+    return f"{consulta} {' '.join(extras)}" if extras else consulta
 
 
 # --- Prior de recencia (sec. 8.7) -------------------------------------------
@@ -1176,9 +1263,19 @@ def graph_search(query: str, graph, lang: str | None = None, k: int = 10) -> lis
 # CLI
 # ---------------------------------------------------------------------------
 
-DEFAULT_K_POOL = 60  # candidatos usados para agregar a nivel documento (sec. 8.6);
+DEFAULT_K_POOL = 100  # candidatos usados para agregar a nivel documento (sec. 8.6);
 # mayor que los 10 fragmentos que se devuelven, para que la relevancia de un
 # documento no dependa solo de si su mejor chunk entro en el top-10 mostrado.
+#
+# Estuvo en 60 hasta el 4 ago 2026. Se amplio a 100 midiendo con
+# scripts/barrido_pool.py: la cascada recupera 200 candidatos y con 60 se
+# descartaban 140 antes de agregar, o sea que la profundidad extra servia solo
+# para reordenar. Sobre las 41 consultas de anotacion humana, 100 sube el
+# NDCG@10 de 0,405 a 0,447 y el F1@3 de 0,386 a 0,398.
+#
+# NO SUBIRLO A 200. Medido: con `sum` se derrumba a 0,298 de F1 porque un
+# documento con muchos chunks mediocres desplaza al bueno, y con `top5` la
+# ganancia ya no crece. 100 es ancho y sigue siendo seguro.
 
 # Cascada de dos encoders. Ambos valores estan MEDIDOS, no supuestos, con
 # scripts/barrido_dos_encoders.py sobre el mini ground truth (ver informe,
@@ -1284,11 +1381,12 @@ def build_result_object(
     top_docs: int = N_DOCUMENTS_PER_QUERY,
     max_fragments: int = N_FRAGMENTS_PER_QUERY,
     max_words: int = MAX_FRAGMENT_WORDS,
-    # "sum" es la configuracion entregada, asi que tiene que ser el default:
-    # src/gui/runner.py llama a esta funcion sin pasar la estrategia y con el
-    # default anterior ("max") la GUI mostraba documentos distintos a los de
-    # resultados.jsonl. El CLI siempre la pasa explicita, por eso no se veia.
-    agg_strategy: str = "sum",
+    # "top5" es la configuracion entregada, asi que tiene que ser el default:
+    # src/gui/runner.py llama a esta funcion sin pasar la estrategia y con un
+    # default distinto la GUI muestra documentos que no son los de
+    # resultados.jsonl. Ya paso una vez (cuando el default era "max"). El CLI
+    # siempre la pasa explicita, por eso el desfase no se ve en la entrega.
+    agg_strategy: str = "top5",
     alinear_fragmentos: bool = True,
     priorizar_idioma: bool = True,
     cupo_alineado: int = N_FRAGMENTS_PER_QUERY,
@@ -1449,7 +1547,14 @@ def main() -> None:
     # exponia. El default no cambia: sigue siendo "sum".
     parser.add_argument(
         "--agg-strategy",
-        default="sum",
+        # `top5` en vez de `sum` desde el 4 ago 2026, y el motivo es de
+        # robustez, no de promedio: con el pool en 60 las dos son IDENTICAS
+        # (ningun documento aporta mas de 5 chunks a un pool tan chico), pero
+        # al ampliarlo `sum` deja de tener tope y un documento con muchos
+        # chunks mediocres desplaza al bueno -- medido, con pool 200 `sum` cae
+        # a 0,298 de F1@3 mientras `top5` sube a 0,406. `top5` acota ese modo
+        # de fallo sin cambiar nada de lo que ya funcionaba.
+        default="top5",
         choices=["max", "sum", "mean", "top2", "top3", "top5", "top10"],
     )
     # Las dos banderas siguientes APAGAN comportamientos activos por defecto.
@@ -1474,6 +1579,13 @@ def main() -> None:
         action="store_true",
         help="No manda al final los fragmentos en idiomas que el evaluador no lee "
         "(ver IDIOMAS_LEGIBLES).",
+    )
+    parser.add_argument(
+        "--sin-glosario",
+        action="store_true",
+        help="No expande la consulta con el glosario bilingue ES->EN (ver GLOSARIO). "
+        "El glosario esta ACTIVO por defecto: es parte de la configuracion con la que "
+        "se genero resultados.jsonl.",
     )
     parser.add_argument(
         "--prior-recencia",
@@ -1614,10 +1726,17 @@ def main() -> None:
     # pool. Sin cascada, k_pool de siempre.
     k_busqueda = max(args.k_pool, args.rerank_depth) if reranks else args.k_pool
     for consulta in consultas:
+        # El glosario se aplica ANTES de vectorizar y afecta por igual al
+        # primario y a los re-puntuadores: los tres tienen que buscar con el
+        # mismo texto o estarian puntuando consultas distintas. Sin terminos
+        # del glosario esto devuelve la consulta tal cual.
+        texto_busqueda = (
+            consulta["text"] if args.sin_glosario else expandir_consulta(consulta["text"])
+        )
         # Una lista de candidatos por encoder (sec. 8.4).
         ranked_lists = [
             search(
-                consulta["text"],
+                texto_busqueda,
                 enc,
                 idx,
                 meta,
@@ -1637,7 +1756,7 @@ def main() -> None:
         if reranks:
             ranked_lists = [lista[: args.rerank_depth] for lista in ranked_lists]
             for enc_r, idx_r in reranks:
-                qv = enc_r.encode_query(consulta["text"])
+                qv = enc_r.encode_query(texto_busqueda)
                 ranked_lists = [
                     rerank_por_segundo_encoder(lista, idx_r, qv, peso=args.rerank_weight)
                     for lista in ranked_lists
@@ -1648,6 +1767,9 @@ def main() -> None:
         if graph is not None:
             first = ranked_lists[0]
             query_lang = first[0].idioma if first else None
+            # A proposito con la consulta SIN expandir: el grafo empareja
+            # entidades extraidas con NER, no vectores, y las siglas inglesas
+            # que agrega el glosario no son entidades del grafo.
             graph_hits = graph_search(consulta["text"], graph, lang=query_lang, k=args.k_pool)
             if graph_hits:
                 ranked_lists.append(graph_hits)
