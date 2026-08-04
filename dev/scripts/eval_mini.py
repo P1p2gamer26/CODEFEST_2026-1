@@ -45,6 +45,9 @@ from src.config import DEV_DIR, N_DOCUMENTS_PER_QUERY, RESULTADOS_PATH  # noqa: 
 from src.retrieval.calidad_chunk import calidad  # noqa: E402
 
 GROUND_TRUTH_MINI_PATH = DEV_DIR / "eval" / "ground_truth_mini.jsonl"
+# Relevancia graduada por fragmento, anotada a mano. Opcional: si no existe,
+# el NDCG@10 sigue siendo el proxy heredado del documento.
+GT_FRAGMENTOS_PATH = DEV_DIR / "eval" / "ground_truth_fragmentos.jsonl"
 
 
 def cargar_jsonl(path: Path) -> list[dict]:
@@ -111,6 +114,27 @@ def ndcg_penalizado(fragmentos: list[dict], relevantes: set[str], k: int = 10) -
         (1.0 if f["doc_id"] in relevantes else 0.0) * calidad(f.get("text", ""))
         for f in fragmentos[:k]
     ]
+    return _ndcg_desde_ganancias(ganancias, k)
+
+
+def ndcg_anotado(fragmentos: list[dict], notas: dict[str, int], k: int = 10) -> float:
+    """NDCG@10 REAL, con relevancia graduada anotada fragmento por fragmento.
+
+    Es el unico de los tres que no es un proxy: la nota la puso un humano
+    mirando el texto, que es lo que hace el evaluador de ADL (sec. 10.2.1).
+    Las notas salen de `dev/eval/ground_truth_fragmentos.jsonl`
+    (ver scripts/anotar_fragmentos.py): 2 = responde, 1 = del tema pero no
+    responde, 0 = no aporta.
+
+    La ganancia se escala a [0, 1] dividiendo por 2, para que el numero sea
+    directamente comparable con `ndcg` y `ndcg_penalizado` sobre las mismas
+    consultas -- que es justo la comparacion que dice cuanto miente el proxy.
+
+    Un fragmento sin nota cuenta 0: el .md se genera con los 10 fragmentos de
+    la consulta, asi que si falta una nota es que el anotador la dejo vacia, y
+    la consigna dice que vacio equivale a 0.
+    """
+    ganancias = [notas.get(f.get("chunk_id", ""), 0) / 2.0 for f in fragmentos[:k]]
     return _ndcg_desde_ganancias(ganancias, k)
 
 
@@ -318,6 +342,38 @@ def main() -> None:
         f"({100 * (media_ndcg - media_ndcg_pen) / max(media_ndcg, 1e-9):.1f}%) "
         f"solo por bibliografia; ver ndcg_penalizado()."
     )
+    # Si hay anotacion a nivel fragmento, el NDCG deja de ser proxy en esas
+    # consultas. Se reportan las tres versiones sobre EL MISMO subconjunto,
+    # que es la unica comparacion que dice cuanto miente el proxy de verdad.
+    notas_frag = (
+        {f["query_id"]: f["fragmentos"] for f in cargar_jsonl(GT_FRAGMENTOS_PATH)}
+        if GT_FRAGMENTOS_PATH.exists()
+        else {}
+    )
+    anotadas = [
+        fila
+        for fila in gt
+        if fila["query_id"] in notas_frag and fila["query_id"] in resultados
+    ]
+    if anotadas:
+        def media(fn):
+            return sum(fn(fila) for fila in anotadas) / len(anotadas)
+
+        frags = lambda fila: resultados[fila["query_id"]].get("fragments", [])  # noqa: E731
+        rel = lambda fila: set(fila["docs_relevantes"])  # noqa: E731
+        real = media(lambda f: ndcg_anotado(frags(f), notas_frag[f["query_id"]]))
+        proxy = media(lambda f: ndcg(frags(f), rel(f)))
+        pen = media(lambda f: ndcg_penalizado(frags(f), rel(f)))
+        print(f"\nsobre las {len(anotadas)} consultas con anotacion POR FRAGMENTO:")
+        print(f"  NDCG@10 real (relevancia graduada a mano): {real:.3f}")
+        print(f"  NDCG@10 proxy (heredado del documento):    {proxy:.3f}")
+        print(f"  NDCG@10 penalizado por bibliografia:       {pen:.3f}")
+        print(
+            f"  el proxy se equivoca en {proxy - real:+.3f}; el penalizado, en "
+            f"{pen - real:+.3f}. Es la unica medicion no-proxy del proyecto y "
+            "vale para las decisiones sobre fragmentos."
+        )
+
     if len(por_origen) > 1:
         print("\ndesglose por procedencia de la etiqueta:")
         for origen in sorted(por_origen):
