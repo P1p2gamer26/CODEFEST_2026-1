@@ -28,15 +28,20 @@ def _connecting_verb_lemma(sent, ent1_end: int, ent2_start: int) -> str | None:
     return None
 
 
-def extract_triples(text: str, lang: str | None) -> list[tuple[str, str, str]]:
-    """Devuelve tripletas (sujeto, relacion, objeto) encontradas en `text`."""
+def extract_triples(text: str, lang: str | None) -> list[tuple[str, str, str, str, str]]:
+    """Devuelve tripletas (sujeto, relacion, objeto) encontradas en `text`.
+
+    Cada tripleta incluye ademas la etiqueta NER de cada entidad (PER/ORG/LOC/
+    MISC, u OntoNotes en el modelo de ingles) para poder tipar y colorear los
+    nodos del grafo al visualizarlo.
+    """
     if not text or not text.strip():
         return []
 
     nlp = _get_ner_pipeline(lang or DEFAULT_LANG)
     doc = nlp(text)
 
-    triples: list[tuple[str, str, str]] = []
+    triples: list[tuple[str, str, str, str, str]] = []
     for sent in doc.sents:
         ents = [e for e in sent.ents if e.text.strip() and e.label_ not in EXCLUDED_LABELS]
         for e1, e2 in zip(ents, ents[1:]):
@@ -44,6 +49,6 @@ def extract_triples(text: str, lang: str | None) -> list[tuple[str, str, str]]:
             if subj.lower() == obj.lower():
                 continue
             relation = _connecting_verb_lemma(sent, e1.end, e2.start) or FALLBACK_RELATION
-            triples.append((subj, relation, obj))
+            triples.append((subj, relation, obj, e1.label_, e2.label_))
 
     return triples

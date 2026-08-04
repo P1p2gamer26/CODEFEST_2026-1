@@ -22,8 +22,12 @@ Uso:
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
+
+# doc_id de respaldo generado por src/ingestion/doc_id.py::compute_doc_id().
+_ES_HASH_CONTENIDO = re.compile(r"[0-9a-f]{16}")
 
 ROOT = Path(__file__).resolve().parents[2]  # dev/scripts/ -> dev/ -> raiz del repo
 ENTREGA = ROOT / "Entrega"
@@ -67,13 +71,73 @@ def validar_estructura() -> list[Path]:
             if not (d / archivo).is_file():
                 fallo(f"falta {d.relative_to(ENTREGA)}/{archivo}")
 
-    grafo = base / "grafo" / "grafo.graphml"
-    if grafo.is_file():
-        print("  grafo de conocimiento (bonus) presente")
-    else:
+    if not (base / "grafo" / "grafo.graphml").is_file():
         aviso("sin grafo/grafo.graphml: se pierde el puntaje del bonus (sec. 7)")
 
+    # Archivos que NO deberian estar. La sec. 1.4 dibuja una estructura exacta
+    # y avisa que incumplirla es penalizacion severa o exclusion. Encontrados
+    # a mano el 2 ago 2026: un Entrega/__pycache__/ que dejo una corrida, y
+    # los .gz que se habian generado para publicar el Release y quedaron
+    # dentro de la carpeta de entrega. Ninguno lo detectaba este validador.
+    ESPERADOS_RAIZ = {"resultados.jsonl", "generador.py", "informe_tecnico.pdf", "base_vectorial"}
+    for hijo in ENTREGA.iterdir():
+        if hijo.name not in ESPERADOS_RAIZ:
+            fallo(f"sobra Entrega/{hijo.name}: la sec. 1.4 fija la estructura exacta")
+
+    for d in encoder_dirs:
+        for hijo in d.iterdir():
+            if hijo.name not in ("index.faiss", "metadata.jsonl"):
+                fallo(f"sobra {d.relative_to(ENTREGA)}/{hijo.name}")
+    grafo_dir = base / "grafo"
+    if grafo_dir.is_dir():
+        for hijo in grafo_dir.iterdir():
+            if hijo.name != "grafo.graphml":
+                fallo(f"sobra grafo/{hijo.name} (los .gz van al Release, no a la entrega)")
+    for hijo in base.iterdir():
+        if hijo.name != "grafo" and not hijo.name.startswith("encoder_"):
+            fallo(f"sobra base_vectorial/{hijo.name}")
+
     return encoder_dirs
+
+
+def validar_grafo(doc_ids: set[str]) -> None:
+    """El grafo tiene que hablar del MISMO corpus que el indice.
+
+    Que el archivo exista no basta: un grafo.graphml sobrante de otra corrida
+    referencia documentos que no estan indexados, y como bonus cuenta en
+    contra en vez de a favor. Ademas, con --use-graph inyectaria en la fusion
+    chunk_id inexistentes. Este chequeo existe porque justamente eso paso: la
+    entrega llevaba el grafo del corpus sintetico viejo y la validacion la
+    daba por buena."""
+    grafo = ENTREGA / "base_vectorial" / "grafo" / "grafo.graphml"
+    if not grafo.is_file():
+        return
+
+    try:
+        import networkx as nx
+
+        g = nx.read_graphml(grafo)
+    except Exception as exc:  # noqa: BLE001 -- cualquier fallo de lectura invalida el bonus
+        fallo(f"grafo/grafo.graphml no se puede leer ({exc})")
+        return
+
+    citados = {d["doc_id"] for _, _, d in g.edges(data=True) if "doc_id" in d}
+    if not citados:
+        aviso("el grafo no cita ningun doc_id: no es trazable al corpus (sec. 7.3)")
+        return
+
+    ajenos = citados - doc_ids
+    if ajenos:
+        fallo(
+            f"el grafo cita {len(ajenos)} de {len(citados)} doc_id que NO estan indexados "
+            f"(ej. {sorted(ajenos)[:3]}): quedo de otra corrida, hay que reconstruirlo "
+            f"con 'build_corpus_index.py --solo-grafo' o sacarlo de la entrega"
+        )
+    else:
+        print(
+            f"  grafo de conocimiento (bonus): {g.number_of_nodes()} nodos, "
+            f"{g.number_of_edges()} aristas, {len(citados)} doc_id todos indexados"
+        )
 
 
 def cargar_metadata(encoder_dir: Path) -> list[dict]:
@@ -101,6 +165,20 @@ def validar_metadata(encoder_dir: Path, filas: list[dict]) -> None:
     ids = [f.get("chunk_id") for f in filas]
     if len(set(ids)) != len(ids):
         fallo(f"{encoder_dir.name}/metadata.jsonl: hay chunk_id duplicados")
+
+    # Cobertura del manifest de ADL: un doc_id con forma de hash de contenido
+    # significa que ese documento NO estaba en el manifest y por tanto no puede
+    # emparejar con el ground truth (F1@3 = 0 para ese documento).
+    docs = {f.get("doc_id") for f in filas}
+    hashes = {d for d in docs if d and _ES_HASH_CONTENIDO.fullmatch(d)}
+    if hashes:
+        fallo(
+            f"{encoder_dir.name}: {len(hashes)} de {len(docs)} doc_id son hashes de "
+            f"contenido, no doc_id de ADL (p. ej. {sorted(hashes)[0]}). Falta pasar "
+            f"--doc-id-manifest o el manifest no cubre esos archivos; no puntuan en F1@3."
+        )
+    else:
+        print(f"  {encoder_dir.name}: {len(docs)} documentos, todos con doc_id de ADL")
 
     try:
         import faiss
@@ -240,6 +318,7 @@ def main() -> None:
             doc_ids = {f.get("doc_id") for f in filas}
 
     validar_resultados(chunk_ids, doc_ids, args.esperar_50)
+    validar_grafo(doc_ids)
     validar_informe()
 
     print()

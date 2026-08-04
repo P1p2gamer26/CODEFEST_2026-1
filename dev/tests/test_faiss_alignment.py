@@ -76,3 +76,40 @@ def test_persist_raises_on_length_mismatch(tmp_path):
         assert False, "se esperaba ValueError por desalineacion"
     except ValueError:
         pass
+
+
+def test_checkpoint_de_codificacion_reanuda_si_los_chunks_no_cambiaron(tmp_path):
+    """El .npy se graba por bloques para poder retomar una corrida de horas."""
+    from src.embedding.build_index import encode_records
+
+    encoder = HashingFakeEncoder(name="test-encoder")
+    records = _make_records()
+    cache = tmp_path / "emb.npy"
+
+    primera = encode_records(records, encoder, cache_path=cache)
+    assert cache.with_suffix(".progreso").exists()
+
+    segunda = encode_records(records, encoder, cache_path=cache)  # ya completo
+    assert (primera == segunda).all()
+
+
+def test_checkpoint_se_descarta_si_los_chunks_vienen_en_otro_orden(tmp_path):
+    """La forma del .npy no detecta un reordenamiento: los mismos N chunks en
+    otro orden dan la misma forma, y las filas ya codificadas corresponderian a
+    otros textos. El indice saldria corrupto en silencio despues de horas de
+    CPU, asi que el checkpoint guarda tambien el chunk_id de la ultima fila."""
+    from src.embedding.build_index import encode_records
+
+    encoder = HashingFakeEncoder(name="test-encoder")
+    records = _make_records()
+    cache = tmp_path / "emb.npy"
+
+    encode_records(records, encoder, cache_path=cache)
+
+    revueltos = list(reversed(records))
+    vectores = encode_records(revueltos, encoder, cache_path=cache)
+
+    # Si el cache viejo se hubiera reutilizado, la fila 0 tendria el vector del
+    # primer record original en vez del que ahora ocupa esa posicion.
+    esperado = encoder.encode_passages([revueltos[0].texto])[0]
+    assert (vectores[0] == esperado).all()

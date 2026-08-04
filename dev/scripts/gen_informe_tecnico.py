@@ -61,11 +61,22 @@ def build_story() -> list:
     story.append(p("CODEFEST AD ASTRA 2026", "TitlePage"))
     story.append(p("Documento tecnico &mdash; Etapa 1: Base de Conocimiento Vectorial", "Subtitle"))
 
-    story.append(h1("1. Preprocesamiento y extraccion de texto"))
+    story.append(h1("1. El corpus y su preprocesamiento"))
+    story.append(p(
+        "El corpus entregado por ADL son <b>1826 documentos</b> (3 GB) de 21 "
+        "observatorios repartidos en los tres fenomenos: 760 PDF, 964 JSON, 26 CSV, "
+        "73 PBF, 8 imagenes, 6 XLSX y 1 TXT. La heterogeneidad es el primer problema "
+        "de ingenieria del reto: un mismo indice tiene que absorber informes de 400 "
+        "paginas de SIPRI o del AI Index, articulos web serializados en JSON, "
+        "datasets bibliograficos de decenas de MB y teselas de mapas vectoriales. "
+        "De los 1826 documentos, <b>1818 aportan texto</b>; los 8 restantes son 5 "
+        "imagenes sin texto legible, un JSON vacio y dos archivos con extension "
+        "<i>.pdf</i> que en realidad son paginas HTML de error de la descarga."
+    ))
     story.append(p(
         "Cada formato de origen tiene un extractor dedicado que produce un objeto comun "
         "(<i>RawDocument</i>) con el texto crudo y metadata auxiliar: <b>PDF</b> "
-        "(pdfplumber, preservando el orden de lectura por pagina y con deteccion "
+        "(pypdfium2, preservando el orden de lectura por pagina y con deteccion "
         "heuristica de boilerplate &mdash; lineas identicas repetidas en >=30% de las "
         "paginas de un documento de 3 o mas paginas se descartan como cabecera/pie de "
         "pagina), <b>HTML</b> (trafilatura, que separa el contenido principal del "
@@ -75,11 +86,73 @@ def build_story() -> list:
         "para esquemas no anticipados), <b>CSV/XLSX</b> (cada fila se convierte en "
         "pares <i>columna: valor</i> y se trata como unidad atomica de fragmentacion) "
         "e <b>imagenes</b> (OCR opcional via pytesseract, con degradacion controlada "
-        "si el binario de tesseract no esta disponible). La limpieza posterior "
+        "si el binario de tesseract no esta disponible). Tres decisiones merecen "
+        "justificacion explicita porque las impuso el corpus real:"
+    ))
+    story.append(bullets([
+        "<b>pypdfium2 en vez de pdfplumber</b> para los PDF. Con 760 PDF y del orden "
+        "de 30.000 paginas, el costo de extraccion deja de ser irrelevante: medido "
+        "sobre este corpus, pypdfium2 lee unas 3.000 paginas en 4,5 s, mientras que "
+        "pdfplumber es dos ordenes de magnitud mas lento y convierte la fase offline "
+        "de minutos en horas. Para texto plano de informes la calidad extraida es "
+        "equivalente.",
+        "<b>OCR selectivo.</b> Cerca del 5% de los PDF &mdash; casi todos los "
+        "informes de riesgo de la Defensoria del Pueblo &mdash; son escaneos sin capa "
+        "de texto. Cuando un documento rinde menos de 200 caracteres por pagina se "
+        "asume escaneo y se rasteriza para pasarlo por tesseract, con un tope de 60 "
+        "paginas por documento: sin ese tope un puñado de escaneos largos domina el "
+        "tiempo total de la corrida.",
+        "<b>Los .pbf no son OpenStreetMap.</b> Las 73 teselas de Amazon Underworld "
+        "son <i>Mapbox Vector Tiles</i>, no el formato Protocol Buffer de OSM, asi "
+        "que las librerias habituales (pyosmium, pyrosm) no las leen. Se decodifican "
+        "con <i>mapbox-vector-tile</i>, se recorren las capas leyendo los atributos "
+        "de cada elemento como pares <i>atributo: valor</i>, y se deduplican los "
+        "elementos repetidos entre niveles de zoom, tal como indica la sec. 2.1.",
+    ]))
+    story.append(p(
+        "Los CSV/XLSX llevan un tope de 500 filas por archivo. Los datasets del AI "
+        "Index son volcados bibliograficos de PubMed de hasta 35 MB, ajenos a las "
+        "consultas del reto: sin tope aportarian mas de 100.000 fragmentos de ruido "
+        "que dominarian el espacio vectorial. Con tope, el documento sigue indexado "
+        "y puede recuperarse a nivel documento, pero no ahoga al resto del corpus. "
+        "La limpieza posterior "
         "(normalizacion Unicode NFC, remocion de caracteres de control, deteccion de "
         "idioma) es deliberadamente conservadora sobre el contenido &mdash; sin "
         "lowercasing ni stemming &mdash; porque la evaluacion compara el campo "
         "<i>text</i> de forma textual contra el ground truth."
+    ))
+    story.append(p(
+        "<b>Reparacion del guion de fin de linea.</b> Las fuentes incrustadas de "
+        "muchos PDF no mapean el guion de corte a Unicode y el extractor lo entrega "
+        "como U+FFFE, partiendo la palabra: <i>satel&#65534;lites</i>, "
+        "<i>weap&#65534;ons</i>. Afectaba al <b>30% de los fragmentos</b> (38.397 de "
+        "128.526, en 613 documentos) y degradaba las dos metricas a la vez: rompe "
+        "para el tokenizer justo los terminos de dominio que discriminan la consulta, "
+        "y entrega al evaluador un fragmento con el texto partido. La reparacion "
+        "decide entre unir (<i>satellites</i>) y conservar el guion "
+        "(<i>AI-related</i>) contando en el propio corpus cual de las dos formas "
+        "aparece mas veces &mdash; 23.177 cortes quedaron resueltos con esa "
+        "evidencia &mdash; y solo cae en una heuristica cuando ninguna forma esta "
+        "atestiguada. Medido sobre el ground truth propio, la reparacion no cambia "
+        "F1@3 de forma significativa (0.306 a 0.310; gana 3 consultas, pierde 3, "
+        "empata 35): se adopta porque corrige un defecto del dato y limpia los 166 "
+        "fragmentos entregados que salian partidos, no por una ganancia de "
+        "recuperacion que la muestra no puede sostener."
+    ))
+    story.append(h2("1.1 Identificacion de documentos (doc_id)"))
+    story.append(p(
+        "El emparejamiento a nivel documento se hace con el <b>DOC_ID que suministra "
+        "ADL</b> en el inventario del corpus (formato <i>F1-AIINDEX-001</i>), no con "
+        "un identificador propio. El manifest se indexa por <b>ruta relativa</b> y no "
+        "por nombre de archivo: 59 nombres del inventario aparecen en dos carpetas "
+        "distintas con DOC_ID distintos &mdash; los informes de CSET bajo "
+        "<i>pdfs/Reports</i> y <i>pdfs/Translation</i>, y las teselas que se repiten "
+        "por nivel de zoom &mdash; de modo que indexar por nombre le habria asignado "
+        "el identificador equivocado a 127 documentos y anulado su aporte al F1@3. "
+        "Once archivos presentes en el corpus no figuran en el inventario de ADL "
+        "(catalogos y registros del proceso de descarga); al no tener DOC_ID no "
+        "pueden aparecer en el ground truth, y se excluyen del indice para que no "
+        "ocupen uno de los tres cupos de documento por consulta."
     ))
 
     story.append(h1("2. Estrategia de chunking y justificacion"))
@@ -152,6 +225,15 @@ def build_story() -> list:
 
     story.append(h2("3.1 Encoder secundario y fusion de rankings (sec. 4.4)"))
     story.append(p(
+        "<b>Actualizacion:</b> la entrega usa una cascada de <b>tres</b> encoders: "
+        "MiniLM trae los candidatos y los re-puntuan <b>gte-multilingual-base</b> "
+        "(encoder-only, Apache 2.0, 305 M, 768 dim) y E5, con peso 0,25 cada uno. "
+        "Elegida midiendo cinco estructuras: NDCG@10 sube de <b>0,338 a 0,406</b> "
+        "(41 consultas) y de 0,329 a 0,360 (10 independientes). GTE como "
+        "<i>primario</i> se descarto pese a su mejor F1 en las 41 (0,385) porque "
+        "cae a <b>0,200</b> en las independientes: sesgo de pooling."
+    ))
+    story.append(p(
         "El pipeline soporta construir la base con mas de un encoder. El "
         "secundario es <b>intfloat/multilingual-e5-base</b> (encoder tipo BERT, "
         "licencia MIT, 768 dimensiones, multilingue nativo, limite 512 tokens). "
@@ -188,12 +270,84 @@ def build_story() -> list:
         "silenciosamente incorrectos."
     ))
     story.append(p(
-        "Dado que el <i>ground truth</i> no es publico durante el reto, no es "
-        "posible medir NDCG@10 ni F1@3 para decidir entre uno y dos encoders. Se "
-        "incluye <i>scripts/compare_encoders.py</i>, que cuantifica el solapamiento "
-        "entre ambos rankings: un solapamiento alto indica que fusionar no aportaria "
-        "y que conviene entregar un solo indice. La configuracion multi-encoder "
-        "queda por tanto detras de un flag, desactivada por defecto."
+        "<b>Resultado de la medicion: la fusion simetrica no sirve, la cascada si.</b> "
+        "Se construyo el indice completo con <i>multilingual-e5-base</i> (128.526 "
+        "fragmentos, unas cinco horas de CPU) y se comparo cada configuracion contra "
+        "el primario sobre el ground truth propio de la seccion 7:"
+    ))
+    comp_rows = [
+        ["Configuracion", "F1@3 (10 indep.)", "F1@3 (41 consultas)", "Consultas ganadas vs. primario"],
+        ["MiniLM solo", "0,300", "0,306", "&mdash;"],
+        ["multilingual-e5-base solo", "0,133", "0,182", "pierde 2-5 y 7-17"],
+        ["Fusion RRF de ambos", "0,167", "0,268", "pierde 1-5 y 8-13"],
+        ["<b>Cascada (entregada)</b>", "<b>0,300</b>", "<b>0,352</b>", "<b>gana 5-0; empata 0-0</b>"],
+    ]
+    comp_tbl = Table(
+        [[Paragraph(c, header_style if i == 0 else cell_style) for c in row]
+         for i, row in enumerate(comp_rows)],
+        colWidths=[4.6 * cm, 3.1 * cm, 3.3 * cm, 4.5 * cm],
+    )
+    comp_tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a2b4c")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cccccc")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f2f4f8")]),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(comp_tbl)
+    story.append(Spacer(1, 8))
+    story.append(p(
+        "<b>Re-medicion tras reparar los guiones (seccion 1).</b> La tabla anterior se "
+        "midio sobre el texto previo a esa correccion. Reconstruidos los dos indices "
+        "sobre el texto reparado, la comparacion que decide la entrega se sostiene y "
+        "mejora: el primario solo pasa a <b>0,310</b> (41 consultas) y <b>0,300</b> "
+        "(10 independientes), y la cascada a <b>0,344</b> y <b>0,333</b>. Por consulta "
+        "la cascada <b>gana 4-0 y 1-0, sin perder ninguna</b> en ninguna de las dos "
+        "muestras. La prueba de signos no alcanza significancia (p = 0,125), pero el "
+        "criterio fijado antes de medir era conservar la cascada mientras no perdiera "
+        "consultas, no maximizar el promedio; se aplica ese criterio."
+    ))
+    story.append(p(
+        "Antes de nada se verifico que el segundo encoder no estuviera mal empleado, "
+        "porque la familia E5 degrada en silencio si se omiten sus prefijos: la "
+        "indexacion aplica <i>passage:</i> y la consulta <i>query:</i>, tanto en el "
+        "pipeline como en la copia autocontenida. Su bajo rendimiento en solitario es "
+        "real, no un error de uso &mdash; y esa es justamente la clave del diseno."
+    ))
+    story.append(p(
+        "<b>Por que la fusion simetrica no podia funcionar.</b> RRF premia el "
+        "<i>acuerdo</i> entre listas. Medido sobre las 50 consultas, los dos encoders "
+        "comparten apenas el <b>11,3%</b> de los documentos del top-3 y el <b>6,2%</b> "
+        "de los fragmentos del top-10. Con ese nivel de desacuerdo RRF no fusiona: "
+        "intercala la lista buena con la mala, y el resultado queda a medio camino "
+        "entre ambas. Eso es exactamente lo observado (0,306 baja a 0,268)."
+    ))
+    story.append(p(
+        "<b>La cascada, que es lo que se entrega.</b> Lo que E5 hace mal es el "
+        "<i>recall</i>: su propio conjunto de candidatos rara vez contiene el "
+        "documento correcto. Pero puntuar candidatos que el primario ya encontro es "
+        "un trabajo distinto y mas facil. Asi que el primario genera 200 candidatos y "
+        "E5 solo los <b>re-puntua</b>, sumando su similitud a la del primario con un "
+        "peso de 0,25. Los dos terminos son cosenos, misma escala, de modo que "
+        "sumarlos es legitimo. La operacion es barata porque los dos indices se "
+        "construyen sobre los mismos fragmentos en el mismo orden: el vector de un "
+        "fragmento en el segundo espacio se lee por su fila con <i>reconstruct</i>, "
+        "sin volver a codificar ni un pasaje. El costo por consulta es una sola "
+        "vectorizacion adicional."
+    ))
+    story.append(p(
+        "El peso 0,25 no es el que maximiza el promedio: con 0,5 y 1,0 el F1@3 sobre "
+        "las 41 consultas sube algo mas (0,354 y 0,359), pero esas variantes empiezan "
+        "a <i>perder</i> consultas en la muestra de anotacion independiente, que es la "
+        "senal clasica de sobreajuste. Con 0,25 la cascada <b>no empeora ninguna "
+        "consulta de ninguna de las dos muestras</b>: gana 5 y pierde 0 sobre las 41, "
+        "y da exactamente el mismo resultado que el primario sobre las 10 "
+        "independientes. Se prefirio la variante que nunca hace dano sobre la que "
+        "promedia mejor. La prueba de signos sobre las 5 consultas que difieren da "
+        "p = 0,062: es el efecto mejor sustentado que se ha medido en este proyecto, "
+        "aunque con 41 consultas siga sin cruzar el umbral convencional del 5%."
     ))
 
     story.append(p(
@@ -219,6 +373,17 @@ def build_story() -> list:
         "Si el corpus real de ADL resultara mucho mayor al esperado, "
         "<i>src/config.py</i> centraliza el punto donde migrar a un indice "
         "aproximado sin tocar el resto del pipeline."
+    ))
+    story.append(p(
+        "La decision se verifico empiricamente antes de fijarla. Con vectores de "
+        "384 dimensiones y k=120 sobre CPU, una busqueda exacta tarda 1,9 ms "
+        "(mediana) con 20.000 vectores, 5,7 ms con 50.000 (9,8 ms en el percentil "
+        "99) y 13,2 ms con 100.000. El corpus real produce <b>128.526 fragmentos</b>, "
+        "es decir del orden de 15 ms por consulta: irrelevante frente a los ~27 ms "
+        "que cuesta vectorizar la consulta y los ~19 s de carga del encoder. "
+        "Migrar a IVFFlat o HNSW habria cambiado busqueda exacta por busqueda "
+        "aproximada &mdash; perdiendo recall, que es justamente lo que mide la "
+        "evaluacion &mdash; a cambio de ahorrar milisegundos que nadie percibe."
     ))
 
     story.append(h1("5. Grafo de conocimiento (componente bonus)"))
@@ -248,6 +413,27 @@ def build_story() -> list:
         "(el grafo se trata como un indice adicional, sec. 8.5), detras de un flag "
         "<i>--use-graph</i> opcional en <i>generador.py</i>."
     ))
+    story.append(p(
+        "<b>El grafo sobre el corpus real tiene 224.101 nodos y 754.876 aristas</b>, "
+        "construidas a partir de 1.687 documentos. Dos decisiones lo hicieron "
+        "utilizable. La primera: se excluyen los formatos sin narrativa (CSV, XLSX y "
+        "las teselas vectoriales, el 17,7% de los fragmentos), porque el NER busca "
+        "entidades nombradas en lenguaje natural y aplicado a una fila de tabla "
+        "produce ruido &mdash; las entidades mas frecuentes de una version preliminar "
+        "eran <i>FALSO</i>, <i>VERDADEIRO</i> y el nombre de una capa de mapa. La "
+        "segunda: los nombres de entidad se limpian de caracteres de control, que el "
+        "texto de OCR arrastra y que hacen fallar la exportacion a GraphML, un "
+        "formato XML que no los admite."
+    ))
+    story.append(p(
+        "<b>El grafo se entrega, pero los resultados se generan sin el.</b> Medida su "
+        "fusion con el ranking vectorial contra el ground truth propio, no mejora en "
+        "ninguna consulta de las 10 de anotacion independiente (pierde 3-0) y gana "
+        "solo 1 de 41 en el conjunto completo (pierde 7-1). Se entrega por tanto el "
+        "artefacto, que es lo que pide la seccion 7, con la recuperacion en su "
+        "configuracion puramente vectorial. Que el componente bonus exista y sea "
+        "trazable al corpus no obliga a degradar la metrica usandolo."
+    ))
 
     story.append(h1("6. Modulo de recuperacion"))
     story.append(bullets([
@@ -255,52 +441,189 @@ def build_story() -> list:
         "igual que el indice.",
         "Sobre-recuperacion de candidatos antes de aplicar post-filtros de metadata "
         "(fenomeno, formato, idioma) o de umbral de similitud coseno (sec. 8.7).",
-        "Agregacion a nivel documento por <i>max pooling</i> (configurable a suma o "
-        "media) sobre un pool de candidatos mas amplio que los 10 fragmentos "
-        "mostrados, para que la relevancia de un documento no dependa solo de si su "
-        "mejor chunk aparece en el top-10 (sec. 8.6).",
+        "Agregacion a nivel documento por <b>suma</b> de las puntuaciones de sus "
+        "fragmentos (configurable a maximo o media) sobre un pool de 60 candidatos, "
+        "mas amplio que los 10 fragmentos mostrados, para que la relevancia de un "
+        "documento no dependa solo de si su mejor chunk aparece en el top-10 "
+        "(sec. 8.6). La eleccion de la suma sobre el maximo esta medida, no "
+        "supuesta: ver seccion 7.",
         "Reciprocal Rank Fusion (k0=60) como mecanismo unico de combinacion, "
         "reusado tanto para multiples encoders como para vector+grafo (sec. 8.4).",
         "Limite de 250 palabras por fragmento aplicado dividiendo en limites "
         "oracionales completos cuando un chunk lo excede; los sub-fragmentos "
-        "comparten <i>chunk_id</i> y ocupan su propio <i>rank</i> (sec. 9.2.1).",
+        "comparten <i>chunk_id</i> y ocupan su propio <i>rank</i> (sec. 9.2.1). "
+        "El corpus real obligo a agregar un ultimo recurso: en texto proveniente de "
+        "OCR la puntuacion puede desaparecer por completo y el segmentador devuelve "
+        "una unica \"oracion\" de mas de 250 palabras, que respetar el limite "
+        "oracional dejaria pasar entera. En ese caso &mdash; y solo en ese &mdash; "
+        "el corte se hace por palabras.",
+        "<b>Supresion de fragmentos con texto repetido.</b> El corpus contiene "
+        "documentos duplicados (el mismo informe de CSIS bajo dos <i>doc_id</i>, "
+        "series que reeditan capitulos completos), de modo que dos fragmentos "
+        "distintos del indice pueden tener texto identico. Entregar el mismo texto "
+        "dos veces no puede aportar ganancia en NDCG@10 &mdash; el ranking ideal no "
+        "lo contiene &mdash; y ademas desplaza fuera del top-10 a un candidato que si "
+        "podria aportarla. Sobre las 50 consultas oficiales, 17 de los 500 "
+        "fragmentos entregados eran duplicados exactos; suprimirlos y completar el "
+        "cupo con el siguiente candidato recupera esos 17 espacios. La comparacion "
+        "es de texto exacto (normalizando solo espacios y mayusculas) y no de "
+        "similitud aproximada, que podria descartar fragmentos legitimamente "
+        "distintos que comparten un parrafo.",
     ]))
     story.append(p(
         "Ninguna etapa de recuperacion usa un modelo generativo: solo vectores, "
         "puntuaciones de similitud coseno y aritmetica sobre metadata."
     ))
 
-    story.append(h1("7. Limitaciones conocidas y decisiones documentadas"))
+    story.append(h1("7. Como se tomaron las decisiones: medicion interna"))
+    story.append(p(
+        "El ground truth oficial no es publico durante el reto, de modo que ninguna "
+        "decision de diseno puede validarse contra la metrica real. Para no elegir "
+        "a ojo se construyo uno propio (<i>dev/eval/</i>) que cubre <b>las 50 "
+        "consultas oficiales</b>: 41 con documentos relevantes marcados y 9 en las "
+        "que se reviso candidato por candidato sin que ninguno respondiera. Se "
+        "construyo en dos etapas y la distincion es importante para no enganarse:"
+    ))
     story.append(bullets([
-        "<b>Corpus de ejemplo sintetico:</b> el entorno de desarrollo usado para "
-        "construir este pipeline bloquea (proxy de salida, politica 403) la "
-        "descarga de documentos reales de observatorios/centros de pensamiento. "
-        "El corpus en <i>corpus_ejemplo/</i> (15 documentos, PDF/HTML, ES/EN/PT) fue "
-        "redactado a mano, tematicamente inspirado en fuentes reales conocidas "
-        "(SIPRI, ESA Space Debris Office, CEPAL, Instituto Kroc, entre otras) pero "
-        "NO es una copia ni cita textual de ningun documento real. Se reemplaza "
-        "integramente por el corpus oficial de ADL sin cambios en <i>src/</i>.",
-        "<b>huggingface.co tambien bloqueado</b> en el mismo entorno: no fue posible "
-        "descargar los pesos reales del encoder ni el modelo de NER de "
-        "HuggingFace originalmente considerado para el grafo. El encoder esta "
-        "detras de una interfaz intercambiable "
-        "(<i>SentenceTransformerEncoder</i> real vs. <i>HashingFakeEncoder</i> "
-        "determinista de pruebas); toda la suite de tests y las corridas de "
-        "demostracion de este documento usan el encoder de pruebas, que valida la "
-        "mecanica de indexacion/recuperacion/formato de salida pero NO la calidad "
-        "semantica de la recuperacion. El indice con embeddings reales debe "
-        "generarse corriendo <i>scripts/build_corpus_index.py</i> en un entorno con "
-        "acceso normal a internet antes de la entrega final.",
-        "<b>PBF (mapas):</b> no implementado en esta iteracion; es un formato nicho "
-        "que requiere una libreria dedicada (osmium/pyrosm) y no se considero "
-        "razonable fabricar datos geoespaciales sinteticos. La interfaz del "
-        "extractor esta lista para completarse cuando el equipo tenga archivos PBF "
-        "reales con los que validar el parseo.",
-        "<b>Campo <i>fuente</i>:</b> se deriva hoy del nombre de archivo o la URL "
-        "detectada por el extractor HTML. Es la clave real de emparejamiento con el "
-        "ground truth a nivel documento (sec. 10.2.1), y esta aislada en una unica "
-        "funcion (<i>derive_fuente()</i>) para ajustarla facilmente si ADL usa otra "
-        "convencion.",
+        "<b>10 consultas de anotacion independiente.</b> Los candidatos salieron de "
+        "contar palabras clave sobre el texto extraido, <i>sin pasar por el "
+        "recuperador</i>. Son las unicas validas para comparar dos encoders entre si.",
+        "<b>31 consultas por <i>pooling</i></b> (la tecnica de TREC): los candidatos "
+        "los propuso el propio sistema y se marcaron leyendo sus extractos. Aportan "
+        "volumen, pero una consulta cuyos candidatos propuso el encoder X favorece a "
+        "X, porque un documento que X nunca recupero no pudo marcarse como relevante. "
+        "Por eso cada linea del ground truth registra su procedencia y las "
+        "herramientas de evaluacion tienen una opcion <i>--sin-pooling</i>.",
+    ]))
+    story.append(p(
+        "El sesgo resulto menor de lo temido: el F1@3 da 0,306 sobre las 41 consultas "
+        "y 0,300 sobre las 10 independientes. La razon es que los candidatos se "
+        "proponen con un pool de 200 mientras la configuracion entregada usa 60, de "
+        "modo que las marcas no se cumplen solas. Sobre esta base, "
+        "<i>scripts/barrido_retrieval.py</i> carga el indice una vez y evalua en "
+        "memoria todas las combinaciones de tamano de pool y estrategia de agregacion."
+    ))
+    story.append(p(
+        "La configuracion entregada agrega por <b>suma</b> de las puntuaciones de los "
+        "fragmentos de cada documento, en lugar de por <b>maximo</b>. En promedio la "
+        "suma rinde mejor (F1@3 de 0,306 frente a 0,226 sobre las 41 consultas "
+        "anotadas), pero conviene ser preciso sobre la fuerza de esa evidencia: "
+        "contando por consulta, la suma gana en 16 y el maximo en 8, con 17 empates. "
+        "Una prueba de signos sobre las 24 que difieren da <b>p = 0,15</b>; sobre las "
+        "10 consultas de anotacion independiente el reparto es 4-2 (p = 0,69). "
+        "<b>La ventaja no alcanza significancia estadistica con esta muestra.</b>"
+    ))
+    story.append(p(
+        "Se entrega igualmente la suma, y la razon principal no es el promedio sino "
+        "el argumento estructural: un documento verdaderamente relevante para una "
+        "consulta contiene <i>varios</i> pasajes relevantes, mientras que el maximo "
+        "premia al documento que tuvo un unico fragmento afortunado. La suma ademas "
+        "gana en ambas muestras y no pierde en ninguna, y no es mas compleja de "
+        "implementar. Se documenta asi, y no como un resultado medido, porque la "
+        "diferencia entre \"lo medimos\" y \"lo argumentamos y el dato no lo "
+        "contradice\" es justamente lo que evita sobreajustar a un ground truth "
+        "reducido."
+    ))
+    story.append(p(
+        "<b>El promedio de F1@3 no basta para decidir, y conviene explicar por que.</b> "
+        "El tamano del pool parecia importar: con 26 consultas, un pool de 30 daba "
+        "0,309 frente a 0,274 con 60, y la ventaja se repetia al medirla con 10, 19 y "
+        "26 consultas. Contando por consulta en vez de promediar, el resultado es "
+        "otro: <b>30 gana en 5 consultas, 60 gana en 3 y empatan 18</b>. Un reparto "
+        "5-3 sobre las ocho que difieren es lo que produce el azar. Con del orden de "
+        "30 consultas cada una pesa 0,033 en la media, asi que dos que cambien de "
+        "lado mueven el promedio mas que cualquier efecto real. El pool se dejo en 60 "
+        "y <i>barrido_retrieval.py</i> incorporo la comparacion por conteo de "
+        "victorias, que es la herramienta correcta para la decision entre encoders."
+    ))
+    story.append(p(
+        "El mismo criterio descarto otras tres hipotesis que parecian prometedoras: "
+        "que fallara la recuperacion entre idiomas distintos (2 de 5 aciertos con "
+        "documentos en ingles frente a 3 de 5 en espanol, sin diferencia con esa "
+        "muestra); que el sistema ignorara los terminos discriminantes de la consulta "
+        "(de las siglas de las 50 consultas la unica ausente del corpus es NBQR, y "
+        "afecta a una sola consulta); y que confundiera los grupos armados ilegales "
+        "con las fuerzas armadas estatales (medido con un patron justo, afecta al 8% "
+        "de los cupos de documento, no a la mayoria). Se documentan porque el riesgo "
+        "real de un ground truth reducido no es medir de menos sino <i>sobreajustar</i>: "
+        "presentar cada pico de un barrido como hallazgo degradaria las consultas no "
+        "observadas."
+    ))
+    story.append(p(
+        "<b>Donde esta realmente el cuello de botella.</b> Antes de seguir ajustando "
+        "parametros se midio que impide acertar cuando el sistema falla. "
+        "<i>scripts/diagnostico_ceros.py</i> separa los tres motivos posibles de un "
+        "F1@3 nulo: que el documento no este indexado, que ningun fragmento suyo entre "
+        "al pool, o que entre y pierda la agregacion a nivel documento. El reparto es "
+        "concluyente: de las 17 consultas en cero, ninguna por falta de indexacion, "
+        "dos porque el encoder no alcanza el documento, y <b>quince con el documento "
+        "correcto dentro del pool</b> &mdash; cuatro de ellas con un fragmento suyo en "
+        "las tres primeras posiciones. El limite no esta en la recuperacion sino en la "
+        "agregacion."
+    ))
+    story.append(p(
+        "De ese diagnostico salieron dos intentos de mejora, ambos implementados y "
+        "ambos descartados por la misma regla de conteo de victorias. El primero, "
+        "agregar sumando solo los <i>M</i> mejores fragmentos de cada documento en vez "
+        "de todos: la suma sin tope permite que un documento con muchos fragmentos "
+        "mediocres desplace a uno con un fragmento excelente. El promedio mejora "
+        "(hasta 0,347 con pool 100), pero ese valor es el maximo de setenta "
+        "combinaciones del barrido y por consulta el reparto es 8-3 con 30 empates "
+        "(<b>p = 0,227</b>); el cambio minimo y motivado, mantener el pool en 60 y "
+        "sumar los tres mejores, da 4-5 con 32 empates (<b>p = 1,000</b>). El segundo, "
+        "un recuperador lexico BM25 fusionado con el denso por RRF, para rescatar los "
+        "terminos discriminantes raros que un vector de 384 dimensiones diluye: rinde "
+        "0,192 frente a 0,306 y pierde 15-4 (<b>p = 0,019</b>). La hipotesis lexica "
+        "queda refutada como mejora general."
+    ))
+    story.append(p(
+        "Ambas se descartaron con el mismo criterio, y el codigo de las dos queda en "
+        "el repositorio con su medicion documentada. El contraste con la cascada de la "
+        "seccion 3.1 es lo que da valor al criterio: aquella <b>gana 5 consultas y no "
+        "pierde ninguna</b>, mientras que estas dos reparten victorias y derrotas como "
+        "lo haria el azar. La diferencia no esta en el promedio &mdash; el maximo de la "
+        "grilla de agregacion (0,347) es comparable al de la cascada (0,352) &mdash; "
+        "sino en que una sobrevive al conteo por consulta y las otras no."
+    ))
+    story.append(p(
+        "La entrega se verifica de punta a punta antes de empaquetarse con "
+        "<i>scripts/validar_entrega.py</i>, que comprueba la estructura de "
+        "carpetas, las 50 lineas, los 3 documentos y 10 fragmentos por consulta, el "
+        "limite de 250 palabras, la alineacion entre el indice FAISS y "
+        "<i>metadata.jsonl</i>, y que todo <i>doc_id</i> reportado pertenezca al "
+        "inventario de ADL. La suite de pruebas (72 casos) cubre los invariantes "
+        "criticos, incluida la ejecucion de <i>generador.py</i> como subproceso con "
+        "<i>PYTHONPATH</i> vacio para garantizar que es autocontenido y que los "
+        "resultados son reproducibles, requisito del punto 4 de la sec. 1.4."
+    ))
+
+    story.append(h1("8. Limitaciones conocidas y decisiones documentadas"))
+    story.append(bullets([
+        "<b>El ground truth propio es la limitacion dominante del proyecto.</b> "
+        "Los valores de F1@3 de la seccion 7 sirven para ordenar configuraciones "
+        "entre si, no para estimar la nota: la anotacion es parcial frente a un "
+        "corpus de 1826 documentos, asi que un documento relevante no anotado cuenta "
+        "como error y el valor real sera mayor. Ademas se juzga el documento viendo "
+        "un solo fragmento &mdash; el mejor de cada documento, que no siempre es la "
+        "mejor evidencia &mdash; lo que hace marcar de menos, nunca de mas.",
+        "<b>No se mide NDCG@10</b>, que es la mitad del puntaje. Anotarlo exigiria "
+        "relevancia graduada fragmento por fragmento. Las decisiones que afectan "
+        "solo a los fragmentos se tomaron por tanto sobre argumentos estructurales y "
+        "no por medicion: la supresion de duplicados exactos, por ejemplo, no puede "
+        "empeorar el NDCG porque el ranking ideal no contiene el mismo texto dos "
+        "veces.",
+        "<b>Documentos sin texto recuperable:</b> 8 de los 1826. Cinco son imagenes "
+        "(una de ellas en formato AVIF, que Pillow no lee sin plugin adicional), una "
+        "es un JSON de 0 bytes y dos son paginas HTML de error guardadas con "
+        "extension .pdf. Estos ultimos se detectan por contenido y se procesan como "
+        "HTML, pero su texto es una pagina de error y no aporta nada. Estos "
+        "documentos quedan en el corpus sin posibilidad de ser recuperados.",
+        "<b>Campo <i>fuente</i>:</b> se reporta siempre el nombre de archivo "
+        "estandarizado del inventario de ADL, nunca la URL de origen (que se "
+        "conserva aparte, en un campo <i>url</i> adicional). La sec. 10.2.1 sugeria "
+        "<i>fuente</i> como clave de emparejamiento y la aclaracion posterior de ADL "
+        "indico <i>doc_id</i>; reportar el nombre de archivo hace que el sistema "
+        "funcione bajo cualquiera de las dos lecturas.",
         "<b>Fusion de chunks cortos adyacentes</b> (sec. 9.2.1, mencionada como "
         "posible, no obligatoria) no esta implementada: solo se implemento la "
         "division obligatoria de chunks que exceden 250 palabras.",

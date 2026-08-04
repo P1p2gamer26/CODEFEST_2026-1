@@ -16,12 +16,26 @@ Uso:
     python scripts/gui_app.py
 """
 
+import os
 import queue
 import sys
 import threading
 import time
 import tkinter as tk
 from pathlib import Path
+
+# Modo offline: evita que cada arranque consulte huggingface.co para revalidar
+# un modelo que ya esta en disco (son varios segundos y falla sin red). Tiene
+# que quedar antes de importar cualquier cosa que arrastre transformers, o sea
+# antes de importar `runner` mas abajo -- no es un import fuera de sitio.
+# Se activa solo si el cache existe: forzarlo en una maquina limpia convertia
+# la primera descarga, que es legitima, en un error criptico de "modelo no
+# encontrado en modo offline".
+_HF_CACHE = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface"))
+if _HF_CACHE.exists():
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 
@@ -33,7 +47,7 @@ from src.gui.history import append_run, read_history  # noqa: E402
 from src.gui.runner import RunSummary, Session, run_offline  # noqa: E402
 
 DEV_DIR = Path(__file__).resolve().parent.parent
-CONSULTAS_50_PATH = DEV_DIR / "consultas_prueba" / "consultas_50.jsonl"
+CONSULTAS_50_PATH = DEV_DIR / "consultas_prueba" / "consultas_50_oficiales.jsonl"
 
 MIN_SCORE_CONFIABLE = 0.35  # similitud coseno; por debajo de esto, la consulta probablemente
 # no tiene relacion con el corpus -- umbral elegido a ojo con paraphrase-multilingual-MiniLM,
@@ -152,7 +166,7 @@ class ChatPanel(ttk.Frame):
         botones = ttk.Frame(self)
         botones.pack(fill="x", pady=(6, 0))
         ttk.Button(
-            botones, text="Correr las 50 consultas de prueba", command=on_run_50
+            botones, text="Correr las 50 consultas oficiales", command=on_run_50
         ).pack(side="left")
 
         self._on_send = on_send
@@ -217,17 +231,20 @@ class App(tk.Tk):
             try:
                 usa_grafo = GRAFO_PATH.exists()
                 session = Session(use_graph=usa_grafo)
-                self.session = session
-                self.activity.push(
-                    f"Listo. Indice con {session.index.ntotal} vectores"
-                    + (", grafo cargado" if usa_grafo else " (sin grafo)"),
-                    "Listo",
-                )
-                self.chat.entry.configure(state="normal")
+                self.after(0, self._sesion_lista, session, usa_grafo)
             except Exception as exc:  # noqa: BLE001
-                self.activity.push(f"ERROR cargando la sesion: {exc}", "Error")
+                self.after(0, self.activity.push, f"ERROR cargando la sesion: {exc}", "Error")
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def _sesion_lista(self, session: Session, usa_grafo: bool):
+        self.session = session
+        self.activity.push(
+            f"Listo. Indice con {session.index.ntotal} vectores"
+            + (", grafo cargado" if usa_grafo else " (sin grafo)"),
+            "Listo",
+        )
+        self.chat.entry.configure(state="normal")
 
     # -- chat interactivo -----------------------------------------------------
 

@@ -12,5 +12,26 @@ intermedios/
 *.pytest_cache/
 .pytest_cache/
 
+# Corpus real de ADL (pesado, no se versiona)
+dev/corpus/
+
+# Los ZIP originales que entrego ADL (3 GB). El Indice_Datos_Codefest.xlsx y
+# el PDF de preguntas de la misma carpeta SI se versionan: pesan KB y de ellos
+# sale el manifest de doc_id.
+dev/corpus_meta/*.zip
+
 # Renders del grafo generados con dev/scripts/ver_grafo.py --out
 /grafo.png
+
+# Binarios de la base vectorial: van por GitHub Release, no por el repo.
+# Ver .gitattributes y README seccion 1.1.
+Entrega/base_vectorial/**/*.faiss
+Entrega/base_vectorial/**/*.jsonl
+Entrega/base_vectorial/**/*.graphml
+# Copias comprimidas para los assets del Release: artefactos de transporte.
+Entrega/base_vectorial/**/*.gz
+
+# Lo crean nuestros propios scripts al importar generador.py (el evaluador,
+# que lo corre como __main__, no lo genera). La sec. 1.4 fija la estructura
+# exacta de Entrega/ y validar_entrega.py falla si aparece.
+Entrega/__pycache__/
