@@ -5,7 +5,14 @@ ella salieron decisiones de la entrega (agregacion por suma, un solo encoder,
 recuperacion sin grafo). Un error silencioso aqui corrompe todas.
 """
 
-from scripts.eval_mini import f1, ndcg, ndcg_penalizado, techo_f1, veredicto_signos
+from scripts.eval_mini import (
+    f1,
+    ndcg,
+    ndcg_anotado,
+    ndcg_penalizado,
+    techo_f1,
+    veredicto_signos,
+)
 
 
 def test_f1_usa_el_denominador_de_recall_de_la_especificacion():
@@ -99,3 +106,23 @@ def test_ndcg_penalizado_nunca_supera_al_binario():
         {"doc_id": "D1", "text": "12 Autor, “Titulo Citado Largo,” Editorial, March 4, 2020."},
     ]
     assert ndcg_penalizado(frags, rel) <= ndcg(frags, rel)
+
+
+def test_ndcg_anotado_distingue_responde_de_solo_mencionar():
+    """Es la distincion que el proxy binario NO puede hacer y que decide las
+    mejoras sobre fragmentos: mismo documento relevante, pasajes de valor
+    distinto. Con nota 1 ("del tema pero no responde") tiene que dar la mitad
+    que con nota 2."""
+    frags = [{"chunk_id": "a", "doc_id": "D1", "text": "x"}]
+    responde = ndcg_anotado(frags, {"a": 2})
+    menciona = ndcg_anotado(frags, {"a": 1})
+    assert responde == ndcg(frags, {"D1"}), "nota 2 equivale al proxy binario"
+    assert abs(menciona - responde / 2) < 1e-9
+
+
+def test_ndcg_anotado_cuenta_como_cero_lo_que_quedo_sin_nota():
+    """La consigna del .md dice que dejar la casilla vacia equivale a 0; si esto
+    cambiara, una anotacion a medias inflaria la metrica en silencio."""
+    frags = [{"chunk_id": "a", "doc_id": "D1", "text": "x"}]
+    assert ndcg_anotado(frags, {}) == 0.0
+    assert ndcg_anotado(frags, {"otro": 2}) == 0.0

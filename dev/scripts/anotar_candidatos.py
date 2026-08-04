@@ -78,7 +78,14 @@ def generar(args: argparse.Namespace) -> None:
     ya_anotadas = {f["query_id"] for f in cargar_jsonl(GROUND_TRUTH_PATH)} if GROUND_TRUTH_PATH.exists() else set()
     pendientes = [c for c in consultas if c["query_id"] not in ya_anotadas]
     if args.solo:
-        pendientes = [c for c in pendientes if c["query_id"] in set(args.solo)]
+        # Nombrar una consulta explicitamente con --solo la genera AUNQUE ya
+        # este anotada: es la unica forma de rehacer a mano las 9 que quedaron
+        # con etiquetas del panel de agentes (F1 0.23 contra el humano). Al
+        # recolectar, el registro se reemplaza entero, asi que el campo
+        # `anotador` desaparece solo y eval_mini deja de contarlas como
+        # debiles.
+        solo = set(args.solo)
+        pendientes = [c for c in consultas if c["query_id"] in solo]
     if not pendientes:
         print("no hay consultas pendientes de anotar")
         return
