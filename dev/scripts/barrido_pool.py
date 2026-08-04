@@ -54,6 +54,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "Entrega"
 from src.config import DEV_DIR, encoder_dir  # noqa: E402
 from src.embedding.build_index import load_index  # noqa: E402
 from src.embedding.encoders import get_encoder  # noqa: E402
+from src.retrieval.glosario import expandir_consulta  # noqa: E402
 from src.retrieval.search import search  # noqa: E402
 
 import generador  # noqa: E402
@@ -79,25 +80,34 @@ RERANK_DEPTH = 200
 
 K_POOLS = [60, 100, 200]
 ESTRATEGIAS = ["sum", "top5"]
-BASE = (60, "sum")  # la configuracion entregada
+# Segundo eje: expandir la consulta con el glosario bilingue antes de
+# vectorizarla (src/retrieval/glosario.py). Las dos palancas se midieron por
+# separado y hay que verlas juntas antes de entregar ninguna: un pool mas ancho
+# cambia QUE documentos compiten y el glosario cambia CON QUE vector se los
+# busca, asi que no hay razon a priori para que sus efectos se sumen.
+EXPANSIONES = [False, True]
+BASE = (False, 60, "sum")  # la configuracion entregada hoy
 
 
-def candidatos_por_consulta(consultas, cache_idx):
+def candidatos_por_consulta(consultas, cache_idx, expandir: bool = False):
     """Los 200 candidatos re-puntuados de cada consulta, una sola vez.
 
     El ancho del pool y la estrategia de agregacion se aplican DESPUES, sobre
-    esta misma lista: ninguna celda de la grilla vuelve a tocar FAISS.
+    esta misma lista: ninguna celda de la grilla vuelve a tocar FAISS. La
+    expansion si obliga a recuperar de nuevo, porque cambia el vector de la
+    consulta.
     """
     enc_p = get_encoder(name=PRIMARIO)
     idx_p, metadata = cache_idx[PRIMARIO]
     por_consulta = {}
     for c in consultas:
-        hits = search(c["text"], enc_p, idx_p, metadata, k=RERANK_DEPTH)
+        texto = expandir_consulta(c["text"]) if expandir else c["text"]
+        hits = search(texto, enc_p, idx_p, metadata, k=RERANK_DEPTH)
         hits = hits[:RERANK_DEPTH]
         for sec, peso in SECUNDARIOS:
             enc_s = get_encoder(name=sec)
             idx_s, _ = cache_idx[sec]
-            qv = enc_s.encode_query(c["text"])
+            qv = enc_s.encode_query(texto)
             for h in hits:
                 h.score += peso * float(np.dot(qv, idx_s.reconstruct(h.fila)))
         hits.sort(key=lambda h: -h.score)
@@ -141,6 +151,7 @@ def main() -> None:
     # por candidato y ninguno respondia. Excluirla del promedio, no del archivo.
     gt_todo = [f for f in cargar_jsonl(GT) if f["docs_relevantes"]]
     gt_indep = [f for f in gt_todo if not f.get("pool") and not f.get("anotador")]
+    gt_hum = [f for f in gt_todo if not f.get("anotador")]
     consultas = cargar_jsonl(CONSULTAS)
     print(f"{len(gt_todo)} consultas evaluables, {len(gt_indep)} independientes\n")
 
@@ -158,30 +169,34 @@ def main() -> None:
             cache_idx[nombre] = (faiss.read_index(str(d / "index.faiss")), metadata)
         print(f"  {nombre}: {cache_idx[nombre][0].ntotal:,} vectores")
 
-    print("\nrecuperando y re-puntuando una sola vez...", flush=True)
-    por_consulta = candidatos_por_consulta(consultas, cache_idx)
-
     tablas = {}
-    for k_pool in K_POOLS:
-        for estrategia in ESTRATEGIAS:
-            res = evaluar_celda(por_consulta, k_pool, estrategia)
-            tablas[(k_pool, estrategia)] = res
-            salida = args.out_dir / f"pool{k_pool}_{estrategia}.jsonl"
-            with salida.open("w", encoding="utf-8") as f:
-                for q in sorted(res):
-                    f.write(json.dumps(res[q], ensure_ascii=False) + "\n")
-            print(f"  escrito {salida.name}", flush=True)
+    for expandir in EXPANSIONES:
+        etiqueta_exp = "glos" if expandir else "base"
+        print(f"\nrecuperando y re-puntuando ({etiqueta_exp})...", flush=True)
+        por_consulta = candidatos_por_consulta(consultas, cache_idx, expandir)
+        for k_pool in K_POOLS:
+            for estrategia in ESTRATEGIAS:
+                res = evaluar_celda(por_consulta, k_pool, estrategia)
+                tablas[(expandir, k_pool, estrategia)] = res
+                salida = args.out_dir / f"{etiqueta_exp}_pool{k_pool}_{estrategia}.jsonl"
+                with salida.open("w", encoding="utf-8") as f:
+                    for q in sorted(res):
+                        f.write(json.dumps(res[q], ensure_ascii=False) + "\n")
+                print(f"  escrito {salida.name}", flush=True)
 
     print(f"\n{'celda':16s} {'F1(todas)':>10s} {'NDCG':>7s} {'F1(indep)':>10s} {'NDCG':>7s}")
     guardadas = {}
     for celda, res in tablas.items():
         f_a, n_a = metricas(res, gt_todo)
         f_i, n_i = metricas(res, gt_indep)
-        guardadas[celda] = (f_a, n_a, f_i, n_i)
-        etiqueta = f"{celda[0]}:{celda[1]}" + (" (entregada)" if celda == BASE else "")
+        f_h, n_h = metricas(res, gt_hum)
+        guardadas[celda] = (f_a, n_a, f_i, n_i, f_h, n_h)
+        etiqueta = ("glos+" if celda[0] else "") + f"{celda[1]}:{celda[2]}"
+        etiqueta += " (entregada)" if celda == BASE else ""
         print(
-            f"{etiqueta:16s} {sum(f_a)/len(f_a):10.3f} {sum(n_a)/len(n_a):7.3f} "
-            f"{sum(f_i)/len(f_i):10.3f} {sum(n_i)/len(n_i):7.3f}"
+            f"{etiqueta:22s} {sum(f_a)/len(f_a):8.3f} {sum(n_a)/len(n_a):7.3f} "
+            f"{sum(f_h)/len(f_h):8.3f} {sum(n_h)/len(n_h):7.3f} "
+            f"{sum(f_i)/len(f_i):8.3f} {sum(n_i)/len(n_i):7.3f}"
         )
 
     print(f"\ndeltas pareados contra la entregada ({BASE[0]}:{BASE[1]}), IC al 90%:")
@@ -195,6 +210,8 @@ def main() -> None:
             ("NDCG@10 todas", 1),
             ("F1@3   indep", 2),
             ("NDCG@10 indep", 3),
+            ("F1@3   humanas", 4),
+            ("NDCG@10 humanas", 5),
         ):
             deltas = [x - y for x, y in zip(guardadas[celda][i], base[i])]
             media, bajo, alto = bootstrap_delta(deltas)

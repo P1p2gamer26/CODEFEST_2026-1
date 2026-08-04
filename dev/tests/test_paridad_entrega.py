@@ -137,3 +137,34 @@ def test_el_prior_de_recencia_viene_apagado_en_la_entrega():
     # El default del CLI no se puede leer sin ejecutar main(): el parser se
     # construye ahi dentro. Lo cubre la corrida real por subprocess de
     # test_retrieval_schema.py, que corre sin flags y valida el esquema.
+
+
+def test_el_glosario_expande_igual_en_las_dos_copias():
+    """El glosario cambia el VECTOR de la consulta, asi que una tabla que se
+    desfase entre dev/src y la entrega produce resultados distintos sin que
+    nada falle. Se comparan las 50 consultas oficiales, que es el universo
+    real, y no solo la tabla."""
+    from src.retrieval.glosario import GLOSARIO as en_dev
+    from src.retrieval.glosario import expandir_consulta as expandir_dev
+
+    entrega = _cargar_generador()
+    assert en_dev == entrega.GLOSARIO
+
+    consultas = DEV_DIR / "consultas_prueba" / "consultas_50_oficiales.jsonl"
+    if not consultas.exists():
+        pytest.skip(f"no existe {consultas}")
+    textos = [
+        json.loads(linea)["text"]
+        for linea in consultas.read_text(encoding="utf-8").splitlines()
+        if linea.strip()
+    ]
+    for texto in textos:
+        assert expandir_dev(texto) == entrega.expandir_consulta(texto), texto[:60]
+
+
+def test_los_defaults_de_recuperacion_son_los_que_se_midieron():
+    """k_pool 100 y top5 salieron de scripts/barrido_pool.py. Volverlos a 60 o
+    a `sum` cambia la entrega en silencio: con pool 100 las dos estrategias YA
+    NO son equivalentes (a 60 si lo eran)."""
+    entrega = _cargar_generador()
+    assert entrega.DEFAULT_K_POOL == 100
