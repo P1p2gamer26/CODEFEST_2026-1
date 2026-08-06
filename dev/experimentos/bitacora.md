@@ -448,3 +448,79 @@ puntuaron los archivos guardados sin volver a tocar FAISS ni recodificar nada.
    entre dos vecinos practicamente iguales es la firma tipica del sobreajuste,
    y **no conviene defender el 5 como valor mecanicamente justificado**. Lo
    defendible es lo medido: es el mejor de siete y el unico que pasa.
+
+---
+
+## E08 — `rerank_depth` x `k_pool` bajo el peso 0.60 (6 ago 2026)
+
+**NO ADOPTABLE**, por dos razones independientes. `Entrega/` sin cambios.
+
+Hipotesis, escrita antes de medir: al triplicar el peso del re-puntuador
+(0.25 -> 0.60, E01) los candidatos PROFUNDOS pasan a poder subir al top-3, y
+`rerank_depth` deja de ser inerte. Se reabria algo cerrado con **51 empates de
+51**, pero la nota vieja daba la razon mecanica explicita —"con peso 0.25 el
+re-puntuador solo reordena, y los candidatos de las posiciones 200-600 tienen
+scores demasiado bajos para subir al top-3"— y **esa razon dependia del peso**.
+
+Coste real: **una sola pasada de FAISS**. Los pools se construyen a
+profundidad 1000 y las 14 celdas salen por rebanado, porque el re-puntuado es
+independiente por candidato. Cero codificacion nueva.
+
+| celda | F1(50) | ND(50) | F1(ind) | ND(ind) | F1(hum) | ND(hum) |
+|---|---|---|---|---|---|---|
+| **d200:k100 (entregada)** | 0.440 | 0.490 | **0.400** | **0.436** | 0.468 | 0.510 |
+| d200:k150 | 0.475 | 0.511 | 0.367 | 0.401 | 0.486 | 0.516 |
+| d200:k200 | **0.475** | **0.511** | 0.400 | 0.430 | **0.486** | **0.517** |
+| d400:k100 | 0.417 | 0.466 | 0.400 | 0.435 | 0.448 | 0.489 |
+| d600:k100 | 0.423 | 0.468 | 0.400 | 0.428 | 0.456 | 0.491 |
+| d1000:k100 | 0.423 | 0.466 | 0.400 | 0.428 | 0.456 | 0.489 |
+| d1000:k200:top8 | 0.441 | 0.506 | 0.400 | 0.438 | 0.470 | 0.526 |
+
+### 1. La hipotesis esta refutada
+
+**El ganador en profundidad es 200, que es la celda ya entregada**, y subirla
+empeora de forma monotona: F1@3 sobre las 50 va 0.440 (d200) -> 0.417 (d400)
+-> 0.423 (d600) -> 0.423 (d1000). El peso 0.60 **no** desperto a los
+candidatos profundos.
+
+Esto **cierra `rerank_depth` mucho mejor que los "51 empates" originales**,
+porque el cierre ya no depende del peso: se probo con 2,4x mas autoridad de
+re-puntuado y una grilla cuatro veces mas ancha, y el parametro sigue inerte.
+La mitigacion fijada de antemano decia que si el ganador no era una
+profundidad MAYOR que 200 la explicacion mecanica quedaba refutada y el
+resultado se trataba como ruido. Se aplica tal cual.
+
+### 2. Lo unico que mueve la aguja tiene la firma del sesgo de pooling
+
+Todo el movimiento viene de `k_pool`. **`d200:k200` contra la entregada:**
+
+| lectura | delta, IC 90% | victorias | criterio |
+|---|---|---|---|
+| F1@3 50 | **+0.035 [+0.008, +0.067]** | 4g/0p | pasa |
+| NDCG@10 50 | +0.021 [+0.002, +0.044] | 9g/3p | pasa |
+| **F1@3 indep** | **+0.000 [+0.000, +0.000]** | **0g/0p** | pasa (trivialmente) |
+| **NDCG@10 indep** | **-0.006 [-0.031, +0.013]** | 1g/1p | **no pasa** |
+| F1@3 humanas | +0.018 [+0.000, +0.039] | 2g/0p | pasa |
+
+**Las 10 independientes salen identicas consulta por consulta** — cero
+victorias y cero derrotas en F1@3. Y gana 4 en las 50 pero solo 2 en las 41
+humanas, o sea que **la mitad de la ganancia cae sobre las 9 consultas con
+etiqueta de agente**, justo donde el instrumento acierta 0.23. Es la misma
+firma por la que se descartaron `doc_rrf` y gte-primario. Ademas falla el
+criterio pre-registrado en `NDCG@10` y `NDp` de las independientes.
+
+### El hallazgo que vale mas que el veredicto
+
+**Es el MISMO reparto que midio la ronda del 4 de agosto**, cuando se decidio
+entregar `k_pool=100` y no 200: ahi 200 ganaba 6 consultas, **3 de ellas de
+etiqueta de agente**, y entre las 41 humanas quedaba **3-3**. Hoy el peso, el
+glosario y la agregacion son otros, y **el patron se reprodujo intacto**. No
+era ruido de una corrida: es una propiedad estable del ground truth.
+
+**Corolario operativo, que redirige la cola:** mientras esas 9 consultas sigan
+con etiqueta de agente, **cualquier palanca que ensanche el pool va a parecer
+ganadora en las 50 sin serlo**, y va a consumir un experimento cada vez para
+llegar al mismo desenlace. El desbloqueo no es otra palanca del recuperador
+sino **E05** — re-anotar esas 9 a mano. Es tarea humana por medicion, no por
+comodidad: el panel de 4 agentes ya se probo y reproduce al humano con F1
+0.23, peor que el anotador unico.
