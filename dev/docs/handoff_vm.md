@@ -103,15 +103,31 @@ Reglas, todas heredadas de `docs/lecciones_metodologia.md`:
    `generador.py`) y el punto 12 (cuota de LFS) hacen que deshacerlo sea caro.
 7. Commits en `Julian_Africano`, **sin atribución de IA**, uno por experimento
    cerrado, para que el trabajo sobreviva a que se corte la sesión.
+8. **Reporte por Gmail al cerrar cada experimento.** El conector de Gmail de
+   esta cuenta solo soporta `create_draft`, no envío directo — no hay
+   `send_message`. Crear un draft a africanojulian@gmail.com con asunto
+   `[CODEFEST loop] <id> cerrado — <veredicto corto>` y cuerpo con hipótesis,
+   la tabla de métricas y el veredicto. El usuario los lee/manda desde la
+   app de Gmail en el celular; no depender de que abra la VM.
+9. **Cuando `cola.jsonl` se agote** (todo en `cerrado` salvo E05, que es
+   humano), no parar: generar experimentos nuevos con el mismo formato
+   (id, hipótesis, justificación mecánica, comando, riesgo, **escritos antes
+   de medir**) a partir de lo identificado como no probado en
+   `docs/plan_encoders.md` y en el estado de `CLAUDE.md`. Mismo criterio de
+   adopción, mismas reglas 1-8. El trabajo es de mejora continua, no una
+   lista fija.
 
 ## Corridas largas
 
 Nunca como hijo de la sesión: si la sesión se corta, se muere el proceso. Es el
 mismo problema que el `Start-Process -WindowStyle Hidden` de Windows.
 
+**Esta VM no tiene `tmux` instalado y no hay sudo para instalarlo** (a pesar
+de lo que se asumió al principio). Usar `setsid`/`nohup` en su lugar:
+
 ```bash
-tmux new -d -s idx '.venv/bin/python dev/scripts/build_corpus_index.py ... 2>&1 | tee dev/intermedios/log_idx.txt'
-tmux attach -t idx      # para mirar
+setsid nohup .venv/bin/python dev/scripts/build_corpus_index.py ... > dev/intermedios/log_idx.txt 2>&1 < /dev/null &
+disown
 ```
 
 La codificación es reanudable (`emb_<encoder>.npy` + `.progreso`, se graba cada
