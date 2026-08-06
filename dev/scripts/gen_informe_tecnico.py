@@ -227,7 +227,7 @@ def build_story() -> list:
     story.append(p(
         "<b>Actualizacion:</b> la entrega usa una cascada de <b>tres</b> encoders: "
         "MiniLM trae los candidatos y los re-puntuan <b>gte-multilingual-base</b> "
-        "(encoder-only, Apache 2.0, 305 M, 768 dim) y E5, con peso 0,25 cada uno. "
+        "(encoder-only, Apache 2.0, 305 M, 768 dim) y E5, con peso 0,60 cada uno. "
         "Elegida midiendo cinco estructuras: NDCG@10 sube de <b>0,338 a 0,406</b> "
         "(41 consultas) y de 0,329 a 0,360 (10 independientes). GTE como "
         "<i>primario</i> se descarto pese a su mejor F1 en las 41 (0,385) porque "
@@ -306,7 +306,7 @@ def build_story() -> list:
         "documento correcto. Pero puntuar candidatos que el primario ya encontro es "
         "un trabajo distinto y mas facil. Asi que el primario genera 200 candidatos y "
         "E5 solo los <b>re-puntua</b>, sumando su similitud a la del primario con un "
-        "peso de 0,25. Los dos terminos son cosenos, misma escala, de modo que "
+        "peso de 0,60. Los dos terminos son cosenos, misma escala, de modo que "
         "sumarlos es legitimo. La operacion es barata porque los dos indices se "
         "construyen sobre los mismos fragmentos en el mismo orden: el vector de un "
         "fragmento en el segundo espacio se lee por su fila con <i>reconstruct</i>, "
@@ -314,16 +314,19 @@ def build_story() -> list:
         "vectorizacion adicional."
     ))
     story.append(p(
-        "El peso 0,25 no es el que maximiza el promedio: con 0,5 y 1,0 el F1@3 sobre "
-        "las 41 consultas sube algo mas (0,354 y 0,359), pero esas variantes empiezan "
-        "a <i>perder</i> consultas en la muestra de anotacion independiente, que es la "
-        "senal clasica de sobreajuste. Con 0,25 la cascada <b>no empeora ninguna "
-        "consulta de ninguna de las dos muestras</b>: gana 5 y pierde 0 sobre las 41, "
-        "y da exactamente el mismo resultado que el primario sobre las 10 "
-        "independientes. Se prefirio la variante que nunca hace dano sobre la que "
-        "promedia mejor. La prueba de signos sobre las 5 consultas que difieren da "
-        "p = 0,062: es el efecto mejor sustentado que se ha medido en este proyecto, "
-        "aunque con 41 consultas siga sin cruzar el umbral convencional del 5%."
+        "El peso paso de 0,25 a <b>0,60</b>. El 0,25 se habia fijado cuando el pool "
+        "era de 60 candidatos, la agregacion era <i>sum</i> y no habia glosario; las "
+        "tres cosas cambiaron despues. Al ampliar el pool a 100 entran candidatos con "
+        "similitud primaria mas baja, donde el mismo peso absoluto pesa mas en "
+        "relacion a esa similitud, de modo que el punto de equilibrio se desplaza. Se "
+        "barrio la grilla completa 0,10 / 0,25 / 0,40 / 0,60 / 0,75 / 0,90 y el "
+        "resultado es una <b>meseta, no una tendencia</b>: 0,60 es el unico valor cuyo "
+        "intervalo de confianza al 90% del delta pareado excluye una perdida de 0,02 "
+        "en las seis lecturas (F1@3 y NDCG@10 sobre las 50 consultas, sobre las 41 "
+        "humanas y sobre las 10 de anotacion independiente). Los valores 0,75 y 0,90 "
+        "fallan el criterio sobre las 50. Que no haya tendencia monotona es lo que "
+        "impide escalar el hallazgo a la hipotesis distinta de que el re-puntuador "
+        "deberia pasar a ser el primario."
     ))
 
     story.append(p(
@@ -547,11 +550,12 @@ def build_story() -> list:
     ))
     story.append(p(
         "<b>Estado final de la medicion.</b> Sobre las 50 consultas la entrega da "
-        "<b>F1@3 = 0,402</b> y <b>NDCG@10 = 0,457</b>. El F1@3 no tiende a 1: la "
+        "<b>F1@3 = 0,440</b> y <b>NDCG@10 = 0,490</b>. El F1@3 no tiende a 1: la "
         "sec. 10.2.2 fija P@3 = aciertos/3 con los tres cupos siempre llenos, asi "
         "que una consulta con un solo documento relevante topa en 0,50 y el techo "
-        "sobre este ground truth es <b>0,906</b> &mdash; el 0,402 es el 44% de lo "
-        "alcanzable, no el 40% de 1."
+        "sobre este ground truth es <b>0,906</b> &mdash; el 0,440 es el 49% de lo "
+        "alcanzable, no el 44% de 1. Sobre las 41 consultas de anotacion humana da "
+        "0,468 / 0,510 y sobre las 10 de anotacion independiente 0,400 / 0,436."
     ))
     story.append(p(
         "<b>Las dos ultimas mejoras adoptadas se componen.</b> La primera es "
@@ -574,6 +578,42 @@ def build_story() -> list:
         "el pool ampliado, 0,366 / 0,434 y 0,398 / 0,447; y <b>las dos juntas, que "
         "son las que se entregan, 0,402 / 0,457 y 0,424 / 0,456</b>. Los efectos se "
         "componen: ninguna de las dos anula a la otra."
+    ))
+    story.append(p(
+        "<b>La ultima ronda anadio dos palancas mas, y tambien se componen.</b> El "
+        "peso del re-puntuador paso de 0,25 a 0,60 (sec. 3.1) y el glosario gano tres "
+        "entradas &mdash; <i>derecho internacional en el espacio</i>, <i>dominio "
+        "espacial</i> y <i>sistemas no tripulados</i> &mdash; medidas una por una, "
+        "cada una ganando una consulta sin perder ninguna. Que se compusieran no era "
+        "obvio: el glosario cambia <i>que</i> candidatos entran al pool y el peso "
+        "reordena el pool ya recuperado, de modo que un re-puntuador con mas peso "
+        "podia hundir justo los documentos que el glosario acababa de rescatar. "
+        "Medido, no ocurre. Partiendo de 0,402 / 0,457 sobre las 50 consultas: solo "
+        "el peso da 0,425 / 0,476; solo el glosario, 0,423 / 0,486; y <b>las dos "
+        "juntas, 0,440 / 0,490</b>, mejor que cualquiera por separado en las cuatro "
+        "lecturas comparadas."
+    ))
+    story.append(p(
+        "<b>La salvedad, que se declara junto al numero:</b> contra el glosario solo, "
+        "la ganancia sobre las 50 consultas es estrecha (NDCG@10 +0,004). Lo que "
+        "sostiene la combinacion es el F1@3 sobre las 10 consultas de anotacion "
+        "independiente, +0,067 con intervalo al 90% de [+0,000, +0,133] &mdash; la "
+        "unica muestra libre del sesgo de pooling, y tambien la mas pequena: una sola "
+        "consulta la mueve 0,033. Sobre las 50, el cambio gana 9 consultas y "
+        "<i>pierde</i> 4."
+    ))
+    story.append(p(
+        "El glosario dejo ademas un hallazgo que acota su propio alcance: <b>la "
+        "asimetria espanol/ingles existe solo en los fenomenos 1 y 2</b>. En el "
+        "fenomeno 3, territorial y colombiano, la relacion se invierte "
+        "(\"reclutamiento\" aparece en 682 fragmentos contra 2 de <i>child "
+        "recruitment</i>; \"restitucion de tierras\" 617 contra 22 de <i>land "
+        "restitution</i>), de modo que expandir al ingles una consulta de ese "
+        "fenomeno la alejaria de sus documentos. El glosario es deliberadamente una "
+        "herramienta de dos fenomenos, no de tres. Por la misma razon se rechazo "
+        "<i>capacidades laser</i> &rarr; <i>laser weapons</i>: \"laser\" es un "
+        "cognado, la consulta ya tenia puente al corpus en ingles, y la entrada "
+        "costaba una consulta."
     ))
     story.append(p(
         "Con el pool ampliado la agregacion pasa de <i>suma</i> a <b>sumar los 5 "
@@ -625,7 +665,7 @@ def build_story() -> list:
         "se hereda de su documento, porque anotarla de verdad exigiria relevancia "
         "graduada fragmento por fragmento. El proxy sobreestima &mdash; da 1 a la "
         "bibliografia de un documento relevante &mdash; y cuanto, esta acotado por "
-        "abajo: descontando el aparato bibliografico da 0,443 frente a 0,457. El "
+        "abajo: descontando el aparato bibliografico da 0,476 frente a 0,490. El "
         "otro modo de fallo, un pasaje que no responde dentro de un documento que "
         "si es relevante, no lo ve ninguna medicion automatica.",
         "<b>Documentos sin texto recuperable:</b> 8 de los 1826. Cinco son imagenes "

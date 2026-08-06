@@ -330,3 +330,65 @@ a proposito: la tabla vive **por duplicado** en `dev/src/` y en
 50 consultas. Tocar solo `dev/src/` rompe el test; tocar las dos es tocar
 `Entrega/`, que el punto 6 del handoff reserva para decision con humano.
 Queda como **adoptable pendiente**, igual que el peso 0.60 de E01/E01b.
+
+---
+
+## E06 — las dos palancas juntas: se componen (6 ago 2026)
+
+**Hipotesis:** el peso 0,60 (E01/E01b) y las tres entradas de glosario (E03)
+se componen, o sea que juntos superan a cualquiera de los dos solo.
+
+**Por que hacia falta medirlo:** las dos se midieron contra la MISMA base
+entregada. Sumar +0,023 y +0,021 y esperar 0,44 habria sido extrapolar.
+
+**Justificacion mecanica, escrita antes de medir:** actuan en puntos distintos
+del camino online. El glosario cambia el VECTOR DE CONSULTA, o sea que
+candidatos ENTRAN al pool; el peso reordena el pool ya recuperado. Sobre esa
+base deberian componerse. Pero E03 rescata q002/q017/q032 metiendo documentos
+nuevos, y si el re-puntuador con mas peso los hunde, la combinacion valdria
+menos que las partes. Es exactamente eso lo que el experimento resuelve.
+
+**Regla fijada antes de ver los numeros:** ademas del criterio de siempre (IC
+al 90% del delta pareado excluyendo -0,02 en las dos muestras) se agrego una
+segunda condicion: **si la combinacion no supera a la mejor palanca
+individual, se entrega la palanca sola.** Dos cambios que no se componen son
+un cambio de mas.
+
+| celda | F1(50) | NDCG(50) | F1(indep) | NDCG(indep) | F1(hum) | NDCG(hum) |
+|---|---|---|---|---|---|---|
+| entregado (0.25, glos base) | 0.402 | 0.457 | 0.300 | 0.338 | 0.424 | 0.456 |
+| E01 solo (0.60, glos base) | 0.425 | 0.476 | 0.367 | 0.374 | 0.450 | 0.493 |
+| E03 solo (0.25, glos+3) | 0.423 | 0.486 | 0.333 | 0.432 | 0.450 | 0.492 |
+| **E01+E03 (0.60, glos+3)** | **0.440** | **0.490** | **0.400** | **0.436** | **0.468** | **0.510** |
+
+**Deltas de la combinacion contra lo entregado, IC 90%:** ADOPTABLE en las
+seis lecturas. F1@3 50 **+0.038 [-0.005, +0.081]** (9 gana / 4 pierde);
+NDCG@10 50 **+0.034 [-0.006, +0.073]** (21/14); F1@3 indep **+0.100 [+0.033,
++0.167]** (3/0); NDCG@10 indep +0.098 [-0.001, +0.216] (3/2); F1@3 humanas
++0.045 [-0.002, +0.093]; NDCG@10 humanas **+0.054 [+0.017, +0.095]**.
+
+**La comparacion que decide, contra cada palanca sola:**
+
+| | vs E01 solo | vs E03 solo |
+|---|---|---|
+| F1@3 50 | +0.015 [+0.000, +0.032] | +0.017 [-0.025, +0.058] |
+| NDCG@10 50 | +0.014 [+0.000, +0.039] | +0.004 [-0.037, +0.043] |
+| F1@3 indep | +0.033 [+0.000, +0.100] | **+0.067 [+0.000, +0.133]** |
+| NDCG@10 indep | +0.062 [+0.000, +0.187] | +0.004 [-0.078, +0.086] |
+
+**Veredicto: ADOPTADO y aplicado a `Entrega/`.** Se componen: ninguna de las
+ocho lecturas contra las palancas solas baja del cero.
+
+**Lo que hay que decir junto al 0.440, aplicando la leccion 2:**
+
+- **La ganancia sobre E03 solo es floja** en las 50 (NDCG +0.004, F1 IC que
+  cruza el cero). Lo que sostiene la combinacion es el **F1@3 en las 10
+  independientes: +0.067**, la unica muestra sin sesgo de pooling. Es tambien
+  la muestra mas chica del proyecto: 10 consultas, una sola que cambie mueve
+  0.033. **La evidencia es real pero no es holgada.**
+- **El F1@3 de las 50 pierde 4 consultas** para ganar 9. La regla vieja de "no
+  adoptar nada que pierda consultas" esta derogada (`lecciones_metodologia.md`)
+  justo porque estaba anti-correlacionada con la calidad, pero conviene saber
+  que este cambio no es gratis en todas las consultas.
+- **El 0.440 es el 49% del techo alcanzable (0.906)**, no el 44% de 1. Citarlo
+  siempre con el techo al lado.

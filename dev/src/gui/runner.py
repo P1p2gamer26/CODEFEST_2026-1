@@ -33,7 +33,7 @@ from ..retrieval.search import search
 # Mismos valores que Entrega/generador.py (DEFAULT_RERANK_*): la GUI tiene que
 # responder lo mismo que se entrega, no una configuracion parecida.
 RERANK_NAMES = (ENCODER_GTE_NAME, ENCODER_SECONDARY_NAME)
-RERANK_WEIGHT = 0.25
+RERANK_WEIGHT = 0.60  # E01/E01b, 6 ago 2026: ver DEFAULT_RERANK_WEIGHT
 RERANK_DEPTH = 200
 
 ENTREGA_DIR = Path(__file__).resolve().parents[3] / "Entrega"  # <raiz>/Entrega
