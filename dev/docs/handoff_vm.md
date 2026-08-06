@@ -116,6 +116,20 @@ Reglas, todas heredadas de `docs/lecciones_metodologia.md`:
    `docs/plan_encoders.md` y en el estado de `las notas del proyecto`. Mismo criterio de
    adopción, mismas reglas 1-8. El trabajo es de mejora continua, no una
    lista fija.
+10. **Cierre de ronda: un draft de Gmail consolidado antes de generar la
+    siguiente tanda.** En el mismo momento de la regla 9 (cola agotada, antes
+    de escribir los experimentos nuevos), crear un draft aparte —
+    asunto `[CODEFEST loop] Ronda cerrada — resumen y plan siguiente` — con:
+    (a) tabla de TODO lo cerrado hasta ahora con su F1@3/NDCG@10 en las dos
+    muestras y su veredicto (leer `bitacora.md` completa, no solo lo nuevo);
+    (b) cuál es la mejor configuración medida hoy contra la entregada, y si
+    algo quedó "adoptable" esperando decisión humana para tocar `Entrega/`;
+    (c) la lista de experimentos nuevos que se van a correr en la ronda que
+    arranca y por qué (una línea de justificación mecánica cada uno, no el
+    JSON crudo). Es el punto donde el usuario mira las métricas acumuladas y
+    decide si deja seguir la siguiente ronda o interviene — el loop asume
+    que sigue si no hay nadie que lo pare, pero el draft tiene que dejarlo
+    fácil de frenar (mencionar explícitamente `detener la tarea por su id` como opción).
 
 ## Corridas largas
 
