@@ -90,6 +90,13 @@ E5_PASSAGE_PREFIX = "passage: "
 ENCODER_GTE_NAME = "gte-multilingual-base"
 ENCODER_GTE_HF_ID = "Alibaba-NLP/gte-multilingual-base"
 
+# E02 de dev/experimentos/cola.jsonl: mismo orden de parametros que el
+# primario (118 M) y misma dimension (384), pero ventana 512 en vez de los
+# 128 tokens en los que MiniLM trunca. Sirve para separar "la ventana no
+# importa" de "e5-base era peor por otra razon". Lleva los prefijos de E5.
+ENCODER_E5_SMALL_NAME = "multilingual-e5-small"
+ENCODER_E5_SMALL_HF_ID = "intfloat/multilingual-e5-small"
+
 
 def encoder_dir(encoder_name: str) -> Path:
     return BASE_VECTORIAL_DIR / f"encoder_{encoder_name}"

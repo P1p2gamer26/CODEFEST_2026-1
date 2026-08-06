@@ -155,3 +155,81 @@ independientes. No se abre.
 siendo decision con humano; E01b levanta el bloqueo que declaraba la cola
 ("adoptar el borde de una grilla sin ver mas alla"): ya se vio mas alla y 0.60
 no es un borde que siga subiendo.
+
+---
+
+## E02 — multilingual-e5-small como PRIMARIO: refutado (6 ago 2026)
+
+**Hipotesis previa:** e5-small (118 M, dim 384, ventana 512) recupera mejor
+que MiniLM como primario, porque arregla la truncacion a 128 tokens que
+afecta al 96% de los chunks **sin costar mas CPU** (mismo orden de
+parametros, misma dimension).
+
+**Justificacion mecanica previa** (`docs/plan_encoders.md` sec. 0): MiniLM no
+ve la mayor parte del texto que indexa. e5-small cuadruplica la ventana con
+el mismo tamano, asi que es la unica forma barata de separar "la ventana no
+importa" de "e5-base era peor por otra razon" — e5-base perdio como primario,
+pero es 3x mas grande y la ventana no era la unica variable que cambiaba.
+
+Indice construido en la VM sobre `chunks_intermedios_limpio.jsonl` (los mismos
+128.526 chunks, sin re-chunkear: el invariante del punto 8 se respeta y los
+`chunk_id` quedan identicos en orden, verificado). Salida en
+`dev/intermedios/e5small/`, **fuera de `Entrega/`**. Medido con
+`dev/scripts/barrido_primario.py` en el regimen ENTREGADO (k_pool=100,
+agg=top5, glosario activo, cascada con peso 0.25) — `barrido_estructuras.py`
+solo habia comparado primarios bajo el regimen viejo de pool=60/`sum`/sin
+glosario. Log en `dev/intermedios/log_barrido_primario.txt`.
+
+| celda | F1@3 (50) | NDCG@10 (50) | F1@3 (indep) | NDCG@10 (indep) |
+|---|---|---|---|---|
+| **MiniLM->gte+e5 (entregado)** | **0.402** | **0.457** | **0.300** | **0.338** |
+| e5small->gte+e5 | 0.187 | 0.192 | 0.200 | 0.171 |
+| MiniLM solo | 0.362 | 0.427 | 0.267 | 0.299 |
+| e5small solo | 0.154 | 0.160 | 0.100 | 0.143 |
+
+Deltas pareados contra el entregado, IC al 90%: e5small en cascada da F1
+**-0.215 [-0.288, -0.143]** y NDCG **-0.265 [-0.353, -0.180]** sobre las 50
+(gana 3 pierde 25, y gana 7 pierde 30). El IC esta enteramente bajo cero en
+las 50 y el NDCG independiente tambien. **No es un empate ni una perdida
+marginal: es un derrumbe.**
+
+**Se midieron cuatro celdas y no dos, y por eso el experimento concluye algo.**
+La comparacion que responde la hipotesis es *primario solo contra primario
+solo*: MiniLM 0.362 contra e5-small **0.154**. Menos de la mitad, con la
+ventana cuadruplicada.
+
+**Antes de creerle al resultado se descarto el modo de fallo que la propia
+cola advertia** (los prefijos `query:`/`passage:` de la familia E5, cuya
+omision degrada en silencio). Verificado de dos formas: la entrada en
+`KNOWN_ENCODERS` declara los dos prefijos, y el vector reconstruido del indice
+da `sim = 1.0000` exacta contra el texto re-codificado **con** prefijo de
+pasaje y menos **sin** el. El indice esta bien construido. Ademas la fila base
+del barrido reproduce 0.402 / 0.457 exactos, o sea que el arnes de medicion
+tampoco esta sesgado.
+
+### Lo que este experimento cierra, que vale mas que el numero
+
+**La ventana de 128 tokens de MiniLM NO es el cuello de botella.** Es la
+pregunta que `docs/plan_encoders.md` dejaba abierta y que motivaba varias
+lineas de trabajo (re-fragmentar el corpus a 128 tokens, buscar encoders por
+tamano de ventana). Un encoder del mismo porte con 4x la ventana, sobre
+exactamente los mismos chunks, recupera **menos de la mitad**. La truncacion
+es real y sigue siendo real; lo que queda refutado es que sea lo que limita la
+recuperacion. **No abrir mas experimentos cuyo argumento principal sea la
+ventana.**
+
+Esto ademas re-lee el fallo de e5-base como primario (0.182 en las 41,
+documentado en `las notas del proyecto`): no era su tamano ni su ventana, es que **la
+familia E5 rinde mal como primario sobre este corpus** y bien como
+re-puntuador. Dos miembros de la familia, con 3x de diferencia de tamano,
+fallan igual en el mismo puesto.
+
+**La premisa de coste tambien era falsa.** e5-small tardo **2 h 33 min** en
+codificar los 128.526 chunks contra ~1 h de MiniLM: 2,5x mas caro, no
+"sin costar mas CPU". Tiene sentido mecanico — con ventana 512 procesa ~4x
+mas tokens por chunk que MiniLM truncando en 128. Ese coste es consecuencia
+directa de lo que la hipotesis vendia como gratis.
+
+**Veredicto: DESCARTADO en las dos muestras. No reabrir sin datos nuevos.**
+El indice de e5-small queda en `dev/intermedios/e5small/` (197 MB) por si
+sirve de re-puntuador en algun experimento futuro; **no se toco `Entrega/`**.
