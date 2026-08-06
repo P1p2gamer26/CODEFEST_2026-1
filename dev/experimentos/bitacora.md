@@ -392,3 +392,59 @@ ocho lecturas contra las palancas solas baja del cero.
   que este cambio no es gratis en todas las consultas.
 - **El 0.440 es el 49% del techo alcanzable (0.906)**, no el 44% de 1. Citarlo
   siempre con el techo al lado.
+
+---
+
+## E07 — la agregacion a documento bajo el regimen actual (6 ago 2026)
+
+**REFUTADO.** `Entrega/` sin cambios.
+
+Hipotesis, escrita antes de medir: `top5` premia al documento que aporta
+MUCHOS chunks al pool por encima del que aporta UNO excelente, asi que **un M
+mas chico deberia ganar** bajo el regimen actual (pool 100, peso 0.60).
+La motivaba `diagnostico_ceros.py` sobre la entrega en 0.440: de 20 consultas
+que fallan, **16 tienen el documento correcto DENTRO del pool** y ninguna lo
+tiene ausente del indice; q022 y q040 con un chunk relevante en **rank 1** y
+aun asi el documento no entra al top-3.
+
+Se re-abrio algo ya descartado porque el `topM` original se midio con
+`k_pool=60` y peso 0.25, regimen donde `top5` y `sum` eran **la misma
+operacion** y el barrido no podia distinguir nada (leccion 5: las notas
+propias envejecen).
+
+| estrategia | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | F1(hum) | ND(hum) |
+|---|---|---|---|---|---|---|---|
+| max | 0.239 | 0.295 | 0.279 | 0.167 | 0.228 | 0.223 | 0.289 |
+| top2 | 0.363 | 0.365 | 0.354 | 0.233 | 0.247 | 0.358 | 0.349 |
+| top3 | 0.391 | 0.395 | 0.381 | 0.233 | 0.263 | 0.392 | 0.384 |
+| **top5 (entregada)** | **0.440** | **0.490** | **0.476** | **0.400** | **0.436** | **0.468** | **0.510** |
+| top8 | 0.390 | 0.465 | 0.453 | 0.367 | 0.431 | 0.415 | 0.473 |
+| sum | 0.390 | 0.465 | 0.453 | 0.367 | 0.431 | 0.415 | 0.473 |
+| mean | 0.057 | 0.201 | 0.187 | 0.033 | 0.120 | 0.053 | 0.189 |
+
+**`top5` gana las 27 lecturas** (3 metricas x 3 muestras) y **ninguna
+alternativa pasa el criterio** del IC al 90%. La direccion predicha se cumple
+al reves: cuanto mas chico el M, peor. La explicacion mecanica queda
+**refutada**, no confirmada a medias — que es justo la mitigacion que se habia
+fijado antes de medir para no vender ruido como hallazgo.
+
+**Coste real: cero.** El barrido ya habia dejado los siete `.jsonl` escritos
+en `dev/intermedios/agg_e07/` antes de que muriera la sesion que lo lanzo; se
+puntuaron los archivos guardados sin volver a tocar FAISS ni recodificar nada.
+
+### Los dos hallazgos colaterales, que valen mas que el veredicto
+
+1. **`top8` y `sum` son identicos digito a digito en las nueve columnas.** No
+   se parecen: son el mismo numero. O sea que **con `k_pool=100` ningun
+   documento aporta mas de 8 chunks al pool**, y el tope de `topM` solo tiene
+   efecto en la franja **M=5 a M=8**. Fuera de ahi el parametro es inerte.
+   Esto acota de una vez cuanto puede rendir esta palanca: no hay nada que
+   ganar explorando M grandes, y ya se sabe que M chicos pierden.
+2. **`top5` es un pico agudo: 0.440 contra 0.390 y 0.391 en los dos vecinos.**
+   Hay que decirlo en voz alta aunque juegue en contra del numero entregado.
+   `top5` **no lo eligio este barrido** — venia de la entrega, adoptado por
+   robustez ante el pool ancho, no por argmax de una grilla — asi que no es
+   sobreajuste en el sentido estricto. Pero un maximo local tan puntiagudo
+   entre dos vecinos practicamente iguales es la firma tipica del sobreajuste,
+   y **no conviene defender el 5 como valor mecanicamente justificado**. Lo
+   defendible es lo medido: es el mejor de siete y el unico que pasa.
