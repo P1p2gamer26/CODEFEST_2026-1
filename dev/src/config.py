@@ -97,6 +97,13 @@ ENCODER_GTE_HF_ID = "Alibaba-NLP/gte-multilingual-base"
 ENCODER_E5_SMALL_NAME = "multilingual-e5-small"
 ENCODER_E5_SMALL_HF_ID = "intfloat/multilingual-e5-small"
 
+# E04 de dev/experimentos/cola.jsonl: el encoder mas fuerte que cabe en esta
+# CPU (560 M, dim 1024, ventana 512). Se evalua SOLO como re-puntuador -- E02
+# midio que la familia E5 rinde mal como primario sobre este corpus. Lleva los
+# mismos prefijos que el resto de la familia.
+ENCODER_E5_LARGE_NAME = "multilingual-e5-large"
+ENCODER_E5_LARGE_HF_ID = "intfloat/multilingual-e5-large"
+
 
 def encoder_dir(encoder_name: str) -> Path:
     return BASE_VECTORIAL_DIR / f"encoder_{encoder_name}"
