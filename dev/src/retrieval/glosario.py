@@ -81,6 +81,22 @@ GLOSARIO: tuple[tuple[str, str], ...] = (
     ("operaciones espaciales dinamicas", "dynamic space operations"),
     ("enjambres de drones", "drone swarms"),
     ("semiconductores", "semiconductors"),
+    # E03 (6 ago 2026): medidas UNA POR UNA, las tres ganan una consulta y no
+    # pierden ninguna. Conteos ES/EN sobre los 128.526 chunks del indice.
+    ("derecho internacional en el espacio", "international space law"),  # 2 / 424
+    ("dominio espacial", "space domain"),  # 23 / 965
+    ("sistemas no tripulados", "unmanned systems UAV"),  # 0 / 142
+    # NO entran, y la razon vale mas que las que si entraron:
+    # - "capacidades laser" -> "laser weapons" (0 / 178) PIERDE q024. Fallo
+    #   predicho antes de medir: "laser" es un cognado, o sea que la consulta
+    #   YA tiene puente al corpus ingles. Falla la parte 2 del criterio.
+    # - "amenazas ciberneticas", "infraestructuras criticas" y "minerales
+    #   estrategicos": efecto exactamente nulo. Una entrada que no cambia nada
+    #   es superficie de riesgo sin contrapartida.
+    # Y el hallazgo mayor de E03: la asimetria ES/EN existe SOLO en los
+    # fenomenos 1 y 2. En el 3 va al reves (reclutamiento 682 ES / 2 EN,
+    # restitucion de tierras 617 / 22), asi que expandir al ingles una consulta
+    # territorial la ALEJARIA de sus documentos. No agregar entradas de F3.
 )
 
 

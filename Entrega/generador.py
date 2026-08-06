@@ -619,6 +619,22 @@ GLOSARIO: tuple[tuple[str, str], ...] = (
     ("operaciones espaciales dinamicas", "dynamic space operations"),
     ("enjambres de drones", "drone swarms"),
     ("semiconductores", "semiconductors"),
+    # E03 (6 ago 2026): medidas UNA POR UNA, las tres ganan una consulta y no
+    # pierden ninguna. Conteos ES/EN sobre los 128.526 chunks del indice.
+    ("derecho internacional en el espacio", "international space law"),  # 2 / 424
+    ("dominio espacial", "space domain"),  # 23 / 965
+    ("sistemas no tripulados", "unmanned systems UAV"),  # 0 / 142
+    # NO entran, y la razon vale mas que las que si entraron:
+    # - "capacidades laser" -> "laser weapons" (0 / 178) PIERDE q024. Fallo
+    #   predicho antes de medir: "laser" es un cognado, o sea que la consulta
+    #   YA tiene puente al corpus ingles. Falla la parte 2 del criterio.
+    # - "amenazas ciberneticas", "infraestructuras criticas" y "minerales
+    #   estrategicos": efecto exactamente nulo. Una entrada que no cambia nada
+    #   es superficie de riesgo sin contrapartida.
+    # Y el hallazgo mayor de E03: la asimetria ES/EN existe SOLO en los
+    # fenomenos 1 y 2. En el 3 va al reves (reclutamiento 682 ES / 2 EN,
+    # restitucion de tierras 617 / 22), asi que expandir al ingles una consulta
+    # territorial la ALEJARIA de sus documentos. No agregar entradas de F3.
 )
 
 
@@ -1279,11 +1295,19 @@ DEFAULT_K_POOL = 100  # candidatos usados para agregar a nivel documento (sec. 8
 
 # Cascada de dos encoders. Ambos valores estan MEDIDOS, no supuestos, con
 # scripts/barrido_dos_encoders.py sobre el mini ground truth (ver informe,
-# sec. 7). Peso 0,25: los pesos mayores rinden mas en promedio sobre las 41
-# consultas anotadas pero empiezan a perder en las 10 de anotacion
-# independiente, que es la senal clasica de sobreajuste al pooling. Con 0,25 la
-# cascada no empeora NINGUNA consulta de ninguna de las dos muestras.
-DEFAULT_RERANK_WEIGHT = 0.25
+# sec. 7).
+#
+# El peso paso de 0,25 a 0,60 el 6 ago 2026 (E01/E01b, scripts/barrido_peso.py).
+# El 0,25 se habia fijado con k_pool=60, agregacion sum y sin glosario, y las
+# tres cosas cambiaron: al ampliar el pool a 100 entran candidatos con score
+# primario mas bajo, donde el mismo peso absoluto pesa mas en relacion al score
+# primario, asi que el punto de equilibrio se movio. Barrido en 0.10 / 0.25 /
+# 0.40 / 0.60 / 0.75 / 0.90: hay MESETA, no tendencia. 0,60 es el unico valor
+# que pasa el criterio (IC al 90% del delta pareado excluyendo -0,02) en las
+# seis lecturas; 0,75 y 0,90 fallan sobre las 50. Por eso la grilla quedo
+# cerrada y NO se escala a "el re-puntuador deberia ser el primario", que es
+# otra hipotesis y necesita su propio experimento.
+DEFAULT_RERANK_WEIGHT = 0.60
 DEFAULT_RERANK_DEPTH = 200
 
 # La cascada viene ACTIVADA por defecto porque es la configuracion con la que
