@@ -99,3 +99,59 @@ seis lecturas — no hay evidencia de que sea el techo, solo de que es mejor
 que 0.25. Antes de fijarlo en `Entrega/`, vale barrer un punto más arriba
 (p. ej. 0.75, 0.90) para no adoptar a ciegas el borde de una grilla de cuatro
 celdas.
+
+---
+
+## E01b — extender la grilla de peso a 0.75 y 0.90 (6 ago 2026)
+
+**Hipotesis previa:** 0.60 era el borde superior de la grilla de E01, asi que
+no se sabia si es un optimo o solo el ultimo punto medido. Si F1 y NDCG
+seguian subiendo en 0.75 y 0.90, el hallazgo real no seria "el peso optimo es
+X" sino "el primario deberia ser el re-puntuador", que es otra hipotesis.
+
+Coste cero de codificacion: los tres indices ya existen y las similitudes
+crudas se calculan una vez (`barrido_peso.py`, `PESOS = [0.25, 0.60, 0.75,
+0.90]`, k_pool=100, agg=top5, glosario activo). Log completo en
+`dev/intermedios/log_barrido_peso_e01b.txt`, crudos en
+`dev/intermedios/peso/peso{0.25,0.60,0.75,0.90}.jsonl`.
+
+| peso | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
+|---|---|---|---|---|
+| 0.25 (entregado) | 0.402 | 0.457 | 0.300 | 0.338 |
+| **0.60** | **0.425** | 0.476 | 0.367 | 0.374 |
+| 0.75 | 0.405 | 0.478 | 0.367 | 0.374 |
+| 0.90 | 0.420 | **0.482** | **0.400** | **0.412** |
+
+**No hay tendencia monotona, hay meseta.** El F1 sobre las 50 sube, baja y
+vuelve a subir (0.425 / 0.405 / 0.420) en un rango de 0.020, del tamano del
+propio umbral de decision. El NDCG@10 de las 50 se mueve 0.006 en todo el
+tramo 0.60-0.90. Lo unico que sigue creciendo es la muestra independiente
+(F1 0.367 -> 0.400), y son **10 consultas**: una sola que cambie de lado mueve
+0.033, o sea que ese ascenso no distingue senal de ruido.
+
+**Criterio de adopcion (IC al 90% del delta pareado excluyendo -0.02) contra
+el entregado 0.25:**
+
+| peso | lecturas que pasan (de 6) | cuales fallan |
+|---|---|---|
+| **0.60** | **6/6** | — |
+| 0.75 | 2/6 | F1 50, NDCG 50, NDCG indep, F1 humanas |
+| 0.90 | 3/6 | F1 50, NDCG 50, F1 humanas |
+
+**Veredicto: 0.60 se sostiene y la grilla queda cerrada.** 0.75 y 0.90 **no
+son adoptables** —fallan el criterio justo en las 50, que es la metrica de
+decision— y su mejor lectura (la independiente) es la muestra que menos
+resuelve. Con la regla de preferir el valor conocido ante empate, extender la
+grilla mas arriba no tiene justificacion: la meseta ya aparecio.
+
+**Se responde la pregunta de arquitectura que este experimento tenia que
+decidir: NO se escala a "el re-puntuador deberia ser el primario".** Esa
+escalada requeria ver F1 y NDCG subiendo sin aplanarse, y lo que se ve es una
+meseta ruidosa entre 0.60 y 0.90. Ademas la hipotesis ya tiene precedente en
+contra: gte-primario dio 0.385 en las 41 humanas y **0.200** en las
+independientes. No se abre.
+
+**No se toco `Entrega/`** (punto 6 del handoff). Aplicar el peso 0.60 sigue
+siendo decision con humano; E01b levanta el bloqueo que declaraba la cola
+("adoptar el borde de una grilla sin ver mas alla"): ya se vio mas alla y 0.60
+no es un borde que siga subiendo.
