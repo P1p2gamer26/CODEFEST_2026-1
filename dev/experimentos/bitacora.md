@@ -524,3 +524,23 @@ llegar al mismo desenlace. El desbloqueo no es otra palanca del recuperador
 sino **E05** — re-anotar esas 9 a mano. Es tarea humana por medicion, no por
 comodidad: el panel de 4 agentes ya se probo y reproduce al humano con F1
 0.23, peor que el anotador unico.
+
+## E04 en curso — la ETA real es 55 h, no 18
+
+Medido el 6 ago 16:37: **4096 chunks en 1 h 45** con los 4 cores saturados
+(338% de CPU). A ese ritmo los 128.526 chunks son **~55 horas**, tres veces
+la estimacion de la cola. La codificacion es reanudable (`.npy` + `.progreso`
+cada 4096), asi que la corrida sobrevive a un corte, pero **bloquea la CPU de
+la VM durante mas de dos dias**: ningun barrido puede correr en paralelo sin
+falsear su propio tiempo y competir por memoria.
+
+Se deja correr. Lo que hay que saber al retomarla:
+
+- Disco: 1,9 G libres con el `.npy` ya preasignado (526 MB). El indice final
+  son otros ~527 MB. **Entra, pero sin margen**: no lanzar nada mas que
+  escriba en `dev/intermedios/` hasta que cierre.
+- El corolario de E08 sigue en pie: mientras las 9 consultas de etiqueta de
+  agente no se re-anoten (E05, tarea humana), cualquier palanca que ensanche
+  el pool va a parecer ganadora en las 50 sin serlo. E04 no es palanca de
+  pool, asi que no cae en esa trampa, pero su lectura tambien hay que hacerla
+  en las dos muestras.
