@@ -233,3 +233,100 @@ directa de lo que la hipotesis vendia como gratis.
 **Veredicto: DESCARTADO en las dos muestras. No reabrir sin datos nuevos.**
 El indice de e5-small queda en `dev/intermedios/e5small/` (197 MB) por si
 sirve de re-puntuador en algun experimento futuro; **no se toco `Entrega/`**.
+
+---
+
+## E03 — ampliar el glosario ES->EN: tres entradas adoptables (6 ago 2026)
+
+**Hipotesis previa:** el glosario admite mas entradas de las 9 actuales, y cada
+una rescata consultas que hoy no tienen puente lexico al corpus.
+
+**Criterio de entrada, fijado antes de medir y en DOS partes obligatorias:**
+(1) la forma inglesa es >=10x mas frecuente en el corpus que la espanola;
+(2) **la CONSULTA no tiene ningun puente** — ni la sigla inglesa ni el termino
+ingles ya escritos en ella. La parte 2 es la que costo q021 en su momento
+(F1 0.33 -> 0.00 con "maniobras de proximidad", porque esa consulta ya traia
+**RPO**). No alcanza con que el termino espanol sea raro.
+
+Se conto la frecuencia ES vs EN de 22 terminos multipalabra sacados del
+vocabulario de las 50 consultas, sobre los 128.526 chunks. Medicion por
+entrada con `dev/scripts/barrido_glosario_e03.py` en el regimen ENTREGADO
+(k_pool=100, agg=top5, cascada peso 0.25) — `barrido_glosario.py` habia
+quedado en el regimen viejo de pool=60/`sum`. Log en
+`dev/intermedios/log_glosario_e03.txt`.
+
+### El hallazgo del conteo, que vale mas que las entradas nuevas
+
+**La asimetria ES/EN existe SOLO en los fenomenos 1 y 2.** En el fenomeno 3
+(territorial, corpus colombiano en espanol) el conteo va exactamente al reves:
+
+| termino (F3) | chunks ES | forma EN | chunks EN |
+|---|---|---|---|
+| reclutamiento | 682 | child recruitment | 2 |
+| restitucion de tierras | 617 | land restitution | 22 |
+| narcotrafico | 388 | drug trafficking | 218 |
+| control territorial | 285 | territorial control | 41 |
+| mineria ilegal | 148 | illegal gold mining | 1 |
+| grupos armados organizados | 121 | organized armed groups | 6 |
+| economias ilicitas | 76 | illicit economies | 8 |
+
+**Expandir al ingles una consulta del fenomeno 3 la alejaria del vocabulario
+de sus propios documentos.** El glosario es una herramienta de UN fenomeno,
+no una politica general de la consulta. Queda escrito para que nadie lo
+"complete" con los terminos de q033-q050, que es lo que parecia el siguiente
+paso natural antes de contar.
+
+### Medicion por entrada (cada una sola, sobre la tabla ya adoptada)
+
+| entrada candidata | ES/EN | toca | delta F1(50) | delta NDCG(50) | v/d |
+|---|---|---|---|---|---|
+| **derecho internacional en el espacio -> international space law** | 2 / 424 | q017 | **+0.007** | **+0.019** | 1/0 |
+| **dominio espacial -> space domain** | 23 / 965 | q032 | **+0.007** | **+0.009** | 1/0 |
+| **sistemas no tripulados -> unmanned systems UAV** | 0 / 142 | q002 | **+0.008** | +0.001 | 1/0 |
+| capacidades laser -> laser weapons | 0 / 178 | q024 | −0.007 | −0.010 | **0/1** |
+| amenazas ciberneticas -> cyber threats | 3 / 127 | q013 | 0.000 | 0.000 | 0/0 |
+| infraestructuras criticas -> critical infrastructure | 17 / 433 | q013 | 0.000 | 0.000 | 0/0 |
+| minerales estrategicos -> critical minerals | 0 / 74 | q046 | 0.000 | 0.000 | 0/0 |
+
+**Los dos fracasos estaban declarados como sospechosos ANTES de medir, y los
+dos fallaron por donde se dijo.** `capacidades laser` falla la parte 2 del
+criterio: "laser" es un cognado, o sea que q024 **ya tenia puente** al corpus
+ingles aunque el bigrama en espanol no aparezca nunca — es q021 otra vez, y
+efectivamente pierde. `minerales estrategicos` era el unico candidato del
+fenomeno 3 que pasaba el conteo, y se marco como riesgoso porque "critical
+minerals" es vocabulario de cadenas de suministro de semiconductores
+(fenomeno 1); no arrastro la consulta al fenomeno equivocado, pero tampoco
+hizo nada.
+
+**Las tres de efecto nulo no entran**, por la regla fijada de antemano: una
+entrada que no mueve ninguna consulta es superficie de riesgo para consultas
+futuras sin beneficio medido.
+
+### Las tres juntas, que es lo que se adoptaria
+
+| muestra | metrica | antes | despues | delta [IC 90%] | v/d/e |
+|---|---|---|---|---|---|
+| 50 consultas | F1@3 | 0.402 | **0.423** | **+0.021 [+0.007, +0.043]** | 3/0/47 |
+| 50 consultas | NDCG@10 | 0.457 | **0.486** | **+0.029 [+0.001, +0.067]** | 3/0/47 |
+| 41 humanas | F1@3 | 0.424 | **0.450** | +0.026 [+0.008, +0.052] | 3/0/38 |
+| 41 humanas | NDCG@10 | 0.456 | **0.492** | +0.036 [+0.002, +0.081] | 3/0/38 |
+| 10 indep. | F1@3 | 0.300 | **0.333** | +0.033 [+0.000, +0.100] | 1/0/9 |
+| 10 indep. | NDCG@10 | 0.338 | **0.432** | +0.094 [+0.000, +0.281] | 1/0/9 |
+
+**Adoptable en las seis lecturas: el IC al 90% excluye la perdida de 0.02 en
+todas y no pierde una sola consulta en ninguna muestra.** Ademas la ganancia
+mas grande (q017) cae en la **muestra independiente**, que es la unica sin
+sesgo de pooling — al reves de lo que paso con pool-100 y con gte-primario,
+donde la ganancia se evaporaba justo ahi.
+
+**Lo que hay que decir junto al numero:** son **3 consultas de 50** las que se
+mueven, una por entrada. El limite inferior del IC es +0.000, o sea que lo que
+esta demostrado es "no pierde", no "gana mucho". El efecto es real pero chico,
+y la muestra independiente lo sostiene con **una sola consulta**.
+
+**NO aplicado.** Las entradas no se escribieron en `src/retrieval/glosario.py`
+a proposito: la tabla vive **por duplicado** en `dev/src/` y en
+`Entrega/generador.py`, y `test_paridad_entrega.py` compara las dos sobre las
+50 consultas. Tocar solo `dev/src/` rompe el test; tocar las dos es tocar
+`Entrega/`, que el punto 6 del handoff reserva para decision con humano.
+Queda como **adoptable pendiente**, igual que el peso 0.60 de E01/E01b.
