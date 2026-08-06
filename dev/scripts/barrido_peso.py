@@ -72,7 +72,12 @@ K_POOL = 100
 ESTRATEGIA = "top5"
 EXPANDIR = True
 
-PESOS = [0.10, 0.25, 0.40, 0.60]
+# E01b: 0.60 fue el borde superior de la grilla original [0.10, 0.25, 0.40,
+# 0.60] y gano en las seis lecturas, asi que no se sabe si es un optimo o solo
+# el borde de la grilla. Se extiende a 0.75 y 0.90 conservando el entregado
+# (0.25) como base y el 0.60 para comparar; 0.10 y 0.40 ya quedaron
+# descartados en E01 y no se re-corren.
+PESOS = [0.25, 0.60, 0.75, 0.90]
 BASE_PESO = 0.25  # el entregado
 
 
