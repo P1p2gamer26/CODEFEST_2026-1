@@ -13,7 +13,7 @@ evitar relaciones espurias entre entidades lejanas dentro de una misma
 oracion larga.
 """
 
-from .ner import DEFAULT_LANG, EXCLUDED_LABELS, _get_ner_pipeline
+from .ner import DEFAULT_LANG, EXCLUDED_LABELS, _get_ner_pipeline, _limpiar_entidad
 
 FALLBACK_RELATION = "relacionado_con"
 
@@ -43,9 +43,18 @@ def extract_triples(text: str, lang: str | None) -> list[tuple[str, str, str, st
 
     triples: list[tuple[str, str, str, str, str]] = []
     for sent in doc.sents:
-        ents = [e for e in sent.ents if e.text.strip() and e.label_ not in EXCLUDED_LABELS]
-        for e1, e2 in zip(ents, ents[1:]):
-            subj, obj = e1.text.strip(), e2.text.strip()
+        # Se pasa por _limpiar_entidad igual que en extract_entities: recorta
+        # parentesis colgantes, descarta los spans con parentesis desbalanceados
+        # y aplica el tope de 6 palabras / 60 caracteres a cada entidad.
+        ents: list[tuple[spacy.tokens.Span, str]] = []
+        for ent in sent.ents:
+            if not ent.text.strip() or ent.label_ in EXCLUDED_LABELS:
+                continue
+            entidad = _limpiar_entidad(ent.text)
+            if entidad is None:
+                continue
+            ents.append((ent, entidad))
+        for (e1, subj), (e2, obj) in zip(ents, ents[1:]):
             if subj.lower() == obj.lower():
                 continue
             relation = _connecting_verb_lemma(sent, e1.end, e2.start) or FALLBACK_RELATION

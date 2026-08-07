@@ -162,6 +162,29 @@ def test_el_glosario_expande_igual_en_las_dos_copias():
         assert expandir_dev(texto) == entrega.expandir_consulta(texto), texto[:60]
 
 
+def test_el_ner_limpia_igual_en_las_dos_copias():
+    """El NER de la consulta (generador.py) debe normalizar igual que el que
+    construye los nodos (dev/src/graph/ner.py): si uno limpia los parentesis
+    colgantes y el otro no, las entidades de la consulta dejan de matchear los
+    nodos del grafo y --use-graph se apaga en silencio."""
+    from src.graph.ner import _limpiar_entidad as en_dev
+
+    entrega = _cargar_generador()
+    casos = [
+        "Instituto Kroc) Objetivo",
+        "(ONU)",
+        "Naciones Unidas)",
+        "(OTAN",
+        "Cooperacion (ONU)",
+        "a" * 61,
+        "una " * 7,
+        "OTAN",
+        "(",
+    ]
+    for caso in casos:
+        assert en_dev(caso) == entrega._limpiar_entidad(caso), caso
+
+
 def test_los_defaults_de_recuperacion_son_los_que_se_midieron():
     """k_pool 100 y top5 salieron de scripts/barrido_pool.py. Volverlos a 60 o
     a `sum` cambia la entrega en silencio: con pool 100 las dos estrategias YA

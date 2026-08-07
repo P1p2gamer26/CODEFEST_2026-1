@@ -1205,6 +1205,42 @@ NER_DEFAULT_LANG = "es"
 # de OntoNotes que no describen una entidad nombrada propiamente dicha.
 NER_EXCLUDED_LABELS = {"CARDINAL", "DATE", "MONEY", "ORDINAL", "PERCENT", "QUANTITY", "TIME"}
 
+# La etiqueta MISC del esquema CoNLL (es/pt) ocasionalmente captura clausulas
+# completas en vez de una entidad nombrada real. En vez de descartar la etiqueta
+# entera se acota la longitud de las entidades admitidas: 6 palabras / 60
+# caracteres sobran de sobra para una entidad legitima y recortan las clausulas.
+MAX_ENTIDAD_PALABRAS = 6
+MAX_ENTIDAD_CARACTERES = 60
+
+
+def _limpiar_entidad(texto: str) -> str | None:
+    """Normaliza el span del NER y devuelve None si no queda una entidad limpia.
+
+    Cuando el span de spaCy no coincide exactamente con un parentesis del texto
+    original (puntuacion irregular de OCR/PDF), queda un caracter colgando en el
+    nombre del nodo (ej. "Instituto Kroc) Objetivo"). Se recortan SOLO los
+    parentesis colgantes de los bordes (los que estan desbalanceados; el ')' de
+    "Cooperacion (ONU)" cierra un parentesis interno y no se toca), se eliminan
+    los parentesis redundantes que envuelven todo el span y se descarta la
+    entidad si al final queda un parentesis desbalanceado. Ademas se aplica el
+    tope de longitud, igual que al construir los nodos del grafo.
+    """
+    t = texto.strip()
+    while t.endswith(")") and t.count("(") < t.count(")"):
+        t = t[:-1].rstrip()
+    while t.startswith("(") and t.count("(") > t.count(")"):
+        t = t[1:].lstrip()
+    t = t.strip()
+    while t.startswith("(") and t.endswith(")") and t.count("(") == t.count(")"):
+        t = t[1:-1].strip()
+    if not t:
+        return None
+    if t.count("(") != t.count(")"):
+        return None
+    if len(t) > MAX_ENTIDAD_CARACTERES or len(t.split()) > MAX_ENTIDAD_PALABRAS:
+        return None
+    return t
+
 
 @dataclass
 class Entity:
@@ -1235,16 +1271,22 @@ def extract_entities(text: str, lang: str | None) -> list[Entity]:
         return []
     nlp = _get_ner_pipeline(lang or NER_DEFAULT_LANG)
     doc = nlp(text)
-    return [
-        Entity(
-            text=ent.text.strip(),
-            label=ent.label_,
-            start_char=ent.start_char,
-            end_char=ent.end_char,
+    entidades: list[Entity] = []
+    for ent in doc.ents:
+        if not ent.text.strip() or ent.label_ not in NER_EXCLUDED_LABELS:
+            continue
+        entidad = _limpiar_entidad(ent.text)
+        if entidad is None:
+            continue
+        entidades.append(
+            Entity(
+                text=entidad,
+                label=ent.label_,
+                start_char=ent.start_char,
+                end_char=ent.end_char,
+            )
         )
-        for ent in doc.ents
-        if ent.text.strip() and ent.label_ not in NER_EXCLUDED_LABELS
-    ]
+    return entidades
 
 
 def _normalize(text: str) -> str:

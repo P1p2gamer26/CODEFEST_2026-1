@@ -1,6 +1,9 @@
 """Construccion e integracion del grafo de conocimiento (sec. 7.2, paso 3;
-sec. 7.3). Cada arista conserva `doc_id` y `chunk_id` de origen para poder
-rastrear la evidencia textual de cada relacion.
+sec. 7.3). Cada arista conserva `doc_id` y `chunk_id` de origen (primera
+aparicion) para poder rastrear la evidencia textual de cada relacion; si la
+misma tripleta (sujeto, relacion, objeto) aparece en varios chunks, se agrega
+en una sola arista con `weight` = numero de chunks que la respaldan y
+`chunk_ids` con la lista completa de evidencia.
 
 `export_graphml()` escribe un GraphML con layout calculado (spring layout
 determinista, seed fija) y en el formato yEd: posiciones, tamanos, colores por
@@ -149,6 +152,12 @@ def _layout_sin_solapes(
 def build_knowledge_graph(records: list[ChunkRecord]) -> nx.MultiDiGraph:
     graph = nx.MultiDiGraph()
     tipo_counts: dict[str, Counter] = defaultdict(Counter)
+    # Evidencia por tripleta: misma (sujeto, relacion, objeto) repetida en
+    # varios chunks -> una sola arista con weight = numero de chunks que la
+    # respaldan y chunk_ids con la lista completa de evidencia (unida con ';',
+    # porque GraphML solo admite atributos escalares). doc_id/chunk_id apuntan
+    # a la primera aparicion para la trazabilidad puntual de la sec. 7.2.
+    evidencia: dict[tuple[str, str, str], dict] = {}
 
     for record in records:
         if record.formato in FORMATOS_SIN_NARRATIVA:
@@ -163,14 +172,27 @@ def build_knowledge_graph(records: list[ChunkRecord]) -> nx.MultiDiGraph:
             graph.add_node(obj, label=obj)
             tipo_counts[subject][subj_tipo] += 1
             tipo_counts[obj][obj_tipo] += 1
-            graph.add_edge(
-                subject,
-                obj,
-                relation=relation,
-                doc_id=record.doc_id,
-                chunk_id=record.chunk_id,
-                weight=1,
-            )
+            clave = (subject, relation, obj)
+            if clave not in evidencia:
+                evidencia[clave] = {
+                    "doc_id": record.doc_id,
+                    "chunk_id": record.chunk_id,
+                    "chunk_ids": [],
+                }
+            if record.chunk_id not in evidencia[clave]["chunk_ids"]:
+                evidencia[clave]["chunk_ids"].append(record.chunk_id)
+
+    for (subject, relation, obj), datos in evidencia.items():
+        chunk_ids = datos["chunk_ids"]
+        graph.add_edge(
+            subject,
+            obj,
+            relation=relation,
+            doc_id=datos["doc_id"],
+            chunk_id=datos["chunk_id"],
+            chunk_ids=";".join(chunk_ids),
+            weight=len(chunk_ids),
+        )
 
     for node in graph.nodes:
         # Si una entidad aparece con varias etiquetas NER, se usa la mas
@@ -254,13 +276,16 @@ def export_graphml(
         relation = str(data.get("relation", ""))
         doc_id = str(data.get("doc_id", ""))
         chunk_id = str(data.get("chunk_id", ""))
+        chunk_ids = str(data.get("chunk_ids", chunk_id))
+        weight = str(data.get("weight", 1))
         return (
             f'  <edge id="{_attr(eid)}" source="{_attr(u)}" '
             f'target="{_attr(v)}" directed="true">\n'
             f'    <data key="d6">{_xml_escape(relation)}</data>\n'
             f'    <data key="d7">{_xml_escape(doc_id)}</data>\n'
             f'    <data key="d8">{_xml_escape(chunk_id)}</data>\n'
-            f'    <data key="d9">1</data>\n'
+            f'    <data key="d11">{_xml_escape(chunk_ids)}</data>\n'
+            f'    <data key="d9">{weight}</data>\n'
             f'    <data key="d10">\n'
             f'      <y:PolyLineEdge>\n'
             f'        <y:LineStyle color="{COLOR_ARISTA}" type="line" width="1.0"/>\n'
@@ -294,6 +319,7 @@ def export_graphml(
         '  <key id="d7" for="edge" attr.name="doc_id" attr.type="string"/>',
         '  <key id="d8" for="edge" attr.name="chunk_id" attr.type="string"/>',
         '  <key id="d9" for="edge" attr.name="weight" attr.type="int"/>',
+        '  <key id="d11" for="edge" attr.name="chunk_ids" attr.type="string"/>',
         '  <key id="d10" for="edge" yfiles.type="edgegraphics"/>',
         '  <graph id="G" edgedefault="directed">',
     ]

@@ -78,6 +78,82 @@ def test_graph_limpia_caracteres_no_validos_en_xml():
     assert _limpiar("\x0b\x1f") == ""
 
 
+def test_limpiar_entidad_descarta_parentesis_desbalanceados():
+    """Cuando el span de spaCy no coincide con un parentesis del texto original
+    queda un caracter colgando (ej. "Instituto Kroc) Objetivo"). Se recorta el
+    parentesis colgante del borde y se descarta lo que sigue desbalanceado."""
+    from src.graph.ner import _limpiar_entidad
+
+    assert _limpiar_entidad("Instituto Kroc) Objetivo") is None
+    assert _limpiar_entidad("Naciones Unidas)") == "Naciones Unidas"
+    assert _limpiar_entidad("(OTAN") == "OTAN"
+    assert _limpiar_entidad("(ONU)") == "ONU"
+    # El ')' de "Cooperacion (ONU)" cierra un parentesis interno: no se toca.
+    assert _limpiar_entidad("Cooperacion (ONU)") == "Cooperacion (ONU)"
+    assert _limpiar_entidad("(") is None
+
+
+def test_limpiar_entidad_acota_la_longitud():
+    """La etiqueta MISC del esquema CoNLL ocasionalmente captura clausulas
+    completas: se admiten entidades de hasta 6 palabras / 60 caracteres en vez
+    de descartar la etiqueta MISC por completo."""
+    from src.graph.ner import _limpiar_entidad
+
+    assert _limpiar_entidad("a" * 61) is None
+    assert _limpiar_entidad("a" * 60) == "a" * 60
+    assert _limpiar_entidad("una " * 7) is None
+    assert _limpiar_entidad("una " * 6) == "una una una una una una"
+
+
+def test_build_knowledge_graph_agrega_peso_por_chunk():
+    """La misma relacion (sujeto, relacion, objeto) en varios chunks se agrega
+    en una sola arista con weight = numero de chunks y chunk_ids con la lista
+    completa de evidencia, conservando la trazabilidad puntual de la sec. 7.2."""
+    from src.graph.build_graph import build_knowledge_graph
+    from src.ingestion.pipeline import ChunkRecord
+
+    def _rec(i, texto):
+        return ChunkRecord(doc_id=f"D{i}", chunk_id=f"D{i}-c0", fuente="f.pdf", formato="pdf",
+                           fenomeno=1, posicion=0, num_tokens=20, texto=texto, idioma="es")
+
+    textos = [
+        "La OTAN coopera con Colombia y firmo un acuerdo en Bruselas.",
+        "La OTAN coopera con Colombia para fortalecer su presencia.",
+    ]
+    graph = build_knowledge_graph([_rec(i, t) for i, t in enumerate(textos)])
+
+    aristas = [d for u, v, d in graph.edges(data=True) if (u, d["relation"], v) == ("OTAN", "cooperar", "Colombia")]
+    assert len(aristas) == 1, "la tripleta repetida debe agregarse en una sola arista"
+    assert aristas[0]["weight"] == 2
+    assert aristas[0]["chunk_ids"] == "D0-c0;D1-c0"
+    assert aristas[0]["doc_id"] == "D0"
+    assert aristas[0]["chunk_id"] == "D0-c0"
+    assert graph.nodes["OTAN"]["tipo"] in {"ORG", "MISC"}
+
+
+def test_export_graphml_escribe_chunk_ids_y_peso(tmp_path):
+    """El esquema de aristas del GraphML con estilo expone weight (numero de
+    chunks de respaldo) y chunk_ids (evidencia completa), y se mantiene
+    releible por networkx."""
+    import networkx as nx
+    from src.graph.build_graph import export_graphml
+
+    g = nx.MultiDiGraph()
+    g.add_node("OTAN", label="OTAN", tipo="ORG")
+    g.add_node("Colombia", label="Colombia", tipo="LOC")
+    g.add_edge("OTAN", "Colombia", relation="cooperar", doc_id="D0", chunk_id="D0-c0",
+               chunk_ids="D0-c0;D1-c0", weight=2)
+
+    out = tmp_path / "g.graphml"
+    export_graphml(g, out)
+
+    releido = nx.read_graphml(out)
+    u, v, d = next(iter(releido.edges(data=True)))
+    assert d["relation"] == "cooperar"
+    assert d["weight"] == 2
+    assert d["chunk_ids"] == "D0-c0;D1-c0"
+
+
 def _grafo_de_prueba():
     from src.graph.build_graph import build_knowledge_graph
     from src.ingestion.pipeline import ChunkRecord
