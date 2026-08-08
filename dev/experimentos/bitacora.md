@@ -606,3 +606,188 @@ Se deja correr. Lo que hay que saber al retomarla:
   el pool va a parecer ganadora en las 50 sin serlo. E04 no es palanca de
   pool, asi que no cae en esa trampa, pero su lectura tambien hay que hacerla
   en las dos muestras.
+
+---
+
+## E09 — normalizar los scores antes de sumarlos: NO ADOPTABLE, con dos hallazgos (7 ago 2026)
+
+**Hipotesis previa:** la cascada suma cosenos crudos de tres espacios distintos
+(`score = cos_primario + 0.60*cos_gte + 0.60*cos_e5`). Normalizar cada termino
+POR CONSULTA sobre el pool antes de sumarlos mejora el ranking, porque hoy el
+peso escala RANGO y no relevancia.
+
+**Justificacion mecanica (escrita antes de medir):** el docstring de
+`src/retrieval/rerank.py` afirma explicitamente que sumar es legitimo porque
+"los dos terminos son cosenos, asi que estan en la misma escala". Compartir el
+intervalo [-1,1] **no** es compartir distribucion: sumar una variable de rango
+0,20 con otra de rango 0,50 hace que la ancha decida el orden sin importar el
+peso nominal. Eso predice ademas que el peso "optimo" se moviera de 0,25 a 0,60
+al ampliar el pool (E01): es lo que pasa cuando el parametro compensa la escala
+de un pool cuya composicion cambio.
+
+Coste: una sola pasada de FAISS. Los tres cosenos de cada candidato se calculan
+una vez y todas las celdas salen de recombinarlos.
+`dev/scripts/barrido_norm_e09.py`, crudos en `dev/intermedios/norm_e09{,b,c}/`,
+logs en `dev/intermedios/log_norm_e09{,b,c}.txt`.
+
+### La premisa se confirma, y refuta una afirmacion del propio codigo
+
+Dispersion de los cosenos DENTRO del pool, mediana sobre las 50 consultas:
+
+| encoder | rango | desv | media |
+|---|---|---|---|
+| MiniLM (primario) | 0.120 | 0.024 | 0.682 |
+| gte (re-puntuador) | **0.276** | 0.050 | 0.681 |
+| e5-base (re-puntuador) | 0.103 | 0.018 | 0.807 |
+
+**gte dispersa 2,3 veces mas que el primario.** Con el peso 0,60 aporta 0,166
+de rango contra los 0,120 del primario: en la practica **el re-puntuador ya
+manda sobre el orden mas que el recuperador**, que no es lo que dice ninguna
+nota del proyecto. La frase "estan en la misma escala y sumarlos es legitimo"
+del docstring de `rerank.py` es falsa tal como esta escrita. **Corregirla
+cuando se toque ese archivo** (no se toco acá: esta duplicada en
+`Entrega/generador.py` y es comentario, no comportamiento).
+
+### Medicion (grilla completa: 3 normas x 5 pesos, en tres corridas)
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | F1(hum) | ND(hum) |
+|---|---|---|---|---|---|---|---|
+| **cruda:0.60 (entregada)** | 0.440 | 0.490 | 0.476 | **0.400** | **0.436** | 0.468 | 0.510 |
+| cruda:1.00 | 0.451 | 0.498 | 0.478 | 0.367 | 0.374 | 0.481 | 0.515 |
+| cruda:3.00 | 0.461 | 0.490 | 0.475 | 0.367 | 0.362 | 0.470 | 0.494 |
+| zscore:0.60 | 0.361 | 0.410 | 0.397 | 0.300 | 0.336 | 0.365 | 0.401 |
+| zscore:1.00 | 0.401 | 0.416 | 0.406 | 0.300 | 0.297 | 0.405 | 0.409 |
+| minmax:0.60 | 0.425 | 0.476 | 0.462 | 0.367 | 0.387 | 0.443 | 0.484 |
+| **minmax:1.00** | **0.476** | **0.509** | **0.490** | 0.400 | 0.432 | **0.488** | **0.518** |
+| minmax:1.50 | 0.469 | 0.492 | 0.475 | 0.367 | 0.360 | 0.480 | 0.495 |
+| minmax:3.00 | 0.463 | 0.482 | 0.464 | 0.367 | 0.356 | 0.472 | 0.479 |
+
+**Las dos mitigaciones fijadas antes de medir se aplicaron y las dos hicieron
+falta:**
+
+1. **El peso se re-barrio dentro de cada variante**, porque comparar una
+   normalizada mal calibrada contra la cruda bien calibrada seria tramposo.
+   Resuelve el confundido: `cruda` **tambien** mejora al subir el peso (0.440 ->
+   0.451 -> 0.461), asi que habia que separar "gana la normalizacion" de "gana
+   mas autoridad del re-puntuador". Ninguna celda `cruda` pasa el criterio en
+   ninguna lectura de las independientes, o sea que **lo que mueve la aguja es
+   la normalizacion, no el peso**.
+2. **`minmax:1.00` no es un borde de grilla**, que es lo que invalido a E01b:
+   1.50, 2.00 y 3.00 caen. Y el 1,00 no es un argmax cazado — es el punto **a
+   priori** de la variante, el unico con significado mecanico: con los tres
+   terminos en [0,1], peso 1 es "un voto por encoder".
+
+### Veredicto: NO ADOPTABLE
+
+`minmax:1.00` es la mejor celda medida del proyecto sobre las 50 (F1@3 **0.476**
+contra 0.440) y **falla el criterio pre-registrado**:
+
+| lectura | delta, IC 90% | victorias | criterio |
+|---|---|---|---|
+| F1@3 50 | **+0.036 [+0.007, +0.072]** | 5g/1p | pasa |
+| NDCG@10 50 | +0.019 [-0.006, +0.044] | 18g/12p | pasa |
+| **F1@3 indep** | **+0.000 [+0.000, +0.000]** | **0g/0p** | pasa (trivialmente) |
+| **NDCG@10 indep** | **-0.004 [-0.023, +0.014]** | 3g/2p | **no pasa** |
+| NDp indep | -0.005 [-0.023, +0.013] | 4g/2p | **no pasa** |
+| NDp humanas | +0.004 [-0.021, +0.028] | 15g/12p | **no pasa** |
+
+**Las 10 independientes salen identicas consulta por consulta en F1@3** — el
+mismo pase degenerado de E04 y E08 — y el NDCG@10 de esa muestra falla, que es
+la metrica con la que la regla 4 manda decidir cuando el cambio toca
+fragmentos. Ademas gana 5 sobre las 50 y solo 3 sobre las 41 humanas: **2 de
+las 5 victorias caen sobre consultas de etiqueta de agente**. Es la firma del
+sesgo de pooling otra vez, mas suave que en E08 pero la misma.
+
+### El error de metodo que casi cambia el veredicto, y hay que recordarlo
+
+**La primera corrida daba `minmax:1.00` pasando las 9 lecturas de 9.** El
+barrido ordenaba con `np.argsort(-total)`, que por defecto usa quicksort y **no
+es estable**: ante empates de score reordenaba los fragmentos de forma
+arbitraria, y la fila base salia con NDCG 0.486 en vez del 0.490 que reporta
+`eval_mini.py` sobre `Entrega/`. Una base 0,004 por debajo de la real inflaba
+todos los deltas. Con `kind="stable"` la base reproduce **exacto** el
+0.440 / 0.490 / 0.476 de la entrega, y el veredicto pasa de 9/9 a **6/9**.
+
+**Leccion operativa: si la fila base del arnes no reproduce digito a digito lo
+que mide `eval_mini.py` sobre `Entrega/`, el barrido no se lee.** Los cuatro
+milesimos parecian irrelevantes y decidian la adopcion.
+
+### El hallazgo que queda abierto
+
+**`zscore` se derrumba (-0,08 en todas las lecturas) y `minmax` gana, y la
+explicacion facil no sirve.** Centrar no puede ser la causa: restar la media
+por consulta y por encoder es un desplazamiento uniforme sobre todos los
+candidatos, o sea que **no altera el orden**. La unica diferencia real entre
+las dos es el divisor, desviacion contra rango — y los cocientes rango/desv de
+los tres encoders son casi iguales (5.5 gte, 5.0 MiniLM, 5.7 e5), asi que en la
+MEDIANA las dos variantes deberian repesar casi igual. No lo hacen. La
+diferencia tiene que vivir en la variabilidad **por consulta** del estimador de
+escala, que es lo que el riesgo pre-registrado llamaba "outliers del pool".
+**Queda sin explicar y se registra asi**, no se le inventa una razon.
+
+**`Entrega/` sin cambios.**
+
+---
+
+## E10 — el gate de bibliografia en la agregacion a documento: REFUTADO, y al reves (7 ago 2026)
+
+**Hipotesis previa:** descontar del sumatorio `top5` los chunks que son aparato
+bibliografico mejora el F1@3, porque hoy suman score entero y pueden meter en
+el top-3 un documento que solo coincide en su bibliografia.
+
+**Justificacion mecanica (escrita antes de medir):** `calidad_chunk.py` existe
+desde el 4 de agosto y se usa en UN solo punto, como tercer criterio de orden
+de los FRAGMENTOS. `aggregate_documents` no lo consulta. Y el aparato
+bibliografico es donde mas denso es el vocabulario de dominio: una lista de
+referencias acumula los terminos de la consulta sin contener ninguna respuesta.
+Era ademas el unico experimento de la tanda que ataca F1@3, y no ensancha el
+pool, asi que escapaba al corolario de E08.
+
+`dev/scripts/barrido_biblio_doc_e10.py`. El cambio se aisla envolviendo
+`generador.aggregate_documents`: los scores que ven los FRAGMENTOS quedan
+intactos, asi que lo medido es la hipotesis y no un descuento global. Crudos en
+`dev/intermedios/biblio_e10/`, log en `dev/intermedios/log_biblio_e10.txt`.
+
+**La auditoria pre-registrada del detector pasa:** marca **219 de 5.000 chunks
+del pool (4,4%)** — 4,1% de los PDF, 8,4% de los JSON, y del unico CSV que
+aparece en algun pool. No hay marcado en masa de formatos tabulares, o sea que
+el resultado no es un artefacto del detector.
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | F1(hum) | ND(hum) |
+|---|---|---|---|---|---|---|---|
+| **entregada (sin gate)** | **0.440** | **0.490** | **0.476** | **0.400** | **0.436** | **0.468** | **0.510** |
+| excluir del top5 | 0.407 | 0.465 | 0.455 | 0.367 | 0.414 | 0.428 | 0.482 |
+| descontar x0.50 | 0.407 | 0.465 | 0.455 | 0.367 | 0.414 | 0.428 | 0.482 |
+| descontar x0.25 | 0.407 | 0.465 | 0.455 | 0.367 | 0.414 | 0.428 | 0.482 |
+| proporcional a la calidad | 0.373 | 0.445 | 0.436 | 0.367 | 0.414 | 0.396 | 0.461 |
+
+**Las 36 lecturas de las cuatro variantes van en negativo y ninguna pasa.**
+F1@3 sobre las 50 con `excluir`: **-0.033 [-0.067, -0.007], 0 victorias y 4
+derrotas** — IC enteramente bajo cero, que es mas fuerte que "no pasa": es
+perdida demostrada. Y es monotono: cuanto mas agresivo el descuento, peor
+(`prop`, que descuenta de forma continua a todos, cae a 0.373).
+
+### Los dos hallazgos, que valen mas que el veredicto
+
+1. **El factor de descuento es irrelevante: `excluir`, `x0.50` y `x0.25` dan
+   resultados IDENTICOS digito a digito en las nueve columnas.** No se parecen,
+   son el mismo numero. O sea que **basta tocar un chunk bibliografico para que
+   salga del `top5` de su documento**: no hay una zona intermedia donde el
+   descuento module algo. La palanca es binaria, y por tanto no hay ningun
+   parametro que calibrar para rescatar la hipotesis. Es la misma firma que
+   E07 encontro con `top8` = `sum`.
+
+2. **La hipotesis no solo falla, se cumple al reves, y tiene sentido
+   mecanico.** Que un documento aporte chunks bibliograficos al pool es
+   **evidencia positiva de que trata del tema**, no ruido: un informe cuya
+   bibliografia esta densamente poblada de los terminos de la consulta es
+   tipicamente una revision o un survey SOBRE ese tema. El aparato
+   bibliografico es mala RESPUESTA y buen INDICIO. Eso reconcilia los dos
+   resultados del gate: sirve donde se lee el texto (ordenar fragmentos, donde
+   dio NDp +0.007) y estorba donde se mide de que trata el documento.
+
+**Regla que queda:** el gate de bibliografia es una herramienta de PRESENTACION,
+no de RECUPERACION. No volver a llevarlo al ranking de documentos.
+
+**`Entrega/` sin cambios.** La fila base reproduce exacto el 0.440 / 0.490 /
+0.476 de `eval_mini.py`, segun la regla nueva de E09.
