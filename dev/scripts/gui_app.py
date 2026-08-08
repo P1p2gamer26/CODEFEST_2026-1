@@ -41,6 +41,9 @@ from tkinter.scrolledtext import ScrolledText
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # para importar eval_mini
+
+from eval_mini import cargar_jsonl, f1, ndcg  # noqa: E402
 from src.cleaning.lang_detect import detect_language  # noqa: E402
 from src.config import CORPUS_DIR, ENCODER_PRIMARY_NAME, GRAFO_PATH  # noqa: E402
 from src.gui.history import append_run, read_history  # noqa: E402
@@ -48,6 +51,7 @@ from src.gui.runner import RunSummary, Session, run_offline  # noqa: E402
 
 DEV_DIR = Path(__file__).resolve().parent.parent
 CONSULTAS_50_PATH = DEV_DIR / "consultas_prueba" / "consultas_50_oficiales.jsonl"
+GROUND_TRUTH_PATH = DEV_DIR / "eval" / "ground_truth_mini.jsonl"
 
 MIN_SCORE_CONFIABLE = 0.35  # similitud coseno; por debajo de esto, la consulta probablemente
 # no tiene relacion con el corpus -- umbral elegido a ojo con paraphrase-multilingual-MiniLM,
@@ -146,6 +150,80 @@ class ActivityPanel(ttk.LabelFrame):
         self.log.configure(state="disabled")
 
 
+class MetricsPanel(ttk.LabelFrame):
+    """F1@3 y NDCG@10 en vivo contra el mini ground truth de `dev/eval/`, con
+    las mismas funciones que usa `scripts/eval_mini.py` (no se reimplementan:
+    dos copias de una metrica terminan divergiendo).
+
+    Dos avisos que van en pantalla y no solo aca: el NDCG@10 hereda la
+    relevancia del documento (aproximacion, no estima la nota de ADL), y las 9
+    consultas etiquetadas por el panel de agentes se cuentan APARTE porque no
+    son comparables con las humanas."""
+
+    def __init__(self, master):
+        super().__init__(master, text="Metricas (mini ground truth)", padding=8)
+        self.gt: dict[str, tuple[set, str]] = {}
+        if GROUND_TRUTH_PATH.exists():
+            for fila in cargar_jsonl(GROUND_TRUTH_PATH):
+                # docs_relevantes vacio = se miro y no habia nada relevante en
+                # el pool; eval_mini la excluye del promedio y aqui igual.
+                if fila["docs_relevantes"]:
+                    origen = "agente" if fila.get("anotador") else "humano"
+                    self.gt[fila["query_id"]] = (set(fila["docs_relevantes"]), origen)
+
+        self.acumulado: dict[str, list[tuple[float, float]]] = {}
+
+        self.lbl_ultima = ttk.Label(self, text="ultima consulta: --")
+        self.lbl_ultima.pack(anchor="w")
+        self.lbl_humano = ttk.Label(self, text="humanas: --", font=("TkDefaultFont", 10, "bold"))
+        self.lbl_humano.pack(anchor="w", pady=(6, 0))
+        self.lbl_agente = ttk.Label(self, text="agente: --")
+        self.lbl_agente.pack(anchor="w")
+        ttk.Label(
+            self,
+            text="NDCG@10 aproximado: la relevancia del fragmento se hereda de su\n"
+            "documento. Sirve para comparar configuraciones, no para estimar la nota.",
+            foreground="#8a8a8a",
+            font=("TkDefaultFont", 8),
+        ).pack(anchor="w", pady=(6, 0))
+
+        if not self.gt:
+            self.lbl_ultima.configure(text=f"sin ground truth en {GROUND_TRUTH_PATH.name}")
+
+    def reiniciar(self) -> None:
+        self.acumulado.clear()
+        self.lbl_ultima.configure(text="ultima consulta: --")
+        self._refrescar()
+
+    def registrar(self, resultado: dict) -> None:
+        """Solo puntua las consultas que estan en el ground truth; las del chat
+        libre no tienen respuesta correcta conocida."""
+        entrada = self.gt.get(resultado["query_id"])
+        if entrada is None:
+            self.lbl_ultima.configure(text=f"ultima consulta: {resultado['query_id']} (sin anotar)")
+            return
+        relevantes, origen = entrada
+        valor_f1 = f1([d["doc_id"] for d in resultado["documents"][:3]], relevantes)[2]
+        valor_ndcg = ndcg(resultado.get("fragments", []), relevantes)
+        self.acumulado.setdefault(origen, []).append((valor_f1, valor_ndcg))
+        self.lbl_ultima.configure(
+            text=f"ultima consulta: {resultado['query_id']}  F1@3 {valor_f1:.2f}  NDCG@10 {valor_ndcg:.2f}"
+        )
+        self._refrescar()
+
+    def _refrescar(self) -> None:
+        for origen, label in (("humano", self.lbl_humano), ("agente", self.lbl_agente)):
+            vs = self.acumulado.get(origen, [])
+            if not vs:
+                label.configure(text=f"{origen}: --")
+                continue
+            label.configure(
+                text=f"{origen}: {len(vs):2d} consultas   "
+                f"F1@3 {sum(v[0] for v in vs) / len(vs):.3f}   "
+                f"NDCG@10 {sum(v[1] for v in vs) / len(vs):.3f}"
+            )
+
+
 class ChatPanel(ttk.Frame):
     def __init__(self, master, on_send, on_run_50):
         super().__init__(master, padding=8)
@@ -205,7 +283,8 @@ class App(tk.Tk):
         header = ttk.Frame(self, padding=(10, 8))
         header.pack(fill="x")
         ttk.Label(header, text=f"Corpus: {CORPUS_DIR}").pack(side="left")
-        ttk.Label(header, text=f"   |   Encoder: {ENCODER_PRIMARY_NAME}").pack(side="left")
+        self.lbl_encoders = ttk.Label(header, text=f"   |   Encoders: {ENCODER_PRIMARY_NAME} (cargando...)")
+        self.lbl_encoders.pack(side="left")
         ttk.Button(header, text="Reconstruir indice (offline)", command=self._on_offline).pack(
             side="right", padx=(6, 0)
         )
@@ -215,9 +294,13 @@ class App(tk.Tk):
         body.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         self.chat = ChatPanel(body, on_send=self._on_send, on_run_50=self._on_run_50)
-        self.activity = ActivityPanel(body)
+        lateral = ttk.Frame(body)
+        self.metrics = MetricsPanel(lateral)
+        self.metrics.pack(fill="x")
+        self.activity = ActivityPanel(lateral)
+        self.activity.pack(fill="both", expand=True, pady=(8, 0))
         body.add(self.chat, weight=3)
-        body.add(self.activity, weight=2)
+        body.add(lateral, weight=2)
 
         self.chat.entry.configure(state="disabled")
         self._cargar_sesion_en_hilo()
@@ -230,7 +313,10 @@ class App(tk.Tk):
         def worker():
             try:
                 usa_grafo = GRAFO_PATH.exists()
-                session = Session(use_graph=usa_grafo)
+                session = Session(
+                    use_graph=usa_grafo,
+                    progress_cb=lambda e: self.activity.push(_formatear_evento_offline(e)),
+                )
                 self.after(0, self._sesion_lista, session, usa_grafo)
             except Exception as exc:  # noqa: BLE001
                 self.after(0, self.activity.push, f"ERROR cargando la sesion: {exc}", "Error")
@@ -239,11 +325,13 @@ class App(tk.Tk):
 
     def _sesion_lista(self, session: Session, usa_grafo: bool):
         self.session = session
+        cascada = " -> ".join([session.encoder.name] + [e.name for e, _ in session.reranks])
         self.activity.push(
-            f"Listo. Indice con {session.index.ntotal} vectores"
+            f"Listo. Indice con {session.index.ntotal} vectores, cascada {cascada}"
             + (", grafo cargado" if usa_grafo else " (sin grafo)"),
             "Listo",
         )
+        self.lbl_encoders.configure(text=f"   |   Encoders: {cascada}")
         self.chat.entry.configure(state="normal")
 
     # -- chat interactivo -----------------------------------------------------
@@ -262,6 +350,7 @@ class App(tk.Tk):
                 ).get("idioma")
                 respuesta = _formatear_respuesta(resultado, best_score, idioma_query, idioma_fragmento)
                 meta = f"({tokens} tokens, {elapsed:.2f}s, similitud {best_score:.2f}, encoder {self.session.encoder.name})"
+                self.after(0, self.metrics.registrar, resultado)
                 self.after(0, lambda: self.chat.add_system_message(respuesta, meta))
                 self.activity.push(f"Consulta respondida: \"{texto[:60]}\" -- {tokens} tokens, {elapsed:.2f}s")
                 append_run(
@@ -295,6 +384,7 @@ class App(tk.Tk):
                 consultas = [json.loads(line) for line in f if line.strip()]
 
             self.activity.push(f"Corriendo {len(consultas)} consultas de prueba...", "Corriendo lote de 50...")
+            self.after(0, self.metrics.reiniciar)
             start = time.time()
             tokens_totales = 0
             for consulta in consultas:
@@ -312,6 +402,7 @@ class App(tk.Tk):
                     self.chat.add_user_message(t),
                     self.chat.add_system_message(r, m),
                 ))
+                self.after(0, self.metrics.registrar, resultado)
                 self.activity.push(f"[{consulta['query_id']}] respondida -- {tokens} tokens")
 
             duracion = time.time() - start
@@ -407,6 +498,10 @@ def _formatear_evento_offline(evento: dict) -> str:
         return f"[doc] {evento['nombre']} -> {evento['n_chunks']} chunks (tokens: {evento['tokens_acumulados']})"
     if tipo == "error_documento":
         return f"[ERROR] {evento['nombre']}: {evento['mensaje']}"
+    if tipo == "encoder_listo":
+        return f"[encoder] {evento['nombre']} cargado como re-puntuador de la cascada"
+    if tipo == "encoder_omitido":
+        return f"[encoder] SIN {evento['nombre']} -- la cascada corre degradada: {evento['mensaje']}"
     if tipo == "grafo":
         return f"[grafo] {evento['nodos']} nodos, {evento['aristas']} aristas"
     if tipo == "inicio":
