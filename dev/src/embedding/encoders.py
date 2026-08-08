@@ -14,6 +14,10 @@ import numpy as np
 from ..config import (
     E5_PASSAGE_PREFIX,
     E5_QUERY_PREFIX,
+    ENCODER_E5_LARGE_HF_ID,
+    ENCODER_E5_LARGE_NAME,
+    ENCODER_E5_SMALL_HF_ID,
+    ENCODER_E5_SMALL_NAME,
     ENCODER_GTE_HF_ID,
     ENCODER_GTE_NAME,
     ENCODER_PRIMARY_HF_ID,
@@ -248,6 +252,18 @@ KNOWN_ENCODERS: dict[str, dict] = {
         "trust_remote_code": True,
         "config_kwargs": {"unpad_inputs": False, "use_memory_efficient_attention": False},
         "max_seq_length": 512,
+    },
+    # E02: mismos prefijos que e5-base, es la misma familia.
+    ENCODER_E5_SMALL_NAME: {
+        "hf_id": ENCODER_E5_SMALL_HF_ID,
+        "query_prefix": E5_QUERY_PREFIX,
+        "passage_prefix": E5_PASSAGE_PREFIX,
+    },
+    # E04: misma familia, mismos prefijos.
+    ENCODER_E5_LARGE_NAME: {
+        "hf_id": ENCODER_E5_LARGE_HF_ID,
+        "query_prefix": E5_QUERY_PREFIX,
+        "passage_prefix": E5_PASSAGE_PREFIX,
     },
 }
 

@@ -35,3 +35,6 @@ Entrega/base_vectorial/**/*.gz
 # que lo corre como __main__, no lo genera). La sec. 1.4 fija la estructura
 # exacta de Entrega/ y validar_entrega.py falla si aparece.
 Entrega/__pycache__/
+
+# Overrides locales de Claude Code, no compartidos con el equipo.
+.claude/settings.local.json
