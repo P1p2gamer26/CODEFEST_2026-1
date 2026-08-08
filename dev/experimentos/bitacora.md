@@ -791,3 +791,79 @@ no de RECUPERACION. No volver a llevarlo al ranking de documentos.
 
 **`Entrega/` sin cambios.** La fila base reproduce exacto el 0.440 / 0.490 /
 0.476 de `eval_mini.py`, segun la regla nueva de E09.
+
+---
+
+## E11 — el orden de los criterios de fragmentos: REFUTADO por identidad (8 ago 2026)
+
+**Hipotesis previa:** subir el gate de bibliografia de TERCER a SEGUNDO criterio
+en `ordenar_para_fragmentos` —por encima de la prioridad de idioma— mejora el
+NDCG@10 penalizado, porque en el orden actual el gate casi nunca llega a actuar.
+
+**Justificacion mecanica (escrita antes de medir):** un criterio en tercer lugar
+solo desempata entre hits que ya empataron en los dos primeros, o sea entre
+fragmentos del MISMO grupo de documento y el MISMO idioma. Con el 98% de los
+fragmentos concentrados en el top-3 por la alineacion, el gate actua dentro de
+bloques chicos, y su efecto medido el 4 de agosto fue coherente con eso (NDCG
+binario −0,001, penalizado +0,007). La hipotesis era que el techo lo pone la
+POSICION del criterio y no su poder de deteccion.
+
+`dev/scripts/barrido_orden_e11.py`, cero FAISS nuevo mas alla de una pasada.
+Crudos en `dev/intermedios/orden_e11/`, log en
+`dev/intermedios/log_orden_e11.txt`. La fila base reproduce exacto el
+0.440 / 0.490 / 0.476 (regla de E09).
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | NDp(ind) | F1(hum) | ND(hum) | NDp(hum) | ilegibles |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **entregada** | 0.440 | **0.490** | **0.476** | 0.400 | **0.436** | **0.429** | 0.468 | **0.510** | **0.495** | **19** |
+| biblio-2o | 0.440 | 0.490 | 0.476 | 0.400 | 0.436 | 0.429 | 0.468 | 0.510 | 0.495 | 19 |
+| solo-biblio | 0.440 | 0.445 | 0.431 | 0.400 | 0.397 | 0.390 | 0.468 | 0.465 | 0.452 | **71** |
+| posicion | 0.440 | 0.437 | 0.427 | 0.400 | 0.336 | 0.326 | 0.468 | 0.468 | 0.457 | 19 |
+
+**F1@3 es +0.000 en las tres muestras en las cuatro celdas, como tiene que
+ser:** el experimento solo reordena fragmentos, los documentos no se tocan.
+
+### La hipotesis esta refutada de la forma mas limpia posible: por identidad
+
+**`biblio-2o` y la entregada producen archivos IDENTICOS byte a byte** (`cmp`
+sin salida, 617.402 bytes los dos), y las **27 lecturas dan +0.000 con 0
+victorias y 0 derrotas.** Permutar los criterios 2 y 3 no cambia una sola
+posicion de un solo fragmento de una sola consulta.
+
+Eso dice algo mas fuerte que "no mejora": **los dos criterios nunca entran en
+conflicto.** Dentro del top-3 de documentos no existe el par de fragmentos que
+la permutacion tendria que reordenar —uno legible y bibliografico contra otro
+ilegible y no bibliografico—; los fragmentos ilegibles del top-3 (traducciones
+de SIPRI al coreano) practicamente no traen aparato bibliografico detectable, y
+donde hay bibliografia el idioma ya empataba. **La posicion del criterio no era
+el techo del gate**, que es exactamente lo que la hipotesis afirmaba. Y como no
+hay conflicto, tampoco hay ningun orden alternativo que rescatar: la palanca es
+inerte, no mal calibrada.
+
+### El veto pre-registrado se activo, y confirma la nota del 2 de agosto
+
+`solo-biblio` (quitar el criterio de idioma) sube los fragmentos ilegibles de
+**19 a 71 de 500** y ademas pierde el penalizado (−0.045 [−0.075, −0.017], 2
+victorias contra 8 derrotas). El riesgo nº 2 fijado antes de medir decia que si
+los ilegibles suben el cambio se rechaza **aunque el penalizado mejore**; acá no
+hizo falta invocarlo, porque el penalizado tambien cae. Vale igual como
+medicion independiente de la nota de las notas del proyecto ("la prioridad de idioma no es
+opcional si se alinea"): sin ella los ilegibles se **cuadruplican**.
+
+`posicion` como cuarto desempate es la peor celda en fragmentos (NDp −0.049 en
+las 50, **−0.103 en las independientes**). Preferir el chunk mas temprano del
+documento suena a "la introduccion resume el documento" y mide lo contrario:
+las primeras filas son portadas, indices y prologos.
+
+**Veredicto: REFUTADO. `Entrega/` sin cambios.** El orden entregado
+(top-3 → idioma → aparato) gana o empata las 27 lecturas de las tres
+alternativas.
+
+### La regla que queda
+
+**El gate de bibliografia queda cerrado como palanca en las dos direcciones.**
+E10 mostro que llevarlo al ranking de documentos pierde (es buen INDICIO de
+tema, mala RESPUESTA); E11 muestra que darle mas prioridad entre los fragmentos
+no cambia nada porque no compite con nada. Su efecto medido —NDp +0.007— es
+todo lo que da, y ya esta entregado. **No abrir un tercer experimento sobre
+`calidad_chunk.py`** sin un detector distinto, no un orden distinto.
