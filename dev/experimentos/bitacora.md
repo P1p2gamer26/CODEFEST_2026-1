@@ -867,3 +867,84 @@ tema, mala RESPUESTA); E11 muestra que darle mas prioridad entre los fragmentos
 no cambia nada porque no compite con nada. Su efecto medido —NDp +0.007— es
 todo lo que da, y ya esta entregado. **No abrir un tercer experimento sobre
 `calidad_chunk.py`** sin un detector distinto, no un orden distinto.
+
+## E12 — el reparto de los 10 fragmentos entre los 3 documentos: REFUTADO, y monotono (8 ago 2026)
+
+**Hipotesis previa:** repartir los 10 fragmentos entre los 3 documentos del
+top-3 con un cupo maximo por documento mejora el NDCG@10, porque hoy nada
+impide que un solo documento se lleve 8 de los 10 cupos y, si ese documento es
+el equivocado, la respuesta entrega ocho ceros.
+
+**Justificacion mecanica (escrita antes de medir):** `ordenar_para_fragmentos`
+ordena por (top-3, idioma, aparato) y dentro de cada bloque por score, **sin
+ninguna nocion de a cual de los tres documentos pertenece cada fragmento**. La
+alineacion ya concentra el 98% de los fragmentos en el top-3, asi que el
+reparto INTERNO de esos 10 cupos entre 3 documentos es la variable que quedo
+sin tocar cuando se adopto la alineacion. Y la diferencia de score entre el
+documento 1 y el 3 es chica comparada con la de estar o no estar en el top-3:
+con F1@3 0.440 el caso tipico es acertar 1 o 2 de 3, o sea que cubrir los tres
+es cubrir donde esta la respuesta.
+
+**No es el barrido de `--cupo-alineado` ya refutado:** ese reservaba cupos
+FUERA del top-3 y los gastaba en documentos que la propia respuesta declara no
+relevantes. Este redistribuye DENTRO del top-3 y no toca un solo documento del
+ranking.
+
+`dev/scripts/barrido_cupo_doc_e12.py`, una sola pasada de FAISS; las celdas son
+reordenamientos del mismo pool. Crudos en `dev/intermedios/cupo_e12/`, log en
+`dev/intermedios/log_cupo_e12.txt`. La fila base reproduce exacto el
+0.440 / 0.490 / 0.476 (regla de E09).
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | NDp(ind) | F1(hum) | ND(hum) | NDp(hum) | ilegibles |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **entregada** | 0.440 | **0.490** | **0.476** | 0.400 | **0.436** | **0.429** | 0.468 | **0.510** | **0.495** | **19** |
+| cupo6 | 0.440 | 0.485 | 0.470 | 0.400 | 0.436 | 0.429 | 0.468 | 0.504 | 0.488 | 21 |
+| cupo5 | 0.440 | 0.480 | 0.465 | 0.400 | 0.430 | 0.423 | 0.468 | 0.503 | 0.487 | 25 |
+| cupo4 | 0.440 | 0.465 | 0.449 | 0.400 | 0.423 | 0.416 | 0.468 | 0.489 | 0.472 | 48 |
+| round-robin | 0.440 | 0.447 | 0.430 | 0.400 | 0.430 | 0.423 | 0.468 | 0.471 | 0.452 | 57 |
+
+**F1@3 es +0.000 en las tres muestras en las cuatro celdas**, como el riesgo
+nº 1 exigia para poder leer el barrido: solo se reordenan fragmentos y
+`aggregate_documents` no se toca.
+
+### La hipotesis esta refutada, y por una monotona sin un solo cruce
+
+**Cuanto mas estricto el cupo, peor el NDCG.** En las 50: 0.490 → 0.485 → 0.480
+→ 0.465 → 0.447. En las humanas: 0.510 → 0.504 → 0.503 → 0.489 → 0.471. `NDp`
+sigue a `ND` en las doce lecturas, o sea que **no** es el caso sospechoso que el
+riesgo nº 2 anticipaba (NDCG que sube sin que el penalizado lo acompane): las
+dos metricas ven lo mismo y las dos ven una perdida.
+
+**Ninguna celda gana una sola consulta neta.** cupo6 va 0g/3p en las 50, cupo5
+2g/8p, cupo4 4g/12p, round-robin 12g/20p. cupo6 y cupo5 *pasan* el umbral del
+IC (su cota baja no llega a −0.02), pero pasar el criterio no es ganarlo: son
+perdidas estrictas, no empates, y la regla 5 —ante empate se conserva la
+entregada— se aplica con mas razon todavia.
+
+**Lo que la medicion dice del sistema, que vale mas que el descarte.** La
+concentracion que la hipotesis daba por defecto **no existe**: la entregada ya
+reparte los 10 fragmentos en **2.74 documentos por consulta con mediana del
+maximo en 5**. El caso "un documento se lleva 8 de 10" es la cola (max 9), no el
+caso tipico. La hipotesis estaba construida sobre una patologia que el sistema
+no tiene, y el cupo, al forzar mas reparto (3.00 docs/consulta en cupo4 y
+round-robin), **compra diversidad con score**: mete fragmentos peores del
+documento 3 desplazando fragmentos mejores del documento 1. Es exactamente el
+intercambio que el riesgo nº 3 describia, y el mercado esta en contra.
+
+### El veto pre-registrado tambien se activo, por segunda vez en la ronda
+
+Los fragmentos ilegibles suben **monotonamente con el cupo: 19 → 21 → 25 → 48 →
+57 de 500**. El riesgo nº 4 decia que si suben el cambio se rechaza aunque el
+NDCG mejore; acá no hizo falta invocarlo porque el NDCG tambien cae, pero la
+causa merece quedar escrita: **el cupo compite contra la prioridad de idioma**
+por los mismos cupos. Cuando el documento nº 1 se queda sin turno, el siguiente
+fragmento sale del documento nº 2 aunque sea una traduccion de SIPRI al
+coreano. Es el mismo mecanismo que E11 encontro en `solo-biblio` (19 → 71), por
+otra puerta: **cualquier criterio que desplace al idioma de su segundo lugar
+paga en fragmentos que el evaluador no puede leer.** Dos experimentos
+independientes de la misma ronda apuntan ahi.
+
+**Veredicto: REFUTADO. `Entrega/` sin cambios.** El orden entregado gana o
+empata las 36 lecturas de las cuatro alternativas, y el reparto de fragmentos
+entre documentos del top-3 queda cerrado: no es una variable libre que quedo sin
+calibrar, es una que el score ya resuelve mejor que cualquier cuota.
