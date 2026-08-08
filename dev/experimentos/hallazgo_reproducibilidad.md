@@ -62,3 +62,18 @@ El riesgo real seria que las metricas se movieran, y no se mueven.
 **Lo que si hay que corregir es el texto de `CLAUDE.md`**, que promete mas de
 lo que se puede cumplir. La propiedad correcta es: "determinista por maquina;
 entre maquinas difiere en los casi-empates, sin mover las metricas".
+
+## El mismo punto fragil, encontrado por otro camino (E09)
+
+E09 tropezo esa misma noche con la otra mitad del problema: su arnes ordenaba
+con `np.argsort(-total)`, que usa quicksort y **no es estable**, y ante
+empates de score reordenaba los fragmentos de forma arbitraria. La fila base
+salia con NDCG 0.486 en vez de 0.490 y **eso solo inflaba todos los deltas lo
+suficiente como para que `minmax:1.00` pasara 9 lecturas de 9**; con
+`kind="stable"` el veredicto real era 6/9, o sea NO adoptable.
+
+Los dos hallazgos son el mismo dato visto de dos lados: **hay empates exactos
+de score en el pool, y todo lo que los ordene sin un criterio explicito es
+arbitrario.** E09 lo sufrio en el instrumento de medicion; la corrida en frio
+lo sufre en la entrega. Un desempate estable por `chunk_id` cerraria los dos
+a la vez, y por eso vale medirlo aunque su efecto sobre la metrica sea chico.
