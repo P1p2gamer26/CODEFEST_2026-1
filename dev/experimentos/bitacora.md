@@ -726,3 +726,68 @@ escala, que es lo que el riesgo pre-registrado llamaba "outliers del pool".
 **Queda sin explicar y se registra asi**, no se le inventa una razon.
 
 **`Entrega/` sin cambios.**
+
+---
+
+## E10 — el gate de bibliografia en la agregacion a documento: REFUTADO, y al reves (7 ago 2026)
+
+**Hipotesis previa:** descontar del sumatorio `top5` los chunks que son aparato
+bibliografico mejora el F1@3, porque hoy suman score entero y pueden meter en
+el top-3 un documento que solo coincide en su bibliografia.
+
+**Justificacion mecanica (escrita antes de medir):** `calidad_chunk.py` existe
+desde el 4 de agosto y se usa en UN solo punto, como tercer criterio de orden
+de los FRAGMENTOS. `aggregate_documents` no lo consulta. Y el aparato
+bibliografico es donde mas denso es el vocabulario de dominio: una lista de
+referencias acumula los terminos de la consulta sin contener ninguna respuesta.
+Era ademas el unico experimento de la tanda que ataca F1@3, y no ensancha el
+pool, asi que escapaba al corolario de E08.
+
+`dev/scripts/barrido_biblio_doc_e10.py`. El cambio se aisla envolviendo
+`generador.aggregate_documents`: los scores que ven los FRAGMENTOS quedan
+intactos, asi que lo medido es la hipotesis y no un descuento global. Crudos en
+`dev/intermedios/biblio_e10/`, log en `dev/intermedios/log_biblio_e10.txt`.
+
+**La auditoria pre-registrada del detector pasa:** marca **219 de 5.000 chunks
+del pool (4,4%)** — 4,1% de los PDF, 8,4% de los JSON, y del unico CSV que
+aparece en algun pool. No hay marcado en masa de formatos tabulares, o sea que
+el resultado no es un artefacto del detector.
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | F1(hum) | ND(hum) |
+|---|---|---|---|---|---|---|---|
+| **entregada (sin gate)** | **0.440** | **0.490** | **0.476** | **0.400** | **0.436** | **0.468** | **0.510** |
+| excluir del top5 | 0.407 | 0.465 | 0.455 | 0.367 | 0.414 | 0.428 | 0.482 |
+| descontar x0.50 | 0.407 | 0.465 | 0.455 | 0.367 | 0.414 | 0.428 | 0.482 |
+| descontar x0.25 | 0.407 | 0.465 | 0.455 | 0.367 | 0.414 | 0.428 | 0.482 |
+| proporcional a la calidad | 0.373 | 0.445 | 0.436 | 0.367 | 0.414 | 0.396 | 0.461 |
+
+**Las 36 lecturas de las cuatro variantes van en negativo y ninguna pasa.**
+F1@3 sobre las 50 con `excluir`: **-0.033 [-0.067, -0.007], 0 victorias y 4
+derrotas** — IC enteramente bajo cero, que es mas fuerte que "no pasa": es
+perdida demostrada. Y es monotono: cuanto mas agresivo el descuento, peor
+(`prop`, que descuenta de forma continua a todos, cae a 0.373).
+
+### Los dos hallazgos, que valen mas que el veredicto
+
+1. **El factor de descuento es irrelevante: `excluir`, `x0.50` y `x0.25` dan
+   resultados IDENTICOS digito a digito en las nueve columnas.** No se parecen,
+   son el mismo numero. O sea que **basta tocar un chunk bibliografico para que
+   salga del `top5` de su documento**: no hay una zona intermedia donde el
+   descuento module algo. La palanca es binaria, y por tanto no hay ningun
+   parametro que calibrar para rescatar la hipotesis. Es la misma firma que
+   E07 encontro con `top8` = `sum`.
+
+2. **La hipotesis no solo falla, se cumple al reves, y tiene sentido
+   mecanico.** Que un documento aporte chunks bibliograficos al pool es
+   **evidencia positiva de que trata del tema**, no ruido: un informe cuya
+   bibliografia esta densamente poblada de los terminos de la consulta es
+   tipicamente una revision o un survey SOBRE ese tema. El aparato
+   bibliografico es mala RESPUESTA y buen INDICIO. Eso reconcilia los dos
+   resultados del gate: sirve donde se lee el texto (ordenar fragmentos, donde
+   dio NDp +0.007) y estorba donde se mide de que trata el documento.
+
+**Regla que queda:** el gate de bibliografia es una herramienta de PRESENTACION,
+no de RECUPERACION. No volver a llevarlo al ranking de documentos.
+
+**`Entrega/` sin cambios.** La fila base reproduce exacto el 0.440 / 0.490 /
+0.476 de `eval_mini.py`, segun la regla nueva de E09.
