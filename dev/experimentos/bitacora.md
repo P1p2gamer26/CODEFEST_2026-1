@@ -525,7 +525,69 @@ sino **E05** — re-anotar esas 9 a mano. Es tarea humana por medicion, no por
 comodidad: el panel de 4 agentes ya se probo y reproduce al humano con F1
 0.23, peor que el anotador unico.
 
-## E04 en curso — la ETA real es 55 h, no 18
+## E04 — `multilingual-e5-large` como re-puntuador: DESCARTADO (7 ago 2026)
+
+**Hipotesis previa:** `multilingual-e5-large` (560 M, ventana 512, dim 1024)
+como re-puntuador supera a la cascada entregada gte + e5-base.
+
+**Justificacion mecanica (escrita antes de medir):** es el encoder mas fuerte
+que cabe en esta CPU. Como re-puntuador solo lee vectores con
+`reconstruct(fila)`, asi que el coste es el indice y nada mas — cero
+codificacion por consulta mas alla de una vectorizacion.
+
+Indice construido sobre los mismos `chunks_intermedios_limpio.jsonl`
+(128.526/128.526, invariante del punto 8 respetado), 526.442.541 bytes.
+**Coste real: 50 h 30 min de CPU** (16:42 del 6 ago -> 19:12 del 7 ago), contra
+las 18 h que estimaba la cola. Barrido de cinco estructuras con
+`barrido_repuntuador_e04.py`, cerrado con codigo 0. Crudos en
+`dev/intermedios/repunt_e04/*.jsonl`, log en
+`dev/intermedios/log_cadena_e04.txt`.
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | F1(hum) | ND(hum) |
+|---|---|---|---|---|---|---|---|
+| **gte+e5 (entregada)** | 0.440 | 0.490 | 0.476 | **0.400** | **0.436** | 0.468 | **0.510** |
+| e5large solo | 0.412 | 0.475 | 0.454 | 0.300 | 0.368 | 0.452 | 0.501 |
+| gte+e5large | 0.425 | 0.479 | 0.465 | 0.400 | 0.420 | 0.450 | 0.498 |
+| e5large+e5 | **0.447** | **0.511** | **0.490** | 0.333 | 0.384 | **0.470** | 0.509 |
+| gte+e5+e5large | 0.438 | 0.492 | 0.474 | 0.400 | 0.424 | 0.466 | 0.508 |
+
+**Criterio de adopcion (IC 90% del delta pareado excluyendo -0.02): de 36
+lecturas (4 celdas x 9 columnas) pasan DOS**, y las dos son el mismo caso
+degenerado: `F1(ind) +0.000 [+0.000, +0.000]` con **0 victorias y 0 derrotas**
+en `gte+e5large` y en `gte+e5+e5large` — o sea que las 10 independientes salen
+identicas consulta por consulta y el criterio pasa trivialmente por no haber
+cambiado nada. **Ninguna celda gana en ninguna muestra.**
+
+### La celda que parecia ganar, y por que no gana
+
+`e5large+e5` es la unica con F1 y NDCG mejores que la entregada sobre las 50
+(0.447 / 0.511), y **falla igual**: los ICs cruzan el cero en las tres columnas
+de las 50 (F1 +0.007 [-0.041, +0.054], 8g/7p) y en las **10 independientes cae
+a 0.333, con -0.067 [-0.167, +0.033] y 1 victoria contra 3 derrotas**. Es la
+firma del sesgo de pooling otra vez — la misma por la que se descartaron
+`doc_rrf`, gte-primario y el `k_pool=200` de E08 — pero con un agravante: acá
+ni siquiera el promedio de las 50 alcanza significancia. Reemplazar gte por
+e5-large seria cambiar un re-puntuador por otro sin evidencia y perdiendo la
+muestra sin sesgo.
+
+### Lo que este experimento cierra, que vale mas que el veredicto
+
+**Escalar el tamano del re-puntuador esta agotado como palanca.** e5-large
+duplica los parametros de gte y cuadruplica los de e5-base, y las cuatro
+estructuras que lo usan se quedan dentro del ruido de la entregada. Sumado a
+E02 (e5-small como primario: derrumbe) queda cerrado **el eje "otro encoder"**
+en las dos direcciones, mas grande y mas chico: ni la ventana (E02) ni la
+capacidad (E04) son lo que limita la recuperacion. **No abrir mas experimentos
+cuyo argumento principal sea el modelo**, y menos a 50 h de CPU por corrida.
+
+**Veredicto: DESCARTADO en las dos muestras. `Entrega/` sin cambios.** Los
+artefactos pesados (`emb_multilingual-e5-large.npy`, `dev/intermedios/e5large/`)
+se borraron para liberar disco; los resultados chicos quedan. Reconstruir el
+indice cuesta 50 h — **no rehacerlo**, el veredicto ya esta medido.
+
+---
+
+## Nota historica: la ETA de E04 era 55 h, no 18
 
 Medido el 6 ago 16:37: **4096 chunks en 1 h 45** con los 4 cores saturados
 (338% de CPU). A ese ritmo los 128.526 chunks son **~55 horas**, tres veces
