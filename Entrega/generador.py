@@ -1273,7 +1273,7 @@ def extract_entities(text: str, lang: str | None) -> list[Entity]:
     doc = nlp(text)
     entidades: list[Entity] = []
     for ent in doc.ents:
-        if not ent.text.strip() or ent.label_ not in NER_EXCLUDED_LABELS:
+        if not ent.text.strip() or ent.label_ in NER_EXCLUDED_LABELS:
             continue
         entidad = _limpiar_entidad(ent.text)
         if entidad is None:

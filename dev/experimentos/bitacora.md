@@ -544,3 +544,188 @@ Se deja correr. Lo que hay que saber al retomarla:
   el pool va a parecer ganadora en las 50 sin serlo. E04 no es palanca de
   pool, asi que no cae en esa trampa, pero su lectura tambien hay que hacerla
   en las dos muestras.
+
+---
+
+## E09 — Prior de recencia contra el índice (pre-registro, 8 ago 2026)
+
+**Hipótesis (escrita antes de medir):** el prior de recencia (sec. 8.7,
+`aplicar_prior_recencia`, `--prior-recencia`) está implementado en
+`generador.py` pero apagado por defecto y nunca se midió contra el índice.
+Afecta solo a las 6 de 50 consultas con marcador temporal; el techo real son
+~2 consultas (q029: relevantes 2021-2026, entregados 2019/2019/2025). Barrer
+el peso decide si es inerte o rescata algo.
+
+**Justificación mecánica:** el prior es un REORDENAMIENTO, no un filtro:
+sube dentro del top-3 los documentos con año más reciente en el nombre de
+fuente, y el 28% de los 1826 documentos llevan año ahí (`fuente` ya se
+guarda en metadata, coste cero de indexación). El re-puntuador (peso 0.60)
+ya reordena `doc_hits` por score; el prior agrega una señal ortogonal
+(metadata temporal) que el vector no ve. Pesos 0.05 / 0.10 / 0.20, misma
+lógica que E01.
+
+| | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
+|---|---|---|---|---|
+| base (entregada) | 0.440 | 0.490 | 0.400 | 0.436 |
+| rec 0.05 / 0.10 / 0.20 | | | | |
+
+**Criterio:** adoptar solo si el IC 90% del delta pareado excluye -0.02 en
+LAS DOS muestras; n=6, techo 2 → veredicto esperado inerte o no concluyente.
+
+---
+
+## E10 — Re-medir el grafo bajo el régimen actual (pre-registro, 8 ago 2026)
+
+**Hipótesis (escrita antes de medir):** el grafo se descartó 3-0 el 6 ago
+bajo el régimen viejo (pool 60, peso 0.25, sin glosario). Bajo el régimen
+actual (pool 100, peso 0.60, glosario activo) el RRF con el grafo como índice
+adicional (sec. 8.5) puede rescatar consultas cuyo pool vectorial falla, y el
+último commit («Intento de arreglo del grafo bonus») tocó esa fusión.
+
+**Justificación mecánica:** sec. 8.5 trata el grafo como un índice adicional
+a fusionar con RRF. La lección 5 dice que las notas propias envejecen: el 3-0
+se midió cuando la lista vectorial era más débil (pool 60, peso 0.25), y ahora
+el pool es más ancho y el re-puntuador tiene 2.4x más autoridad. q001 es el
+caso test: 20 docs CBRN relevantes que no entran al top-3 vectorial y el grafo
+(doc_id → doc_id) empareja.
+
+| | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
+|---|---|---|---|---|
+| base (entregada, sin grafo) | 0.440 | 0.490 | 0.400 | 0.436 |
+| con grafo | | | | |
+
+**Criterio:** adoptar solo si el IC 90% excluye -0.02 en las dos muestras; si
+la mejora se concentra en las 9 de etiqueta de agente, sesgo de pooling
+(firma E08), no hallazgo.
+
+---
+
+## E11 — Cupo de fragmentos alineados (pre-registro, 8 ago 2026)
+
+**Hipótesis (escrita antes de medir):** el `cupo_alineado` default (10)
+reserva TODOS los cupos de fragmento al top-3 de documentos. Bajar el cupo
+(6/7/8/9) deja más cupos abiertos al pool y debería mejorar NDCG@10 sin tocar
+F1@3, porque el cupo solo reordena `fragments`, nunca `doc_hits`.
+
+**Justificación mecánica:** la nota de `build_result_object` (líneas
+1474-1481) mide el default sobre las 41 anotadas: alinear los 10 gana en 25
+consultas (todas con F1@3 > 0) y pierde en 12, de las cuales 11 tienen
+F1@3 = 0. Cuando el top-3 se equivoca, alinear los 10 entrega «diez ceros
+seguros»; los cupos libres son el seguro contra ese modo de fallo. F1@3 no
+puede moverse (`doc_hits` se calculan antes de tocar fragments); el efecto
+esperado es solo en NDCG@10 y NDCGp.
+
+| | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
+|---|---|---|---|---|
+| base (cupo 10) | 0.440 | 0.490 | 0.400 | 0.436 |
+| cupo 6 / 7 / 8 / 9 | | | | |
+
+**Criterio:** adoptar solo si el IC 90% excluye -0.02 en las dos muestras; si
+la ganancia viene de consultas con F1@3 = 0, revisar victorias por consulta
+antes de decidir (posible premio al error de documentos).
+
+---
+
+## E09 — Prior de recencia contra el índice (resultado, 8 ago 2026)
+
+**INERTE.** Las celdas 0.05 y 0.10 son **byte-idénticas** a la entrega (ni una
+consulta cambia); la 0.20 solo reordena el top-3 de q020 (mismos 3 documentos,
+swap de rank 2↔3) y ninguna métrica se mueve. Cero victorias, cero derrotas,
+50 empates en las dos muestras. Nada que adoptar; `--prior-recencia 0`
+(default) se conserva.
+
+| | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
+|---|---|---|---|---|
+| base (entregada) | 0.440 | 0.490 | 0.400 | 0.436 |
+| rec 0.05 / 0.10 / 0.20 | 0.440 | 0.490 | 0.400 | 0.436 |
+
+**Por qué no mueve nada:** el bonus es `peso × cercania` con cercania ∈ [0,1]
+(línea 753-758). A 0.20, la diferencia máxima entre un doc de 2019 y uno de
+2026 es ~0.039 — insuficiente para cubrir la brecha de score del re-puntuado
+(peso 0.60) entre los top-3 reales. **q029, el caso «techo 2» (relevantes
+2021-2026, entregados 2019/2019/2025), no se mueve ni a 0.20**: sus tres
+documentos están demasiado separados en score. El prior es la palanca más
+débil medida hasta ahora — solo puede desempatar documentos con puntajes casi
+iguales, y eso no sucede en las 50 consultas. Se cierra la recencia.
+
+---
+
+## E10 — Re-medir el grafo bajo el régimen actual (resultado, 8 ago 2026)
+
+**DESCARTADO con contundencia — y de paso se encontró un bug que dejaba el
+grafo muerto.** Dos partes:
+
+### Parte 1: el «Intento de arreglo del grafo bonus» lo rompió
+
+El commit `79a2e80` refactorizó `extract_entities` (comprensión → loop) e
+invirtió la condición:
+
+```python
+# ROTO (Entrega/generador.py, commit 79a2e80)
+if not ent.text.strip() or ent.label_ not in NER_EXCLUDED_LABELS:
+#   mantiene SOLO las etiquetas excluidas (números/fechas/porcentajes)
+
+# CORRECTO (dev/src/graph/ner.py:92 — la fuente)
+if not ent.text.strip() or ent.label_ in NER_EXCLUDED_LABELS:
+```
+
+Con la condición invertida, `extract_entities` devolvía solo números/fechas,
+que no matchean nodos del grafo (organizaciones/personas/lugares), así que
+`graph_search` retornaba 0 hits para las 50 consultas y `--use-graph` producía
+**salida byte-idéntica a la entrega**: el bonus era código muerto en silencio,
+sin ninguna señal de fallo.
+
+**Arreglado** a la condición de la fuente. Verificado: 34/50 consultas ahora
+producen 1.029 hits del grafo; la reproducción de la entrega **sin**
+`--use-graph` sigue byte-idéntica a `resultados.jsonl`; 141 tests OK;
+`validar_entrega.py` limpio. El fix no toca la configuración entregada (el
+grafo va apagado por defecto).
+
+### Parte 2: con el grafo vivo, la fusión degrada
+
+| | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
+|---|---|---|---|---|
+| base (sin grafo) | 0.440 | 0.490 | 0.400 | 0.436 |
+| con grafo | **0.355** | **0.385** | **0.333** | **0.352** |
+
+| lectura | delta, IC 90% | victorias | criterio |
+|---|---|---|---|
+| F1@3 50 | **-0.085 [-0.140, -0.031]** | 2g / 13p / 35e | **DESCARTAR** |
+| NDCG@10 50 | **-0.105 [-0.166, -0.049]** | — | **DESCARTAR** |
+| F1@3 indep | **-0.067 [-0.133, +0.000]** | 0g / 2p / 8e | no pasa |
+| NDCG@10 indep | **-0.084 [-0.191, +0.001]** | — | no pasa |
+
+El grafo cambia el conjunto de top-3 en **28 de 50 consultas** y pierde 13-2:
+la lista del grafo (rankeada por evidencia de primer orden) intercala la lista
+vectorial vía RRF y degrada la buena con la mala — exactamente la advertencia
+del docstring de `rerank_por_segundo_encoder` («RRF premia el acuerdo entre
+listas»). Esto **confirma el 3-0 original del régimen viejo** con más datos:
+el grafo como índice adicional no aporta bajo ningún régimen medido.
+`--use-graph` queda apagado (default). El fix del bug sí se conserva: era un
+arreglo, no un cambio de configuración.
+
+---
+
+## E11 — Cupo de fragmentos alineados (resultado, 8 ago 2026)
+
+**REFUTADO.** Bajar el cupo empeora NDCG@10 de forma **monótona** en las dos
+muestras; F1@3 queda inmóvil en todas las celdas, como predecía la mecánica
+(el cupo solo reordena `fragments`, nunca `doc_hits`).
+
+| celda | NDCG@10 (50) | NDCGp (50) | NDCG@10 (indep.) | NDCGp (indep.) |
+|---|---|---|---|---|
+| **cupo 10 (entregada)** | **0.490** | 0.476 | **0.436** | 0.429 |
+| cupo 9 | 0.470 | 0.455 | 0.417 | 0.410 |
+| cupo 8 | 0.450 | 0.435 | 0.384 | 0.377 |
+| cupo 7 | 0.433 | 0.420 | 0.370 | 0.370 |
+| cupo 6 | 0.415 | 0.402 | 0.341 | 0.341 |
+
+Par de cupo 9 (el mejor de los nuevos) contra la entregada: NDCG@10
+**-0.020** con IC 90% [-0.029, -0.011] enteramente bajo cero → **DESCARTAR**;
+F1@3 +0.000 (50 empates).
+
+**Lectura:** la nota de `build_result_object` (líneas 1474-1481) queda
+confirmada en dirección y ahora también en magnitud: alinear los 10 cupos es
+lo que **maximiza** NDCG; los «diez ceros seguros» de las consultas con
+F1@3 = 0 no compensan en el promedio. El seguro que suponíamos (cupos libres)
+no paga. `Entrega/` sin cambios; se conserva cupo 10 (default).
