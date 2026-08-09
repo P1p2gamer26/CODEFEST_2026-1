@@ -948,3 +948,33 @@ independientes de la misma ronda apuntan ahi.
 empata las 36 lecturas de las cuatro alternativas, y el reparto de fragmentos
 entre documentos del top-3 queda cerrado: no es una variable libre que quedo sin
 calibrar, es una que el score ya resuelve mejor que cualquier cuota.
+
+---
+
+## E30 — desempate por entidades del grafo: INERTE-NEGATIVO (9 ago 2026)
+
+Detalle completo en `E30_entidades_del_grafo.md`. Resumen:
+
+**Puerta de entrada (antes de medir):** 37/50 consultas tienen alguna entidad
+de spaCy, 34/50 la tienen tambien en el grafo, pero la **mediana es 1 entidad
+por consulta** y solo el **17% de los 222 documentos saturados** comparte
+alguna. El criterio empata casi siempre: cambia **3 de 50 lineas**.
+
+**Resultado:** F1(50) 0.440 → 0.433, delta **-0.007 [-0.020, +0.000]**, **0
+gana / 1 pierde**. Inerte exacto en las 10 independientes. No pasa el criterio.
+
+**Lo que importa mas que el numero:** las 7 consultas de hermano equivocado
+(`q005 q007 q034 q037 q044 q046 q047`) **no se mueven ni una**. La
+justificacion mecanica fallo, igual que en el control de E24. Toda la perdida
+es q041, una consulta de hermanos MAPPOEA donde el grafo eligio al hermano
+equivocado — el escenario exacto para el que se diseno.
+
+**Causa:** los hermanos de una serie nombran las MISMAS entidades. El grafo
+discrimina la coleccion, que ya se acierta el 92% de las veces, y es ciego a
+periodo/region/operacion. Ademas el NER que lo construyo excluye DATE, TIME y
+CARDINAL, que es justo lo que separaria dos informes trimestrales.
+
+**Cerrado: el grafo no aporta al ranking de documentos por ninguna via.**
+Fusionado en la recuperacion perdio 11-0; como desempate, esto. Se sigue
+entregando como bonus de la sec. 8.5. Queda el instrumento
+`mapa_entidades_grafo.py` (cache entidad -> doc_id, 14,4 MB, RAM cero).
