@@ -1,6 +1,6 @@
 # Plan maestro — CODEFEST AD ASTRA 2026, Etapa 1
 
-Estado al **2 de agosto de 2026**. Este documento es el punto de entrada para
+Estado al **9 de agosto de 2026**. Este documento es el punto de entrada para
 cualquiera que retome el proyecto: qué hay, qué se probó, qué falló, qué queda
 y qué hace falta para competir. Los detalles de implementación están en
 `las notas del proyecto`; el método de decisión, en `lecciones_metodologia.md`.
@@ -46,10 +46,21 @@ verifica corriendo `generador.py` desde un directorio fuera del repo, con
 
 | métrica | valor | sobre qué |
 |---|---|---|
-| **F1@3** | **0,386** | 41 consultas anotadas a mano |
-| **F1@3** | **0,333** | 10 consultas sin sesgo de pooling ← *el número que vale* |
-| **NDCG@10** | **0,406** | 41 anotadas; aproximado, relevancia heredada del documento |
-| **NDCG@10** | **0,360** | 10 sin sesgo de pooling |
+| **F1@3** | **0,440** | las 50 consultas — **el 49% del techo de 0,906**, no el 44% de 1 |
+| **NDCG@10** | **0,506** | las 50; aproximado, relevancia heredada del documento |
+| **NDCG@10 penalizado** | **0,491** | las 50, descontando aparato bibliográfico |
+| F1@3 / NDCG@10 | 0,468 / 0,510 | 41 de anotación humana |
+| F1@3 / NDCG@10 | 0,400 / 0,436 | 10 sin sesgo de pooling |
+
+**La métrica de decisión es la media sobre las 50** (forma de las ecs. 10 y 14
+del PDF). Los desgloses son diagnóstico. Y el techo es **0,906, no 1**: hay que
+entregar exactamente 3 documentos, así que una consulta con un solo relevante
+topa en 0,50.
+
+**Advertencia que hay que repetir siempre:** 9 de las 50 llevan etiqueta de
+panel de agentes y dan F1@3 **0,311** contra **0,468** de las 41 humanas. Ese
+es el eslabón podrido del promedio, y re-anotarlas a mano sigue siendo la tarea
+de mayor impacto del proyecto.
 
 Al empezar el 2 de agosto eran 0,344 y **0,206**. El NDCG@10 casi se dobló y
 es la mitad del puntaje; había sido medido **una sola vez** y nunca
@@ -88,9 +99,48 @@ encabezar los rankings de 2026: son decoder-only.
 
 ---
 
+## 1.5 La jornada del 9 de agosto, que cambió el mapa
+
+Se midieron **ocho hipótesis más** (E13, E17, E21, E22, E23, E24, E25, y el
+diagnóstico de los ceros). **Dos adoptadas, seis negativas.** Detalle en
+`las notas del proyecto` y en `dev/experimentos/`.
+
+**Lo adoptado — E22 y E23, el orden de los fragmentos.** NDCG@10 de 0,490 a
+**0,506** (+0,016 [+0,004, +0,029], 11-4, IC entero sobre cero), fragmentos
+ilegibles **19 → 0**, fragmentos sin una palabra de la consulta **175 → 122**.
+F1@3 no se mueve, y es lo correcto: no tocan los documentos.
+
+**Lo que cerró definitivamente tres ejes:**
+
+- **E21 (re-chunking a 128 tokens sin solape)** refuta el último eje
+  estructural sin tocar. Cierra además la ventana de MiniLM **por los dos
+  lados**: ya se sabía que un primario de ventana mayor empeora, y ahora que
+  ajustar el chunk a la ventana empeora más. Mata de paso la concatenación de
+  vecinos enteros.
+- **E17 (unión de pools)**: a profundidad 200 gte aporta **149 candidatos por
+  consulta** que MiniLM no trae, y solo **8 pares** (consulta, documento
+  relevante) en las 50 son exclusivos suyos. **El desacuerdo entre encoders es
+  casi todo ruido.**
+- **E25 (bge-m3)**: el mejor candidato del proyecto y el único con control de
+  peso limpio detrás — aporta +0,019 de F1 **por encima del efecto del peso**.
+  No se adopta porque las independientes no confirman y exige 14 h de GPU.
+
+**El diagnóstico que más vale:** las **11 consultas con F1@3 = 0 son un solo
+fallo, no once problemas**. Ninguna es fallo de pool — las once tienen
+documentos relevantes dentro y los pierden en la agregación, seis en las
+posiciones **4-8**, y el mejor chunk del perdedor **no es peor** que el del
+ganador (1,55-1,69 contra mediana 1,672). Pierde por aportar 2-5 chunks donde
+el ganador aporta 7.
+
+**Y dos fallos de cumplimiento que valían más que cualquier décima:** un
+archivo de consultas en **cp1252** (lo que escribe PowerShell por defecto, y lo
+entrega ADL) mataba `generador.py` antes de leer una consulta; y
+`resultados.jsonl` **había dejado de reproducirse byte a byte** por deriva de
+versiones de las librerías. Los dos corregidos.
+
 ## 2. Lo que ya se probó y falló
 
-**Trece hipótesis medidas, ninguna adoptada.** Está todo en la sección
+**Veintiséis hipótesis medidas, tres adoptadas.** Está todo en la sección
 "Medido y descartado" de `las notas del proyecto` con sus números. Resumen para no
 repetirlo:
 
@@ -287,11 +337,36 @@ formato, con el texto limpio, dos encoders justificados por medición y un
 grafo de bonus. Eso ya la pone por encima de cualquier equipo que entregue el
 top-10 crudo de un encoder sin verificar.
 
-**El margen que queda no está en el recuperador.** Trece intentos lo dicen.
-Está en dos sitios que nadie tocó: **NDCG@10**, que es la mitad del puntaje y
-donde probablemente casi todos los equipos entreguen lo mismo que nosotros, y
-**el ground truth**, que es lo que permitiría saber si algo de lo anterior
-sirve.
+**El margen que queda no está en el recuperador.** Veintiséis intentos lo
+dicen, y el 9 de agosto lo confirmó por partida triple: E18 probó que el pool
+ya trae el 93% de lo relevante, E20 que la agregación agotó sus regímenes y
+E21 que el chunking tampoco es la palanca. Los veintiséis operan sobre **un
+solo canal de evidencia: el score de embedding de los chunks**, y ese canal
+está cerrado por los tres lados.
+
+**Lo que sí se movió fue NDCG@10, y por dónde importa.** Las dos adopciones del
+9 de agosto no cambian qué se recupera: cambian **qué texto se entrega**, que
+es lo que la sec. 10.2.1 dice que se juzga. Fragmentos que el evaluador no
+puede leer: cero. Fragmentos que no mencionan el objeto de la consulta: un
+tercio menos. Ese es el patrón de lo que funciona en este proyecto — **arreglar
+defectos del dato, no calibrar parámetros.**
 
 Si solo hubiera tiempo para una cosa: **anotar más y más profundo, a mano.**
-Todo lo demás depende de eso.
+Sigue siendo cierto, y ahora con número: las 9 consultas de etiqueta de agente
+dan **0,311** contra **0,468** de las humanas. Mientras eso siga así, ninguna
+medición nuestra —ni el 0,506 ni el 0,460 de bge-m3— dice de verdad dónde
+estamos frente al ground truth de ADL.
+
+## 8. Decisiones abiertas, para quien retome
+
+1. **E15 (desempate estable por `chunk_id`).** Da inmunidad permanente a la
+   deriva de versiones, que el 9 de agosto rompió la reproducibilidad sin que
+   nadie tocara el código. E15 lo midió y pierde — pero su propio cierre dice
+   que lo que pierde es *una moneda al aire entre copias duplicadas*. **Hoy
+   pesa distinto que cuando se midió: la máquina de ADL no es esta.**
+2. **E25 (bge-m3).** El índice completo se construyó para poder decidir con el
+   sistema entero en la mano. Gana en las 50 y en las humanas, no confirma en
+   las independientes.
+3. **E24 condicional.** El nombre del documento como desempate **solo cuando el
+   ranking agregado es plano**. El uso incondicional está refutado; el
+   condicional no se midió.
