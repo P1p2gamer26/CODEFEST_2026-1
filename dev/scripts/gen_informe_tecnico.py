@@ -550,12 +550,23 @@ def build_story() -> list:
     ))
     story.append(p(
         "<b>Estado final de la medicion.</b> Sobre las 50 consultas la entrega da "
-        "<b>F1@3 = 0,440</b> y <b>NDCG@10 = 0,490</b>. El F1@3 no tiende a 1: la "
+        "<b>F1@3 = 0,440</b> y <b>NDCG@10 = 0,506</b> (0,491 penalizado por calidad "
+        "de texto). El F1@3 no tiende a 1: la "
         "sec. 10.2.2 fija P@3 = aciertos/3 con los tres cupos siempre llenos, asi "
         "que una consulta con un solo documento relevante topa en 0,50 y el techo "
         "sobre este ground truth es <b>0,906</b> &mdash; el 0,440 es el 49% de lo "
-        "alcanzable, no el 44% de 1. Sobre las 41 consultas de anotacion humana da "
-        "0,468 / 0,510 y sobre las 10 de anotacion independiente 0,400 / 0,436."
+        "alcanzable, no el 44% de 1."
+    ))
+    story.append(p(
+        "<b>Los dos ultimos cambios ordenan los fragmentos por lo que la sec. 10.2.1 "
+        "juzga: su campo</b> <font face='Courier'>text</font>. Un fragmento ilegible, "
+        "o que no menciona el objeto de la consulta, vale cero por relevante que sea "
+        "su documento. El <b>idioma legible sube por encima de la alineacion con el "
+        "top-3</b> (antes un fragmento en coreano del documento n.&ordm; 1 desplazaba "
+        "a uno legible del n.&ordm; 4: ilegibles <b>19 a 0</b>) y la <b>cobertura "
+        "lexica de la consulta</b> entra como ultimo desempate (fragmentos sin una "
+        "palabra de la consulta, <b>175 a 122</b> de 500). Juntos, NDCG@10 "
+        "<b>+0,016</b> (IC 90% [+0,004, +0,029], 11-4) y F1@3 inalterado."
     ))
     story.append(p(
         "<b>Las dos ultimas mejoras adoptadas se componen.</b> La primera es "
@@ -607,22 +618,18 @@ def build_story() -> list:
         "asimetria espanol/ingles existe solo en los fenomenos 1 y 2</b>. En el "
         "fenomeno 3, territorial y colombiano, la relacion se invierte "
         "(\"reclutamiento\" aparece en 682 fragmentos contra 2 de <i>child "
-        "recruitment</i>; \"restitucion de tierras\" 617 contra 22 de <i>land "
-        "restitution</i>), de modo que expandir al ingles una consulta de ese "
-        "fenomeno la alejaria de sus documentos. El glosario es deliberadamente una "
-        "herramienta de dos fenomenos, no de tres. Por la misma razon se rechazo "
-        "<i>capacidades laser</i> &rarr; <i>laser weapons</i>: \"laser\" es un "
-        "cognado, la consulta ya tenia puente al corpus en ingles, y la entrada "
-        "costaba una consulta."
+        "recruitment</i>), de modo que expandir al ingles una consulta de ese "
+        "fenomeno la alejaria de sus documentos: el glosario es deliberadamente "
+        "una herramienta de dos fenomenos, no de tres. Por la misma razon se "
+        "rechazo <i>capacidades laser</i> &rarr; <i>laser weapons</i>: \"laser\" es "
+        "cognado, la consulta ya tenia puente al corpus ingles."
     ))
     story.append(p(
         "Con el pool ampliado la agregacion pasa de <i>suma</i> a <b>sumar los 5 "
-        "mejores fragmentos</b> de cada documento, por robustez y no por promedio: "
-        "con pool 60 las dos son <i>identicas</i> (ningun documento aporta mas de 5 "
-        "fragmentos a un pool tan chico), pero al ampliarlo la suma deja de tener "
-        "tope y un documento con muchos fragmentos mediocres desplaza al bueno "
-        "&mdash; con pool 200 la suma cae a <b>0,298</b> mientras el tope de 5 sube "
-        "a 0,406. Por eso el pool quedo en 100 y no en 200."
+        "mejores fragmentos</b> de cada documento, por robustez: con pool 60 las dos "
+        "son identicas, pero al ampliarlo la suma pierde el tope y un documento con "
+        "muchos fragmentos mediocres desplaza al bueno &mdash; con pool 200 cae a "
+        "<b>0,298</b> mientras el tope de 5 sube a 0,406."
     ))
     story.append(p(
         "<b>Lo que cuestan, dicho explicitamente:</b> sobre las 10 consultas de "
@@ -680,12 +687,10 @@ def build_story() -> list:
         "<i>fuente</i> como clave de emparejamiento y la aclaracion posterior de ADL "
         "indico <i>doc_id</i>; reportar el nombre de archivo hace que el sistema "
         "funcione bajo cualquiera de las dos lecturas.",
-        "<b>Fusion de chunks cortos adyacentes</b> (sec. 9.2.1, mencionada como "
-        "posible, no obligatoria) no esta implementada: solo se implemento la "
-        "division obligatoria de chunks que exceden 250 palabras.",
-        "<b>Boilerplate de PDF:</b> la heuristica de lineas repetidas (>=30% de "
-        "paginas) requiere documentos de 3 o mas paginas; PDFs mas cortos no "
-        "reciben este filtro.",
+        "<b>Fusion de chunks adyacentes</b> (sec. 9.2.1, opcional): implementada y "
+        "revertida &mdash; el chunker solapa una oracion y concatenar duplica texto.",
+        "<b>Boilerplate de PDF:</b> el filtro de lineas repetidas pide 3 o mas "
+        "paginas.",
     ]))
 
     return story
