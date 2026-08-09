@@ -529,6 +529,49 @@ class DocumentHit:
     score: float
 
 
+# --- de src/retrieval/aggregate.py (E32) ---
+# Fraccion del score total que el fenomeno ganador debe superar para que el
+# filtro se aplique. Por debajo, se abstiene. Ver el comentario largo en
+# build_result_object para por que 0.8 y no el argmax de la grilla.
+UMBRAL_FENOMENO = 0.8
+
+
+def filtrar_por_fenomeno_dominante(hits: list[Hit], umbral: float = 0.0) -> list[Hit]:
+    """Descarta del pool los fragmentos que no son del fenomeno dominante.
+
+    La sec. 8.7 permite post-filtrar por metadata, y el fenomeno es la senal
+    mas barata que hay: **41 de las 50 consultas anotadas tienen TODOS sus
+    documentos relevantes en un solo fenomeno**, y sin filtrar se gastan 24 de
+    150 cupos (16%) en documentos del fenomeno equivocado.
+
+    El fenomeno se decide por VOTO PONDERADO POR SCORE del propio pool, no por
+    conteo: un fragmento en rank 1 debe pesar mas que uno en rank 100.
+
+    `umbral` es la fraccion del score total que el fenomeno ganador debe
+    superar para que se aplique el filtro. Por debajo **se abstiene** y
+    devuelve el pool intacto, que es lo que evita el fallo de las consultas
+    donde el pool esta repartido y el ganador no es de fiar. `umbral=0` filtra
+    siempre; `umbral=1` no filtra nunca.
+    """
+    if not hits:
+        return hits
+
+    peso: dict[int, float] = defaultdict(float)
+    for hit in hits:
+        if hit.fenomeno is not None:
+            peso[hit.fenomeno] += max(hit.score, 0.0)
+    if not peso:
+        return hits
+
+    total = sum(peso.values())
+    ganador, mejor = max(peso.items(), key=lambda kv: kv[1])
+    if total <= 0 or mejor / total < umbral:
+        return hits
+
+    filtrados = [h for h in hits if h.fenomeno == ganador]
+    return filtrados or hits
+
+
 def aggregate_documents(
     hits: list[Hit], top_n: int = N_DOCUMENTS_PER_QUERY, strategy: str = "sum"
 ) -> list[DocumentHit]:
@@ -1477,6 +1520,26 @@ def build_result_object(
     texto_consulta: str | None = None,
 ) -> dict:
     toks_consulta = frozenset(tokens_de(texto_consulta)) if texto_consulta else None
+    # E32: post-filtrado por fenomeno (sec. 8.7), solo cuando el pool es
+    # CLARAMENTE de un fenomeno. El umbral 0.8 no es el argmax de la grilla
+    # -- 0.7 da mejor F1(50) -- sino el unico valor que no dispara el veto
+    # pre-registrado: por debajo de 0.8 las consultas con F1@3 = 0 suben de 11
+    # a 12, y por debajo de 0.6 q025 se queda sin 3 documentos distintos y
+    # ROMPE la sec. 9.2. O sea que se elige por regla, no por numero.
+    #
+    # Medido sobre las 50: F1@3 0.440 -> 0.455 y, lo que importa, en las 10
+    # consultas independientes 0.400 -> 0.433 (NDCG 0.436 -> 0.474). Es el
+    # unico cambio del proyecto, junto con E22/E23, que pasa el criterio en
+    # las NUEVE lecturas, y las 4 consultas que toca son todas de anotacion
+    # humana: la objecion de E31 (que la ganancia venga de las 9 etiquetadas
+    # por agentes) no aplica aqui.
+    #
+    # Lo que hay que decir junto al numero: solo cambia 8 de 150 documentos, y
+    # q027 no queda ARREGLADA sino ESQUIVADA -- a 0.8 el filtro se abstiene de
+    # tocarla. Cuando el filtro actua de verdad (umbrales bajos), el resultado
+    # se cae. Y q019 pierde en TODOS los umbrales porque tiene documentos
+    # relevantes en dos fenomenos a la vez: es imposible de salvar filtrando.
+    hits = filtrar_por_fenomeno_dominante(hits, umbral=UMBRAL_FENOMENO)
     doc_hits = aggregate_documents(hits, top_n=top_docs, strategy=agg_strategy)
     if prior_recencia > 0:
         doc_hits = aplicar_prior_recencia(
