@@ -23,9 +23,9 @@ Bogotá **18-19 de septiembre**.
 | Grafo (bonus) | 224.101 nodos, 754.876 aristas |
 | `informe_tecnico.pdf` | 8 de 8 páginas |
 | `validar_entrega.py` | ✅ en verde (ahora falla también ante archivos de más) |
-| `pytest dev/tests` | ✅ **94 passed** |
+| `pytest dev/tests` | ✅ **138 passed** |
 | `pruebas_robustez.py` | ✅ todas — el script corrido como lo correrá ADL |
-| **Corrida en frío** | ✅ **reproduce byte a byte** (sha256 `295ec0f7…`) |
+| **Corrida en frío** | ✅ **reproduce byte a byte** (sha256 `987293ac…`) |
 
 **Dos fallos que habrían excluido la entrega, encontrados y corregidos el
 2 ago 2026** — ninguno se veía corriendo el camino feliz:
@@ -62,18 +62,9 @@ panel de agentes y dan F1@3 **0,311** contra **0,468** de las 41 humanas. Ese
 es el eslabón podrido del promedio, y re-anotarlas a mano sigue siendo la tarea
 de mayor impacto del proyecto.
 
-Al empezar el 2 de agosto eran 0,344 y **0,206**. El NDCG@10 casi se dobló y
-es la mitad del puntaje; había sido medido **una sola vez** y nunca
-optimizado, mientras todo el esfuerzo iba al F1@3.
-
-**Advertencia que hay que repetir cada vez:** el F1@3 subió en las 41 pero
-**no en las 10 independientes** (0,333 antes y después). Esa parte de la
-ganancia puede ser sesgo de pooling. Lo que mejoró en las dos muestras es el
-NDCG@10.
-
-**El techo alcanzable es 0,900, no 1,0.** Hay que entregar exactamente 3
-documentos: si una consulta tiene 1 solo relevante, el F1 máximo es 0,50; con
-2, es 0,80. Estamos en el **38% de lo alcanzable**.
+El 2 de agosto eran 0,344 y **0,206**. **El NDCG@10 se ha multiplicado por
+2,5** y es la mitad del puntaje; había sido medido **una sola vez** y nunca
+optimizado, mientras todo el esfuerzo iba al F1@3. Ahí estaba el margen.
 
 **Y el ranking del concurso es relativo.** Dos tablas independientes (NDCG@10
 y F1@3) combinadas por Conteo de Borda: importa la posición contra los otros
@@ -87,11 +78,13 @@ equipos, no el valor absoluto.
 mismos chunks**.
 
 **Online:** la consulta se vectoriza con MiniLM y se recuperan 200
-candidatos; **`gte-multilingual-base` y `multilingual-e5-base` los re-puntúan**,
-cada uno sumando su similitud con peso 0,25 (cascada, no fusión); se agregan
-a documento sumando scores sobre un pool de 60; y **los fragmentos se ordenan
-para que salgan de esos mismos 3 documentos**, prefiriendo idiomas legibles,
-antes de truncar a 250 palabras.
+candidatos —con la consulta **expandida por el glosario bilingüe ES→EN**—;
+**`gte-multilingual-base` y `multilingual-e5-base` los re-puntúan**, cada uno
+sumando su similitud con peso **0,60** (cascada, no fusión); se agregan a
+documento **sumando los 5 mejores chunks** sobre un pool de **100**; y los
+fragmentos se ordenan por **idioma legible, alineación con los 3 documentos
+entregados, aparato bibliográfico y cobertura léxica de la consulta**, antes de
+truncar a 250 palabras.
 
 **Sin modelos generativos en ningún punto** — lo prohíbe la sec. 8.3, y por
 eso quedaron descartadas las familias Harrier y Qwen3-Embedding pese a
@@ -264,14 +257,21 @@ Nunca se optimizó nada a nivel fragmento. Hace falta:
    sec. 10.2.1, en vez de binaria.
 3. Probar ideas de membresía (no de orden — reordenar ya se midió: 15-15).
 
-### 4.3 Prioridad 3 — La construcción del pool
+### 4.3 ~~Prioridad 3 — La construcción del pool~~ — CERRADA (E18, 9 ago)
 
-El dato que lo motiva: **en las consultas sin sesgo, el pool de 60 alcanza
-solo el 52% de los documentos relevantes**; a k=1500 llega al 94%. Pero
-agregar sobre el pool profundo **empeora** (0,300 → 0,200). Los documentos
-están ahí y la agregación no los encuentra.
+**Este eje está muerto y no hay que reabrirlo.** El dato que lo motivaba era
+que el pool de 60 alcanzaba solo el 52% de los documentos relevantes. Con la
+configuración actual (pool 100 sobre 200 candidatos re-puntuados) **E18 midió
+que el pool ya trae el 93,2%**, y el diagnóstico de las 11 consultas con
+F1@3 = 0 lo remata: **ninguna es fallo de pool** — las once tienen documentos
+relevantes dentro y los pierden en la agregación.
 
-Ideas no probadas, en orden de costo:
+**E17 lo confirma desde el otro lado:** unir el pool de MiniLM con el de gte
+mete 149 candidatos nuevos por consulta y solo **8 pares** (consulta,
+documento) relevantes en las 50 son exclusivos de gte. Ampliar el pool ya no
+compra recall, solo dilución.
+
+Lo que queda de esta sección es histórico:
 
 - ~~**Pseudo-relevance feedback denso**~~ — **medido el 2 ago, no acumulable.**
   PRF sobre MiniLM solo sube de 0,300 a **0,333** en las independientes
