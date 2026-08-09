@@ -324,7 +324,7 @@ se equivocan igual.
 | riesgo | mitigación |
 |---|---|
 | El ground truth propio no representa el de ADL | Es el riesgo de fondo y no tiene mitigación real. Todo lo medido puede no transferir. |
-| Trece hipótesis fallidas ⇒ tentación de adoptar por promedio | La regla y su corrección están escritas en `lecciones_metodologia.md`. Leerlo antes de proponer. |
+| Veintitrés hipótesis fallidas ⇒ tentación de adoptar por promedio | La regla y su corrección están escritas en `lecciones_metodologia.md`. Leerlo antes de proponer. |
 | Cuota de LFS ya consumida (~1 GB) | Los índices nuevos van por Release. No commitear binarios. |
 | Corrida en frío rota por un cambio en `dev/src/` | `tests/test_retrieval_schema.py` lo vigila, pero la verificación final es manual. |
 
