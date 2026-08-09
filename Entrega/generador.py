@@ -45,7 +45,7 @@ anotaciones se EVALUAN al definir la funcion, asi que sin la linea de abajo el
 script muere con `TypeError: unsupported operand type(s) for |` en el import
 -- antes de leer una sola consulta, y la sec. 1.4 excluye lo que no es
 reproducible. `from __future__ import annotations` las difiere a texto (PEP
-563) y funciona desde 3.7. Auditado con AST: las 11 uniones del archivo son
+563) y funciona desde 3.7. Auditado con AST: las 14 uniones del archivo son
 todas de anotacion, ninguna se evalua en ejecucion, y no hay otra sintaxis
 posterior a 3.9. **No quitar esta linea ni mover imports por encima de ella.**
 """
@@ -1348,11 +1348,24 @@ def load_consultas(path: Path) -> list[dict]:
     """Lee el archivo de consultas. Tolerante en la ENTRADA, estricto en la
     salida: el formato exacto de q001-q050 lo define ADL y no lo controlamos.
 
-    `utf-8-sig` en vez de `utf-8` NO es cosmetico. Cualquier archivo guardado
-    con Excel, Bloc de notas o PowerShell en Windows lleva BOM, y con `utf-8`
-    la primera linea falla con "Unexpected UTF-8 BOM" -- el script muere antes
-    de la primera consulta y la sec. 1.4 excluye lo que no se puede
-    reproducir. `utf-8-sig` se come el BOM si esta y no molesta si no.
+    La cadena de codecs NO es cosmetica, y cubre dos fallos distintos que
+    matarian el script antes de la primera consulta -- la sec. 1.4 excluye lo
+    que no se puede reproducir. El archivo lo entrega ADL y no controlamos con
+    que lo guarden:
+
+    - `utf-8-sig` se come el BOM que ponen Excel, Bloc de notas y PowerShell,
+      y no molesta si no esta. Con `utf-8` a secas la primera linea falla con
+      "Unexpected UTF-8 BOM".
+    - `cp1252` cubre el guardado ANSI. `Set-Content` de Windows PowerShell 5.1
+      escribe cp1252 por defecto y las 50 consultas van en espanol con
+      acentos, asi que el primer acento revienta con UnicodeDecodeError.
+    - `latin-1` cierra la cadena porque **no puede fallar**: decodifica
+      cualquier byte. Si el archivo no era ninguno de los tres, el texto sale
+      raro pero el script corre y los errores de JSON salen con su mensaje.
+
+    El orden importa: los tres primeros son estrictos y solo aceptan lo suyo,
+    asi que un archivo UTF-8 valido siempre lo decodifica `utf-8-sig` y el
+    resultado no cambia (verificado sobre las 50 consultas oficiales).
 
     Los errores salen como mensaje, no como traceback: quien reciba solo esta
     carpeta necesita saber QUE arreglar, y un volcado de pila parece un script
@@ -1361,34 +1374,41 @@ def load_consultas(path: Path) -> list[dict]:
     if not path.is_file():
         raise SystemExit(f"error: no existe el archivo de consultas: {path}")
 
+    crudo = path.read_bytes()
+    for codec in ("utf-8-sig", "cp1252", "latin-1"):
+        try:
+            texto = crudo.decode(codec)
+            break
+        except UnicodeDecodeError:
+            continue
+
     consultas = []
-    with path.open(encoding="utf-8-sig") as f:
-        for line_number, line in enumerate(f, start=1):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError as exc:
-                raise SystemExit(
-                    f"error: {path}:{line_number} no es JSON valido ({exc.msg}).\n"
-                    f"  Se espera JSON Lines: un objeto por linea, sin comas entre lineas.\n"
-                    f"  Linea: {line[:120]}"
-                ) from exc
-            if not isinstance(obj, dict):
-                raise SystemExit(
-                    f"error: {path}:{line_number}: se esperaba un objeto JSON, "
-                    f"no {type(obj).__name__}"
-                )
-            query_id = obj.get("query_id") or obj.get("id")
-            text = obj.get("text") or obj.get("query") or obj.get("consulta")
-            if query_id is None or text is None:
-                raise SystemExit(
-                    f"error: {path}:{line_number}: se esperaban los campos "
-                    f"'query_id'/'id' y 'text'/'query'/'consulta'; campos "
-                    f"encontrados: {sorted(obj)}"
-                )
-            consultas.append({"query_id": str(query_id), "text": str(text)})
+    for line_number, line in enumerate(texto.splitlines(), start=1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(
+                f"error: {path}:{line_number} no es JSON valido ({exc.msg}).\n"
+                f"  Se espera JSON Lines: un objeto por linea, sin comas entre lineas.\n"
+                f"  Linea: {line[:120]}"
+            ) from exc
+        if not isinstance(obj, dict):
+            raise SystemExit(
+                f"error: {path}:{line_number}: se esperaba un objeto JSON, "
+                f"no {type(obj).__name__}"
+            )
+        query_id = obj.get("query_id") or obj.get("id")
+        text = obj.get("text") or obj.get("query") or obj.get("consulta")
+        if query_id is None or text is None:
+            raise SystemExit(
+                f"error: {path}:{line_number}: se esperaban los campos "
+                f"'query_id'/'id' y 'text'/'query'/'consulta'; campos "
+                f"encontrados: {sorted(obj)}"
+            )
+        consultas.append({"query_id": str(query_id), "text": str(text)})
 
     if not consultas:
         raise SystemExit(
