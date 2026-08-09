@@ -37,7 +37,13 @@ from src.graph.ner import extract_entities  # noqa: E402
 from src.retrieval.aggregate import aggregate_documents  # noqa: E402
 from src.retrieval.calidad_chunk import fraccion_aparato  # noqa: E402
 from src.retrieval.glosario import expandir_consulta  # noqa: E402
-from src.retrieval.truncate import IDIOMAS_LEGIBLES, UMBRAL_APARATO, enforce_word_limit  # noqa: E402
+from src.retrieval.truncate import (  # noqa: E402
+    IDIOMAS_LEGIBLES,
+    UMBRAL_APARATO,
+    enforce_word_limit,
+    ordenar_para_fragmentos,
+    tokens_de,
+)
 
 from barrido_orden_e22_e23 import hits_desde_pool  # noqa: E402
 from eval_mini import bootstrap_delta, cargar_jsonl, f1, ndcg, ndcg_penalizado  # noqa: E402
@@ -94,20 +100,30 @@ def documentos(hits, solape, graduada):
     return doc_hits[:3]
 
 
-def ordenar_fragmentos(hits, top_ids):
-    """Los tres criterios entregados: top-3, idioma legible, aparato."""
-    top = set(top_ids)
-    return sorted(hits, key=lambda h: (
-        1 if h.doc_id not in top else 0,
-        0 if h.idioma in IDIOMAS_LEGIBLES else 1,
-        1 if fraccion_aparato(h.texto) >= UMBRAL_APARATO else 0,
-    ))
+def ordenar_fragmentos(hits, top_ids, texto_consulta=None):
+    """Delega en la funcion REAL de src/retrieval/truncate.py.
+
+    Reimplementar aqui los criterios fue un error que costo una medicion: este
+    arnes tenia copiados los TRES criterios viejos (top-3, idioma, aparato) y
+    seguia dando 0.490/0.476 de base cuando el sistema ya daba 0.506/0.491,
+    porque E22 subio el idioma por encima del top-3 y E23 anadio la cobertura
+    lexica. El F1@3 no se veia afectado -- el orden de fragmentos no toca los
+    documentos -- pero las lecturas de NDCG median un sistema que ya no existe.
+
+    La logica ya esta duplicada a proposito entre `src/` y `Entrega/generador.py`
+    (punto 14 de CLAUDE.md) y hay un test que vigila ESE par. Una tercera copia
+    dentro de un barrido no la vigila nadie: por eso aqui se llama, no se copia.
+    """
+    toks = frozenset(tokens_de(texto_consulta)) if texto_consulta else None
+    return ordenar_para_fragmentos(
+        hits, doc_ids_prioritarios=top_ids, tokens_consulta=toks
+    )
 
 
-def resultado(qid, hits, solape, graduada):
+def resultado(qid, hits, solape, graduada, texto_consulta=None):
     doc_hits = documentos(hits, solape, graduada)
     top_ids = [d.doc_id for d in doc_hits]
-    frags = enforce_word_limit(ordenar_fragmentos(hits, top_ids))
+    frags = enforce_word_limit(ordenar_fragmentos(hits, top_ids, texto_consulta))
     return {
         "query_id": qid,
         "documents": [{"rank": d.rank, "doc_id": d.doc_id} for d in doc_hits],
@@ -184,11 +200,14 @@ def main() -> None:
     gt_hum = [g for g in gt_todo if not g.get("anotador")]
     print(f"{len(gt_todo)} evaluables, {len(gt_indep)} independientes, {len(gt_hum)} humanas\n")
 
+    # Consulta YA EXPANDIDA por el glosario: es la que se midio en E23.
+    expandidas = {c["query_id"]: expandir_consulta(c["text"]) for c in cargar_jsonl(CONSULTAS)}
+
     archivos, guardadas = {}, {}
     for celda in CELDAS:
         sol = (lambda q: {}) if celda == BASE else (lambda q: solape_por_q[q])
         grad = celda == "e30-graduada"
-        res = {q: resultado(q, h, sol(q), grad) for q, h in hits_por_q.items()}
+        res = {q: resultado(q, h, sol(q), grad, expandidas[q]) for q, h in hits_por_q.items()}
         archivos[celda] = res
         with (args.out_dir / f"{celda}.jsonl").open("w", encoding="utf-8") as f:
             for q in sorted(res):
@@ -200,7 +219,7 @@ def main() -> None:
     for k in CELDAS:
         print(f"{k + (' *' if k == BASE else ''):16s}"
               + "".join(f"{sum(v)/len(v):>9.3f}" for v in guardadas[k]))
-    print("\n  * = la entregada; tiene que dar 0.440/0.490/0.476 y 0.400/0.436/0.429 (E09)\n")
+    print("\n  * = la entregada; tiene que dar 0.440/0.506/0.491 y 0.400/0.436/0.429 (E09)\n")
 
     # las 7 de hermano equivocado, calculadas sobre la fila base
     gtm = {g["query_id"]: set(g["docs_relevantes"]) for g in gt_todo}
