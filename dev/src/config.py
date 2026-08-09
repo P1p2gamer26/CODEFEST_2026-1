@@ -104,6 +104,20 @@ ENCODER_E5_SMALL_HF_ID = "intfloat/multilingual-e5-small"
 ENCODER_E5_LARGE_NAME = "multilingual-e5-large"
 ENCODER_E5_LARGE_HF_ID = "intfloat/multilingual-e5-large"
 
+# E25: el unico candidato de docs/plan_encoders.md que nunca se midio. Cumple
+# las tres restricciones duras del proyecto -- backbone ENCODER-ONLY
+# (XLM-RoBERTa, o sea sin riesgo bajo la sec. 8.3, que es lo que descarto a
+# Qwen3, Harrier, KaLM/EmbeddingGemma y Jina v5), licencia MIT, y ventana de
+# 8192 que sobra para chunks de 280 tokens. NO lleva prefijos: el propio model
+# card dice que "no longer requires adding instructions to the queries", asi
+# que ponerselos degradaria en silencio igual que a GTE.
+#
+# Su parte SPARSE no se usa y no hay que reabrirla: es BM25 con otro nombre, y
+# el hibrido lexico ya se midio dos veces (RRF y union) y perdio 15-4 y 19-2.
+# Aca se usa solo la representacion densa.
+ENCODER_BGE_M3_NAME = "bge-m3"
+ENCODER_BGE_M3_HF_ID = "BAAI/bge-m3"
+
 
 def encoder_dir(encoder_name: str) -> Path:
     return BASE_VECTORIAL_DIR / f"encoder_{encoder_name}"
