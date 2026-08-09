@@ -1011,12 +1011,38 @@ IDIOMAS_LEGIBLES = frozenset({"es", "en", "pt"})
 # dos empatados.
 UMBRAL_APARATO = 0.60
 
+# --- de src/retrieval/truncate.py (E23) ---
+# Palabras vacias de espanol y de ingles. Sin ellas, "sobre", "entre" o
+# "which" harian que casi cualquier pasaje "cubra" la consulta y el criterio
+# seria inerte. Se fijo antes de medir y no se retoco despues.
+STOPWORDS = frozenset("""
+para como cual cuales cuanto cuantos donde desde entre sobre segun hacia hasta
+ante bajo cabe contra durante mediante salvo tras esta este estos estas esos
+esas aquel aquella ellos ellas nosotros vosotros pero sino aunque porque
+cuando mientras siempre nunca tambien tanto tanta menos mismo misma otro otra
+otros otras cada todo toda todos todas algun alguna algunos algunas ningun
+ninguna mucho mucha muchos muchas poco poca pocos pocas
+that this these those with from have been they their there where which what
+when while about into over under between during through after before more
+most such than then them your ours will would could should because being
+""".split())
+
+
+def tokens_de(texto: str) -> set:
+    """Palabras de contenido: sin acentos, de 4 letras o mas, sin vacias."""
+    return {
+        w
+        for w in re.findall(r"[a-z0-9]{4,}", _normalizar_glosario(texto))
+        if w not in STOPWORDS
+    }
+
 
 def ordenar_para_fragmentos(
     hits: list[Hit],
     doc_ids_prioritarios: list[str] | None = None,
     priorizar_idioma: bool = True,
     degradar_aparato: bool = True,
+    tokens_consulta: frozenset | None = None,
 ) -> list[Hit]:
     """Reordena los hits ANTES de armar los fragmentos. No filtra nada.
 
@@ -1057,7 +1083,9 @@ def ordenar_para_fragmentos(
         return hits
     top = set(doc_ids_prioritarios or ())
 
-    def clave(hit: Hit) -> tuple[int, int, int]:
+    toks = tokens_consulta or frozenset()
+
+    def clave(hit: Hit) -> tuple:
         fuera_del_top = 1 if (top and hit.doc_id not in top) else 0
         ilegible = 1 if (priorizar_idioma and hit.idioma not in IDIOMAS_LEGIBLES) else 0
         aparato = (
@@ -1065,7 +1093,12 @@ def ordenar_para_fragmentos(
             if (degradar_aparato and fraccion_aparato(hit.texto) >= UMBRAL_APARATO)
             else 0
         )
-        return (fuera_del_top, ilegible, aparato)
+        # E23: sin tokens de consulta el criterio es constante y por tanto
+        # inerte, que es lo que deja intactos los barridos viejos que llaman
+        # a build_result_object sin pasar la consulta.
+        sin_cobertura = 0 if (toks and (tokens_de(hit.texto) & toks)) else 1
+        # E22: `ilegible` va PRIMERO, antes que `fuera_del_top`.
+        return (ilegible, fuera_del_top, aparato, sin_cobertura)
 
     return sorted(hits, key=clave)
 
@@ -1438,7 +1471,12 @@ def build_result_object(
     # no se pudo validar contra el indice cuando se escribio. Ver
     # `aplicar_prior_recencia`.
     prior_recencia: float = 0.0,
+    # E23: texto de la consulta YA EXPANDIDA por el glosario. Es opcional a
+    # proposito -- sin el, el criterio de cobertura queda inerte y los
+    # barridos historicos siguen midiendo lo que median.
+    texto_consulta: str | None = None,
 ) -> dict:
+    toks_consulta = frozenset(tokens_de(texto_consulta)) if texto_consulta else None
     doc_hits = aggregate_documents(hits, top_n=top_docs, strategy=agg_strategy)
     if prior_recencia > 0:
         doc_hits = aplicar_prior_recencia(
@@ -1462,6 +1500,7 @@ def build_result_object(
                 [h for h in hits if h.doc_id in set(top_ids)],
                 doc_ids_prioritarios=top_ids,
                 priorizar_idioma=priorizar_idioma,
+                tokens_consulta=toks_consulta,
             ),
             max_fragments=cupo_alineado,
             max_words=max_words,
@@ -1472,6 +1511,7 @@ def build_result_object(
                 [h for h in hits if h.chunk_id not in vistos],
                 doc_ids_prioritarios=None,
                 priorizar_idioma=priorizar_idioma,
+                tokens_consulta=toks_consulta,
             ),
             max_fragments=max_fragments - len(del_top),
             max_words=max_words,
@@ -1481,7 +1521,10 @@ def build_result_object(
             frag["rank"] = i
     else:
         hits_ordenados = ordenar_para_fragmentos(
-            hits, doc_ids_prioritarios=top_ids, priorizar_idioma=priorizar_idioma
+            hits,
+            doc_ids_prioritarios=top_ids,
+            priorizar_idioma=priorizar_idioma,
+            tokens_consulta=toks_consulta,
         )
         fragments = enforce_word_limit(
             hits_ordenados, max_fragments=max_fragments, max_words=max_words
@@ -1838,6 +1881,7 @@ def main() -> None:
                 alinear_fragmentos=not args.sin_alinear_fragmentos,
                 priorizar_idioma=not args.sin_priorizar_idioma,
                 cupo_alineado=args.cupo_alineado,
+                texto_consulta=texto_busqueda,
                 # Solo donde la consulta pide material reciente. Aplicarlo a
                 # todas castigaria documentos viejos que son la respuesta
                 # correcta -- un tratado de 1967 sigue siendo el tratado.
