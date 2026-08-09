@@ -13,7 +13,7 @@ arnes de E19, y clasifica cada consulta en:
 Diagnostico puro: no toca Entrega/ ni propone nada.
 
 Uso:
-    .venv/Scripts/python.exe dev/scripts/diagnostico_ceros_e22.py
+    .venv/Scripts/python.exe dev/scripts/diagnostico_ceros_actual.py
 """
 
 import sys
