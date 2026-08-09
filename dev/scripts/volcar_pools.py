@@ -17,6 +17,18 @@ decir, la salida de la cascada, no el pool crudo del primario: si se volcara
 el crudo, cada experimento tendria que re-aplicar el re-rank y volveriamos a
 necesitar los indices.
 
+Con `--con-similitudes` se vuelca ADEMAS, para cada candidato, **el coseno de
+cada encoder por separado** sobre los `PROF` candidatos crudos del primario.
+Eso descompone el score entregado
+
+    score = cos_minilm + 0.60*cos_gte + 0.60*cos_e5
+
+en sus sumandos, y con ellos **cualquier variante de arquitectura de la
+cascada se puede recalcular en memoria, sin FAISS y sin GPU**: pesos
+asimetricos, recortes entre etapas, disparos condicionales. Son 50 x 200 x 3
+numeros, unos pocos MB. Sin esto, cada variante cuesta ~1 GB de RAM y compite
+con las corridas largas de la GPU.
+
 OJO AL REGENERARLO: el volcado congela la configuracion entregada. Si cambia
 el primario, el peso, la profundidad, el glosario o `k_pool`, hay que
 regenerarlo o los experimentos de orden estaran reordenando el pool de otro
@@ -54,7 +66,7 @@ K_POOL = 100
 CAMPOS = ("chunk_id", "doc_id", "fuente", "texto", "formato", "fenomeno", "idioma", "fila")
 
 
-def volcar(consultas, salida):
+def volcar(consultas, salida, con_similitudes=False):
     enc_p = get_encoder(name=MINILM)
     idx_p, metadata = load_index(MINILM)
 
@@ -64,13 +76,21 @@ def volcar(consultas, salida):
         pools[c["query_id"]] = hits
     del idx_p, metadata
 
+    # El coseno del primario ES el score con el que salen de `search`, antes de
+    # que ningun secundario lo toque. Hay que guardarlo AHORA.
+    sims = {c["query_id"]: {MINILM: [h.score for h in pools[c["query_id"]]]} for c in consultas}
+
     for sec in SECUNDARIOS:
         idx_s, _ = load_index(sec)
         enc_s = get_encoder(name=sec)
         for c in consultas:
             qv = enc_s.encode_query(expandir_consulta(c["text"]))
+            propios = []
             for h in pools[c["query_id"]]:
-                h.score += PESO * float(np.dot(qv, idx_s.reconstruct(h.fila)))
+                cos = float(np.dot(qv, idx_s.reconstruct(h.fila)))
+                propios.append(cos)
+                h.score += PESO * cos
+            sims[c["query_id"]][sec] = propios
         del idx_s
 
     out = {
@@ -86,6 +106,19 @@ def volcar(consultas, salida):
             {**{k: getattr(h, k) for k in CAMPOS}, "score": h.score, "rank": i}
             for i, h in enumerate(hits, 1)
         ]
+
+    if con_similitudes:
+        # Los PROF candidatos CRUDOS del primario, en su orden original, con el
+        # coseno de cada encoder. Es lo que permite recalcular cualquier
+        # arquitectura de cascada sin volver a tocar FAISS.
+        out["crudos"] = {
+            c["query_id"]: [
+                {"fila": h.fila, "chunk_id": h.chunk_id, "doc_id": h.doc_id}
+                for h in pools[c["query_id"]]
+            ]
+            for c in consultas
+        }
+        out["similitudes"] = sims
 
     salida.parent.mkdir(parents=True, exist_ok=True)
     salida.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
@@ -103,10 +136,16 @@ def cargar_pools(path=SALIDA):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--salida", type=Path, default=SALIDA)
+    ap.add_argument(
+        "--con-similitudes",
+        action="store_true",
+        help="Vuelca ademas el coseno de cada encoder por candidato, lo que permite "
+        "recalcular cualquier arquitectura de cascada sin cargar FAISS.",
+    )
     args = ap.parse_args()
 
     consultas = [json.loads(l) for l in CONSULTAS.read_text(encoding="utf-8").splitlines() if l.strip()]
-    volcar(consultas, args.salida)
+    volcar(consultas, args.salida, con_similitudes=args.con_similitudes)
 
 
 if __name__ == "__main__":
