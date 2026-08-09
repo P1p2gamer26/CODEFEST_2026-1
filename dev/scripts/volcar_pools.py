@@ -59,6 +59,12 @@ SALIDA = DEV_DIR / "intermedios" / "pools_entregados.json"
 
 MINILM = "paraphrase-multilingual-MiniLM-L12-v2"
 SECUNDARIOS = ("gte-multilingual-base", "multilingual-e5-base")
+
+# Encoders que NO estan en la entrega y cuyo indice vive en otro sitio. Sus
+# cosenos se vuelcan igual con --con-similitudes, para poder medir variantes
+# de cascada que los incluyan sin volver a cargar FAISS. Su peso al volcar es
+# CERO: no participan en el score entregado, solo se registran.
+EXTRA_DIRS = {"bge-m3": DEV_DIR / "intermedios" / "bge" / "encoder_bge-m3"}
 PESO = 0.60
 PROF = 200
 K_POOL = 100
@@ -108,6 +114,22 @@ def volcar(consultas, salida, con_similitudes=False):
         ]
 
     if con_similitudes:
+        # Encoders de fuera de la entrega: se registran sus cosenos con peso 0,
+        # o sea sin tocar el score entregado.
+        for nombre, ruta in EXTRA_DIRS.items():
+            if not (ruta / "index.faiss").is_file():
+                print(f"  (sin indice para {nombre}, se omite)")
+                continue
+            idx_x, _ = load_index(nombre, index_dir=ruta)
+            enc_x = get_encoder(name=nombre)
+            for c in consultas:
+                qv = enc_x.encode_query(expandir_consulta(c["text"]))
+                sims[c["query_id"]][nombre] = [
+                    float(np.dot(qv, idx_x.reconstruct(h.fila))) for h in pools[c["query_id"]]
+                ]
+            del idx_x
+            print(f"  similitudes de {nombre} volcadas")
+
         # Los PROF candidatos CRUDOS del primario, en su orden original, con el
         # coseno de cada encoder. Es lo que permite recalcular cualquier
         # arquitectura de cascada sin volver a tocar FAISS.
