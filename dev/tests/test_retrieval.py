@@ -132,14 +132,43 @@ def test_ordenar_para_fragmentos_manda_al_final_los_idiomas_ilegibles():
     assert len(ordenar_para_fragmentos(solo_ko, priorizar_idioma=True)) == 1
 
 
-def test_ordenar_para_fragmentos_el_documento_manda_sobre_el_idioma():
-    """El orden de los criterios importa: la alineacion con el top-3 es la
-    ganancia medida (+0.114 de NDCG), el idioma es un desempate dentro del
-    grupo. Un chunk legible de un documento descartado NO debe adelantar a
-    uno ilegible del top-3."""
+def test_ordenar_para_fragmentos_el_idioma_manda_sobre_el_documento():
+    """E22 (9 ago 2026) INVIRTIO este orden, y el test invertido es el punto.
+
+    Antes mandaba la alineacion con el top-3, asi que un chunk ilegible del
+    top-3 le ganaba a uno legible de un documento descartado. Medido: para un
+    evaluador que lee espanol/ingles el ilegible vale **r=0 con certeza**,
+    mientras el legible tiene probabilidad no nula de valer mas -- cambiar un
+    cero seguro por una loteria no puede perder en esperanza.
+
+    Resultado sobre las 50 consultas: fragmentos ilegibles **19 -> 0**,
+    NDCG@10 +0.007 [+0.001, +0.015] con 3 victorias y 0 derrotas, y F1@3 sin
+    moverse una milesima (los documentos no se tocan)."""
     hits = [_hit("c1", "otro", 0.9, idioma="es"), _hit("c2", "top", 0.8, idioma="ko")]
     ordenado = ordenar_para_fragmentos(hits, doc_ids_prioritarios=["top"], priorizar_idioma=True)
+    assert [h.chunk_id for h in ordenado] == ["c1", "c2"]
+
+    # Y sin priorizar idioma se conserva el comportamiento viejo: el criterio
+    # de idioma desaparece de la clave y vuelve a mandar el top-3.
+    ordenado = ordenar_para_fragmentos(hits, doc_ids_prioritarios=["top"], priorizar_idioma=False)
     assert [h.chunk_id for h in ordenado] == ["c2", "c1"]
+
+
+def test_ordenar_para_fragmentos_cobertura_lexica_desempata_al_final():
+    """E23: entre dos chunks que empatan en todo lo demas, gana el que
+    menciona alguna palabra de la consulta. Sin tokens de consulta el
+    criterio queda inerte, que es lo que protege a los barridos viejos."""
+    hits = [
+        _hit("sin", "top", 0.9, idioma="es", texto="Texto generico sobre asuntos varios."),
+        _hit("con", "top", 0.8, idioma="es", texto="Informe sobre desechos orbitales."),
+    ]
+    toks = frozenset({"desechos", "orbitales"})
+    ordenado = ordenar_para_fragmentos(hits, doc_ids_prioritarios=["top"], tokens_consulta=toks)
+    assert [h.chunk_id for h in ordenado] == ["con", "sin"]
+
+    # Sin tokens: no reordena, manda el score de entrada (`sorted` es estable).
+    ordenado = ordenar_para_fragmentos(hits, doc_ids_prioritarios=["top"])
+    assert [h.chunk_id for h in ordenado] == ["sin", "con"]
 
 
 def test_enforce_word_limit_keeps_short_chunks_intact():
