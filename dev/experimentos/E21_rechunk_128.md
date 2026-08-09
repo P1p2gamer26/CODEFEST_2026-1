@@ -1,6 +1,54 @@
 # E21 — Re-chunking a 128 tokens sin solape
 
-Estado: **en curso**. Pre-registrado el 9 de agosto de 2026 antes de medir.
+Estado: **CERRADO, REFUTADO** (9 de agosto de 2026). Pre-registrado antes de
+medir; cerrado en el punto de corte, sin construir gte ni e5 (~15 h de GPU
+ahorradas).
+
+## Veredicto
+
+Comparacion honesta: **MiniLM solo contra MiniLM solo**, porque el corpus
+nuevo no tiene indices de los re-puntuadores y medirlo contra la cascada
+entregada seria tramposo. 50 consultas, defaults del `generador.py`.
+
+| MiniLM solo | F1@3 | NDCG@10 | NDCG penalizado |
+|---|---|---|---|
+| corpus viejo (280 tokens, solape 1) | **0.375** | **0.455** | **0.430** |
+| corpus nuevo (128 tokens, solape 0) | 0.294 | 0.334 | 0.325 |
+| corpus nuevo, `k_pool` 192 | 0.289 | 0.365 | 0.352 |
+
+**Pierde en las tres lecturas y por mucho más que el ruido**: −0.081 de F1 y
+−0.121 de NDCG@10, contra un criterio de adopcion que pedia no perder 0.02.
+
+La tercera fila es una **comprobacion post-hoc declarada**, no una busqueda de
+la mejor celda: `k_pool` se mide en chunks y los chunks encogieron 1,92x, asi
+que un pool de 100 sobre el corpus nuevo ve la mitad de texto que sobre el
+viejo. Corregido ese desajuste de unidades, el NDCG sube de 0.334 a 0.365 y
+**sigue muy por debajo de 0.455**. La refutacion no era un artefacto del pool.
+
+## Lo que este resultado cierra
+
+**El eje de la ventana de MiniLM queda cerrado por los dos lados.** Ya estaba
+medido que usar un encoder de ventana mayor (e5, 512) como primario empeora,
+lo que refutaba "una ventana mayor recupera mejor". Faltaba la hipotesis
+complementaria —"ajustar el chunk a la ventana del primario recupera mejor"— y
+tambien falla, y falla peor. **La truncacion a 128 tokens es real y no
+importa: no hay que volver a proponer nada basado en ella.**
+
+## Explicacion mecanica, y la prediccion que deja
+
+E19/E20 establecieron que el ranking de documentos lo decide el **conteo de
+chunks**, y que el 92,7% de los documentos que ocupan cupo **saturan el tope de
+`top5`**. Al multiplicar los chunks por 1,92 la saturacion se vuelve casi
+universal, con lo que `top5` pierde su poder de discriminacion: casi todos los
+documentos empatan en el tope y el orden lo decide el ruido.
+
+Eso predice que **un `top-M` mas grande deberia recuperar parte de lo perdido
+sobre el corpus de 128**. No se corrio: el punto de corte estaba pre-registrado
+y respetarlo es el motivo de pre-registrarlo. Queda como candidato a E22 para
+decidir con el humano, con la advertencia de que aunque funcione solo estaria
+recuperando terreno propio, no ganandole al corpus viejo.
+
+Pre-registrado el 9 de agosto de 2026 antes de medir.
 
 ## Hipotesis
 
