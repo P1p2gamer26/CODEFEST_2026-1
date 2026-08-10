@@ -199,6 +199,13 @@ def main():
     ap.add_argument("--chunks", type=Path, required=True)
     ap.add_argument("--verificar", action="store_true")
     ap.add_argument("--limite-docs", type=int, default=None)
+    ap.add_argument("--generar", action="store_true")
+    ap.add_argument("--presupuesto", type=int)
+    ap.add_argument("--solape", type=int)
+    ap.add_argument("--salida", type=Path)
+    ap.add_argument("--encoder-name",
+                    default="paraphrase-multilingual-MiniLM-L12-v2",
+                    help="Solo para recontar num_tokens con su tokenizer.")
     args = ap.parse_args()
 
     if args.verificar:
@@ -208,7 +215,25 @@ def main():
         # Puerta de entrada del experimento: sin conservacion no se gasta GPU.
         return 0 if res["docs_con_perdida"] == 0 else 1
 
-    ap.error("hace falta --verificar (o --generar, que llega en la Task 3)")
+    if args.generar:
+        if args.presupuesto is None or args.solape is None or args.salida is None:
+            ap.error("--generar necesita --presupuesto, --solape y --salida")
+        from src.embedding.encoders import get_encoder
+
+        encoder = get_encoder(args.encoder_name)
+        por_doc = cargar_por_documento(args.chunks)
+        total = 0
+        with open(args.salida, "w", encoding="utf-8") as fh:
+            for chunks in por_doc.values():
+                for reg in reempaquetar(chunks, args.presupuesto, args.solape,
+                                        encoder.count_tokens):
+                    fh.write(json.dumps(reg, ensure_ascii=False) + "\n")
+                    total += 1
+        print(f"celda {args.presupuesto}/{args.solape}: {total} chunks "
+              f"de {len(por_doc)} documentos -> {args.salida}")
+        return 0
+
+    ap.error("hace falta --verificar o --generar")
 
 
 if __name__ == "__main__":
