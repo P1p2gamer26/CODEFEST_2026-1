@@ -525,7 +525,69 @@ sino **E05** — re-anotar esas 9 a mano. Es tarea humana por medicion, no por
 comodidad: el panel de 4 agentes ya se probo y reproduce al humano con F1
 0.23, peor que el anotador unico.
 
-## E04 en curso — la ETA real es 55 h, no 18
+## E04 — `multilingual-e5-large` como re-puntuador: DESCARTADO (7 ago 2026)
+
+**Hipotesis previa:** `multilingual-e5-large` (560 M, ventana 512, dim 1024)
+como re-puntuador supera a la cascada entregada gte + e5-base.
+
+**Justificacion mecanica (escrita antes de medir):** es el encoder mas fuerte
+que cabe en esta CPU. Como re-puntuador solo lee vectores con
+`reconstruct(fila)`, asi que el coste es el indice y nada mas — cero
+codificacion por consulta mas alla de una vectorizacion.
+
+Indice construido sobre los mismos `chunks_intermedios_limpio.jsonl`
+(128.526/128.526, invariante del punto 8 respetado), 526.442.541 bytes.
+**Coste real: 50 h 30 min de CPU** (16:42 del 6 ago -> 19:12 del 7 ago), contra
+las 18 h que estimaba la cola. Barrido de cinco estructuras con
+`barrido_repuntuador_e04.py`, cerrado con codigo 0. Crudos en
+`dev/intermedios/repunt_e04/*.jsonl`, log en
+`dev/intermedios/log_cadena_e04.txt`.
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | F1(hum) | ND(hum) |
+|---|---|---|---|---|---|---|---|
+| **gte+e5 (entregada)** | 0.440 | 0.490 | 0.476 | **0.400** | **0.436** | 0.468 | **0.510** |
+| e5large solo | 0.412 | 0.475 | 0.454 | 0.300 | 0.368 | 0.452 | 0.501 |
+| gte+e5large | 0.425 | 0.479 | 0.465 | 0.400 | 0.420 | 0.450 | 0.498 |
+| e5large+e5 | **0.447** | **0.511** | **0.490** | 0.333 | 0.384 | **0.470** | 0.509 |
+| gte+e5+e5large | 0.438 | 0.492 | 0.474 | 0.400 | 0.424 | 0.466 | 0.508 |
+
+**Criterio de adopcion (IC 90% del delta pareado excluyendo -0.02): de 36
+lecturas (4 celdas x 9 columnas) pasan DOS**, y las dos son el mismo caso
+degenerado: `F1(ind) +0.000 [+0.000, +0.000]` con **0 victorias y 0 derrotas**
+en `gte+e5large` y en `gte+e5+e5large` — o sea que las 10 independientes salen
+identicas consulta por consulta y el criterio pasa trivialmente por no haber
+cambiado nada. **Ninguna celda gana en ninguna muestra.**
+
+### La celda que parecia ganar, y por que no gana
+
+`e5large+e5` es la unica con F1 y NDCG mejores que la entregada sobre las 50
+(0.447 / 0.511), y **falla igual**: los ICs cruzan el cero en las tres columnas
+de las 50 (F1 +0.007 [-0.041, +0.054], 8g/7p) y en las **10 independientes cae
+a 0.333, con -0.067 [-0.167, +0.033] y 1 victoria contra 3 derrotas**. Es la
+firma del sesgo de pooling otra vez — la misma por la que se descartaron
+`doc_rrf`, gte-primario y el `k_pool=200` de E08 — pero con un agravante: acá
+ni siquiera el promedio de las 50 alcanza significancia. Reemplazar gte por
+e5-large seria cambiar un re-puntuador por otro sin evidencia y perdiendo la
+muestra sin sesgo.
+
+### Lo que este experimento cierra, que vale mas que el veredicto
+
+**Escalar el tamano del re-puntuador esta agotado como palanca.** e5-large
+duplica los parametros de gte y cuadruplica los de e5-base, y las cuatro
+estructuras que lo usan se quedan dentro del ruido de la entregada. Sumado a
+E02 (e5-small como primario: derrumbe) queda cerrado **el eje "otro encoder"**
+en las dos direcciones, mas grande y mas chico: ni la ventana (E02) ni la
+capacidad (E04) son lo que limita la recuperacion. **No abrir mas experimentos
+cuyo argumento principal sea el modelo**, y menos a 50 h de CPU por corrida.
+
+**Veredicto: DESCARTADO en las dos muestras. `Entrega/` sin cambios.** Los
+artefactos pesados (`emb_multilingual-e5-large.npy`, `dev/intermedios/e5large/`)
+se borraron para liberar disco; los resultados chicos quedan. Reconstruir el
+indice cuesta 50 h — **no rehacerlo**, el veredicto ya esta medido.
+
+---
+
+## Nota historica: la ETA de E04 era 55 h, no 18
 
 Medido el 6 ago 16:37: **4096 chunks en 1 h 45** con los 4 cores saturados
 (338% de CPU). A ese ritmo los 128.526 chunks son **~55 horas**, tres veces
@@ -547,185 +609,372 @@ Se deja correr. Lo que hay que saber al retomarla:
 
 ---
 
-## E09 — Prior de recencia contra el índice (pre-registro, 8 ago 2026)
+## E09 — normalizar los scores antes de sumarlos: NO ADOPTABLE, con dos hallazgos (7 ago 2026)
 
-**Hipótesis (escrita antes de medir):** el prior de recencia (sec. 8.7,
-`aplicar_prior_recencia`, `--prior-recencia`) está implementado en
-`generador.py` pero apagado por defecto y nunca se midió contra el índice.
-Afecta solo a las 6 de 50 consultas con marcador temporal; el techo real son
-~2 consultas (q029: relevantes 2021-2026, entregados 2019/2019/2025). Barrer
-el peso decide si es inerte o rescata algo.
+**Hipotesis previa:** la cascada suma cosenos crudos de tres espacios distintos
+(`score = cos_primario + 0.60*cos_gte + 0.60*cos_e5`). Normalizar cada termino
+POR CONSULTA sobre el pool antes de sumarlos mejora el ranking, porque hoy el
+peso escala RANGO y no relevancia.
 
-**Justificación mecánica:** el prior es un REORDENAMIENTO, no un filtro:
-sube dentro del top-3 los documentos con año más reciente en el nombre de
-fuente, y el 28% de los 1826 documentos llevan año ahí (`fuente` ya se
-guarda en metadata, coste cero de indexación). El re-puntuador (peso 0.60)
-ya reordena `doc_hits` por score; el prior agrega una señal ortogonal
-(metadata temporal) que el vector no ve. Pesos 0.05 / 0.10 / 0.20, misma
-lógica que E01.
+**Justificacion mecanica (escrita antes de medir):** el docstring de
+`src/retrieval/rerank.py` afirma explicitamente que sumar es legitimo porque
+"los dos terminos son cosenos, asi que estan en la misma escala". Compartir el
+intervalo [-1,1] **no** es compartir distribucion: sumar una variable de rango
+0,20 con otra de rango 0,50 hace que la ancha decida el orden sin importar el
+peso nominal. Eso predice ademas que el peso "optimo" se moviera de 0,25 a 0,60
+al ampliar el pool (E01): es lo que pasa cuando el parametro compensa la escala
+de un pool cuya composicion cambio.
 
-| | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
-|---|---|---|---|---|
-| base (entregada) | 0.440 | 0.490 | 0.400 | 0.436 |
-| rec 0.05 / 0.10 / 0.20 | | | | |
+Coste: una sola pasada de FAISS. Los tres cosenos de cada candidato se calculan
+una vez y todas las celdas salen de recombinarlos.
+`dev/scripts/barrido_norm_e09.py`, crudos en `dev/intermedios/norm_e09{,b,c}/`,
+logs en `dev/intermedios/log_norm_e09{,b,c}.txt`.
 
-**Criterio:** adoptar solo si el IC 90% del delta pareado excluye -0.02 en
-LAS DOS muestras; n=6, techo 2 → veredicto esperado inerte o no concluyente.
+### La premisa se confirma, y refuta una afirmacion del propio codigo
 
----
+Dispersion de los cosenos DENTRO del pool, mediana sobre las 50 consultas:
 
-## E10 — Re-medir el grafo bajo el régimen actual (pre-registro, 8 ago 2026)
+| encoder | rango | desv | media |
+|---|---|---|---|
+| MiniLM (primario) | 0.120 | 0.024 | 0.682 |
+| gte (re-puntuador) | **0.276** | 0.050 | 0.681 |
+| e5-base (re-puntuador) | 0.103 | 0.018 | 0.807 |
 
-**Hipótesis (escrita antes de medir):** el grafo se descartó 3-0 el 6 ago
-bajo el régimen viejo (pool 60, peso 0.25, sin glosario). Bajo el régimen
-actual (pool 100, peso 0.60, glosario activo) el RRF con el grafo como índice
-adicional (sec. 8.5) puede rescatar consultas cuyo pool vectorial falla, y el
-último commit («Intento de arreglo del grafo bonus») tocó esa fusión.
+**gte dispersa 2,3 veces mas que el primario.** Con el peso 0,60 aporta 0,166
+de rango contra los 0,120 del primario: en la practica **el re-puntuador ya
+manda sobre el orden mas que el recuperador**, que no es lo que dice ninguna
+nota del proyecto. La frase "estan en la misma escala y sumarlos es legitimo"
+del docstring de `rerank.py` es falsa tal como esta escrita. **Corregirla
+cuando se toque ese archivo** (no se toco acá: esta duplicada en
+`Entrega/generador.py` y es comentario, no comportamiento).
 
-**Justificación mecánica:** sec. 8.5 trata el grafo como un índice adicional
-a fusionar con RRF. La lección 5 dice que las notas propias envejecen: el 3-0
-se midió cuando la lista vectorial era más débil (pool 60, peso 0.25), y ahora
-el pool es más ancho y el re-puntuador tiene 2.4x más autoridad. q001 es el
-caso test: 20 docs CBRN relevantes que no entran al top-3 vectorial y el grafo
-(doc_id → doc_id) empareja.
+### Medicion (grilla completa: 3 normas x 5 pesos, en tres corridas)
 
-| | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
-|---|---|---|---|---|
-| base (entregada, sin grafo) | 0.440 | 0.490 | 0.400 | 0.436 |
-| con grafo | | | | |
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | F1(hum) | ND(hum) |
+|---|---|---|---|---|---|---|---|
+| **cruda:0.60 (entregada)** | 0.440 | 0.490 | 0.476 | **0.400** | **0.436** | 0.468 | 0.510 |
+| cruda:1.00 | 0.451 | 0.498 | 0.478 | 0.367 | 0.374 | 0.481 | 0.515 |
+| cruda:3.00 | 0.461 | 0.490 | 0.475 | 0.367 | 0.362 | 0.470 | 0.494 |
+| zscore:0.60 | 0.361 | 0.410 | 0.397 | 0.300 | 0.336 | 0.365 | 0.401 |
+| zscore:1.00 | 0.401 | 0.416 | 0.406 | 0.300 | 0.297 | 0.405 | 0.409 |
+| minmax:0.60 | 0.425 | 0.476 | 0.462 | 0.367 | 0.387 | 0.443 | 0.484 |
+| **minmax:1.00** | **0.476** | **0.509** | **0.490** | 0.400 | 0.432 | **0.488** | **0.518** |
+| minmax:1.50 | 0.469 | 0.492 | 0.475 | 0.367 | 0.360 | 0.480 | 0.495 |
+| minmax:3.00 | 0.463 | 0.482 | 0.464 | 0.367 | 0.356 | 0.472 | 0.479 |
 
-**Criterio:** adoptar solo si el IC 90% excluye -0.02 en las dos muestras; si
-la mejora se concentra en las 9 de etiqueta de agente, sesgo de pooling
-(firma E08), no hallazgo.
+**Las dos mitigaciones fijadas antes de medir se aplicaron y las dos hicieron
+falta:**
 
----
+1. **El peso se re-barrio dentro de cada variante**, porque comparar una
+   normalizada mal calibrada contra la cruda bien calibrada seria tramposo.
+   Resuelve el confundido: `cruda` **tambien** mejora al subir el peso (0.440 ->
+   0.451 -> 0.461), asi que habia que separar "gana la normalizacion" de "gana
+   mas autoridad del re-puntuador". Ninguna celda `cruda` pasa el criterio en
+   ninguna lectura de las independientes, o sea que **lo que mueve la aguja es
+   la normalizacion, no el peso**.
+2. **`minmax:1.00` no es un borde de grilla**, que es lo que invalido a E01b:
+   1.50, 2.00 y 3.00 caen. Y el 1,00 no es un argmax cazado — es el punto **a
+   priori** de la variante, el unico con significado mecanico: con los tres
+   terminos en [0,1], peso 1 es "un voto por encoder".
 
-## E11 — Cupo de fragmentos alineados (pre-registro, 8 ago 2026)
+### Veredicto: NO ADOPTABLE
 
-**Hipótesis (escrita antes de medir):** el `cupo_alineado` default (10)
-reserva TODOS los cupos de fragmento al top-3 de documentos. Bajar el cupo
-(6/7/8/9) deja más cupos abiertos al pool y debería mejorar NDCG@10 sin tocar
-F1@3, porque el cupo solo reordena `fragments`, nunca `doc_hits`.
-
-**Justificación mecánica:** la nota de `build_result_object` (líneas
-1474-1481) mide el default sobre las 41 anotadas: alinear los 10 gana en 25
-consultas (todas con F1@3 > 0) y pierde en 12, de las cuales 11 tienen
-F1@3 = 0. Cuando el top-3 se equivoca, alinear los 10 entrega «diez ceros
-seguros»; los cupos libres son el seguro contra ese modo de fallo. F1@3 no
-puede moverse (`doc_hits` se calculan antes de tocar fragments); el efecto
-esperado es solo en NDCG@10 y NDCGp.
-
-| | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
-|---|---|---|---|---|
-| base (cupo 10) | 0.440 | 0.490 | 0.400 | 0.436 |
-| cupo 6 / 7 / 8 / 9 | | | | |
-
-**Criterio:** adoptar solo si el IC 90% excluye -0.02 en las dos muestras; si
-la ganancia viene de consultas con F1@3 = 0, revisar victorias por consulta
-antes de decidir (posible premio al error de documentos).
-
----
-
-## E09 — Prior de recencia contra el índice (resultado, 8 ago 2026)
-
-**INERTE.** Las celdas 0.05 y 0.10 son **byte-idénticas** a la entrega (ni una
-consulta cambia); la 0.20 solo reordena el top-3 de q020 (mismos 3 documentos,
-swap de rank 2↔3) y ninguna métrica se mueve. Cero victorias, cero derrotas,
-50 empates en las dos muestras. Nada que adoptar; `--prior-recencia 0`
-(default) se conserva.
-
-| | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
-|---|---|---|---|---|
-| base (entregada) | 0.440 | 0.490 | 0.400 | 0.436 |
-| rec 0.05 / 0.10 / 0.20 | 0.440 | 0.490 | 0.400 | 0.436 |
-
-**Por qué no mueve nada:** el bonus es `peso × cercania` con cercania ∈ [0,1]
-(línea 753-758). A 0.20, la diferencia máxima entre un doc de 2019 y uno de
-2026 es ~0.039 — insuficiente para cubrir la brecha de score del re-puntuado
-(peso 0.60) entre los top-3 reales. **q029, el caso «techo 2» (relevantes
-2021-2026, entregados 2019/2019/2025), no se mueve ni a 0.20**: sus tres
-documentos están demasiado separados en score. El prior es la palanca más
-débil medida hasta ahora — solo puede desempatar documentos con puntajes casi
-iguales, y eso no sucede en las 50 consultas. Se cierra la recencia.
-
----
-
-## E10 — Re-medir el grafo bajo el régimen actual (resultado, 8 ago 2026)
-
-**DESCARTADO con contundencia — y de paso se encontró un bug que dejaba el
-grafo muerto.** Dos partes:
-
-### Parte 1: el «Intento de arreglo del grafo bonus» lo rompió
-
-El commit `79a2e80` refactorizó `extract_entities` (comprensión → loop) e
-invirtió la condición:
-
-```python
-# ROTO (Entrega/generador.py, commit 79a2e80)
-if not ent.text.strip() or ent.label_ not in NER_EXCLUDED_LABELS:
-#   mantiene SOLO las etiquetas excluidas (números/fechas/porcentajes)
-
-# CORRECTO (dev/src/graph/ner.py:92 — la fuente)
-if not ent.text.strip() or ent.label_ in NER_EXCLUDED_LABELS:
-```
-
-Con la condición invertida, `extract_entities` devolvía solo números/fechas,
-que no matchean nodos del grafo (organizaciones/personas/lugares), así que
-`graph_search` retornaba 0 hits para las 50 consultas y `--use-graph` producía
-**salida byte-idéntica a la entrega**: el bonus era código muerto en silencio,
-sin ninguna señal de fallo.
-
-**Arreglado** a la condición de la fuente. Verificado: 34/50 consultas ahora
-producen 1.029 hits del grafo; la reproducción de la entrega **sin**
-`--use-graph` sigue byte-idéntica a `resultados.jsonl`; 141 tests OK;
-`validar_entrega.py` limpio. El fix no toca la configuración entregada (el
-grafo va apagado por defecto).
-
-### Parte 2: con el grafo vivo, la fusión degrada
-
-| | F1@3 (50) | NDCG@10 (50) | F1@3 (10 indep.) | NDCG@10 (10 indep.) |
-|---|---|---|---|---|
-| base (sin grafo) | 0.440 | 0.490 | 0.400 | 0.436 |
-| con grafo | **0.355** | **0.385** | **0.333** | **0.352** |
+`minmax:1.00` es la mejor celda medida del proyecto sobre las 50 (F1@3 **0.476**
+contra 0.440) y **falla el criterio pre-registrado**:
 
 | lectura | delta, IC 90% | victorias | criterio |
 |---|---|---|---|
-| F1@3 50 | **-0.085 [-0.140, -0.031]** | 2g / 13p / 35e | **DESCARTAR** |
-| NDCG@10 50 | **-0.105 [-0.166, -0.049]** | — | **DESCARTAR** |
-| F1@3 indep | **-0.067 [-0.133, +0.000]** | 0g / 2p / 8e | no pasa |
-| NDCG@10 indep | **-0.084 [-0.191, +0.001]** | — | no pasa |
+| F1@3 50 | **+0.036 [+0.007, +0.072]** | 5g/1p | pasa |
+| NDCG@10 50 | +0.019 [-0.006, +0.044] | 18g/12p | pasa |
+| **F1@3 indep** | **+0.000 [+0.000, +0.000]** | **0g/0p** | pasa (trivialmente) |
+| **NDCG@10 indep** | **-0.004 [-0.023, +0.014]** | 3g/2p | **no pasa** |
+| NDp indep | -0.005 [-0.023, +0.013] | 4g/2p | **no pasa** |
+| NDp humanas | +0.004 [-0.021, +0.028] | 15g/12p | **no pasa** |
 
-El grafo cambia el conjunto de top-3 en **28 de 50 consultas** y pierde 13-2:
-la lista del grafo (rankeada por evidencia de primer orden) intercala la lista
-vectorial vía RRF y degrada la buena con la mala — exactamente la advertencia
-del docstring de `rerank_por_segundo_encoder` («RRF premia el acuerdo entre
-listas»). Esto **confirma el 3-0 original del régimen viejo** con más datos:
-el grafo como índice adicional no aporta bajo ningún régimen medido.
-`--use-graph` queda apagado (default). El fix del bug sí se conserva: era un
-arreglo, no un cambio de configuración.
+**Las 10 independientes salen identicas consulta por consulta en F1@3** — el
+mismo pase degenerado de E04 y E08 — y el NDCG@10 de esa muestra falla, que es
+la metrica con la que la regla 4 manda decidir cuando el cambio toca
+fragmentos. Ademas gana 5 sobre las 50 y solo 3 sobre las 41 humanas: **2 de
+las 5 victorias caen sobre consultas de etiqueta de agente**. Es la firma del
+sesgo de pooling otra vez, mas suave que en E08 pero la misma.
+
+### El error de metodo que casi cambia el veredicto, y hay que recordarlo
+
+**La primera corrida daba `minmax:1.00` pasando las 9 lecturas de 9.** El
+barrido ordenaba con `np.argsort(-total)`, que por defecto usa quicksort y **no
+es estable**: ante empates de score reordenaba los fragmentos de forma
+arbitraria, y la fila base salia con NDCG 0.486 en vez del 0.490 que reporta
+`eval_mini.py` sobre `Entrega/`. Una base 0,004 por debajo de la real inflaba
+todos los deltas. Con `kind="stable"` la base reproduce **exacto** el
+0.440 / 0.490 / 0.476 de la entrega, y el veredicto pasa de 9/9 a **6/9**.
+
+**Leccion operativa: si la fila base del arnes no reproduce digito a digito lo
+que mide `eval_mini.py` sobre `Entrega/`, el barrido no se lee.** Los cuatro
+milesimos parecian irrelevantes y decidian la adopcion.
+
+### El hallazgo que queda abierto
+
+**`zscore` se derrumba (-0,08 en todas las lecturas) y `minmax` gana, y la
+explicacion facil no sirve.** Centrar no puede ser la causa: restar la media
+por consulta y por encoder es un desplazamiento uniforme sobre todos los
+candidatos, o sea que **no altera el orden**. La unica diferencia real entre
+las dos es el divisor, desviacion contra rango — y los cocientes rango/desv de
+los tres encoders son casi iguales (5.5 gte, 5.0 MiniLM, 5.7 e5), asi que en la
+MEDIANA las dos variantes deberian repesar casi igual. No lo hacen. La
+diferencia tiene que vivir en la variabilidad **por consulta** del estimador de
+escala, que es lo que el riesgo pre-registrado llamaba "outliers del pool".
+**Queda sin explicar y se registra asi**, no se le inventa una razon.
+
+**`Entrega/` sin cambios.**
 
 ---
 
-## E11 — Cupo de fragmentos alineados (resultado, 8 ago 2026)
+## E10 — el gate de bibliografia en la agregacion a documento: REFUTADO, y al reves (7 ago 2026)
 
-**REFUTADO.** Bajar el cupo empeora NDCG@10 de forma **monótona** en las dos
-muestras; F1@3 queda inmóvil en todas las celdas, como predecía la mecánica
-(el cupo solo reordena `fragments`, nunca `doc_hits`).
+**Hipotesis previa:** descontar del sumatorio `top5` los chunks que son aparato
+bibliografico mejora el F1@3, porque hoy suman score entero y pueden meter en
+el top-3 un documento que solo coincide en su bibliografia.
 
-| celda | NDCG@10 (50) | NDCGp (50) | NDCG@10 (indep.) | NDCGp (indep.) |
-|---|---|---|---|---|
-| **cupo 10 (entregada)** | **0.490** | 0.476 | **0.436** | 0.429 |
-| cupo 9 | 0.470 | 0.455 | 0.417 | 0.410 |
-| cupo 8 | 0.450 | 0.435 | 0.384 | 0.377 |
-| cupo 7 | 0.433 | 0.420 | 0.370 | 0.370 |
-| cupo 6 | 0.415 | 0.402 | 0.341 | 0.341 |
+**Justificacion mecanica (escrita antes de medir):** `calidad_chunk.py` existe
+desde el 4 de agosto y se usa en UN solo punto, como tercer criterio de orden
+de los FRAGMENTOS. `aggregate_documents` no lo consulta. Y el aparato
+bibliografico es donde mas denso es el vocabulario de dominio: una lista de
+referencias acumula los terminos de la consulta sin contener ninguna respuesta.
+Era ademas el unico experimento de la tanda que ataca F1@3, y no ensancha el
+pool, asi que escapaba al corolario de E08.
 
-Par de cupo 9 (el mejor de los nuevos) contra la entregada: NDCG@10
-**-0.020** con IC 90% [-0.029, -0.011] enteramente bajo cero → **DESCARTAR**;
-F1@3 +0.000 (50 empates).
+`dev/scripts/barrido_biblio_doc_e10.py`. El cambio se aisla envolviendo
+`generador.aggregate_documents`: los scores que ven los FRAGMENTOS quedan
+intactos, asi que lo medido es la hipotesis y no un descuento global. Crudos en
+`dev/intermedios/biblio_e10/`, log en `dev/intermedios/log_biblio_e10.txt`.
 
-**Lectura:** la nota de `build_result_object` (líneas 1474-1481) queda
-confirmada en dirección y ahora también en magnitud: alinear los 10 cupos es
-lo que **maximiza** NDCG; los «diez ceros seguros» de las consultas con
-F1@3 = 0 no compensan en el promedio. El seguro que suponíamos (cupos libres)
-no paga. `Entrega/` sin cambios; se conserva cupo 10 (default).
+**La auditoria pre-registrada del detector pasa:** marca **219 de 5.000 chunks
+del pool (4,4%)** — 4,1% de los PDF, 8,4% de los JSON, y del unico CSV que
+aparece en algun pool. No hay marcado en masa de formatos tabulares, o sea que
+el resultado no es un artefacto del detector.
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | F1(hum) | ND(hum) |
+|---|---|---|---|---|---|---|---|
+| **entregada (sin gate)** | **0.440** | **0.490** | **0.476** | **0.400** | **0.436** | **0.468** | **0.510** |
+| excluir del top5 | 0.407 | 0.465 | 0.455 | 0.367 | 0.414 | 0.428 | 0.482 |
+| descontar x0.50 | 0.407 | 0.465 | 0.455 | 0.367 | 0.414 | 0.428 | 0.482 |
+| descontar x0.25 | 0.407 | 0.465 | 0.455 | 0.367 | 0.414 | 0.428 | 0.482 |
+| proporcional a la calidad | 0.373 | 0.445 | 0.436 | 0.367 | 0.414 | 0.396 | 0.461 |
+
+**Las 36 lecturas de las cuatro variantes van en negativo y ninguna pasa.**
+F1@3 sobre las 50 con `excluir`: **-0.033 [-0.067, -0.007], 0 victorias y 4
+derrotas** — IC enteramente bajo cero, que es mas fuerte que "no pasa": es
+perdida demostrada. Y es monotono: cuanto mas agresivo el descuento, peor
+(`prop`, que descuenta de forma continua a todos, cae a 0.373).
+
+### Los dos hallazgos, que valen mas que el veredicto
+
+1. **El factor de descuento es irrelevante: `excluir`, `x0.50` y `x0.25` dan
+   resultados IDENTICOS digito a digito en las nueve columnas.** No se parecen,
+   son el mismo numero. O sea que **basta tocar un chunk bibliografico para que
+   salga del `top5` de su documento**: no hay una zona intermedia donde el
+   descuento module algo. La palanca es binaria, y por tanto no hay ningun
+   parametro que calibrar para rescatar la hipotesis. Es la misma firma que
+   E07 encontro con `top8` = `sum`.
+
+2. **La hipotesis no solo falla, se cumple al reves, y tiene sentido
+   mecanico.** Que un documento aporte chunks bibliograficos al pool es
+   **evidencia positiva de que trata del tema**, no ruido: un informe cuya
+   bibliografia esta densamente poblada de los terminos de la consulta es
+   tipicamente una revision o un survey SOBRE ese tema. El aparato
+   bibliografico es mala RESPUESTA y buen INDICIO. Eso reconcilia los dos
+   resultados del gate: sirve donde se lee el texto (ordenar fragmentos, donde
+   dio NDp +0.007) y estorba donde se mide de que trata el documento.
+
+**Regla que queda:** el gate de bibliografia es una herramienta de PRESENTACION,
+no de RECUPERACION. No volver a llevarlo al ranking de documentos.
+
+**`Entrega/` sin cambios.** La fila base reproduce exacto el 0.440 / 0.490 /
+0.476 de `eval_mini.py`, segun la regla nueva de E09.
+
+---
+
+## E11 — el orden de los criterios de fragmentos: REFUTADO por identidad (8 ago 2026)
+
+**Hipotesis previa:** subir el gate de bibliografia de TERCER a SEGUNDO criterio
+en `ordenar_para_fragmentos` —por encima de la prioridad de idioma— mejora el
+NDCG@10 penalizado, porque en el orden actual el gate casi nunca llega a actuar.
+
+**Justificacion mecanica (escrita antes de medir):** un criterio en tercer lugar
+solo desempata entre hits que ya empataron en los dos primeros, o sea entre
+fragmentos del MISMO grupo de documento y el MISMO idioma. Con el 98% de los
+fragmentos concentrados en el top-3 por la alineacion, el gate actua dentro de
+bloques chicos, y su efecto medido el 4 de agosto fue coherente con eso (NDCG
+binario −0,001, penalizado +0,007). La hipotesis era que el techo lo pone la
+POSICION del criterio y no su poder de deteccion.
+
+`dev/scripts/barrido_orden_e11.py`, cero FAISS nuevo mas alla de una pasada.
+Crudos en `dev/intermedios/orden_e11/`, log en
+`dev/intermedios/log_orden_e11.txt`. La fila base reproduce exacto el
+0.440 / 0.490 / 0.476 (regla de E09).
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | NDp(ind) | F1(hum) | ND(hum) | NDp(hum) | ilegibles |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **entregada** | 0.440 | **0.490** | **0.476** | 0.400 | **0.436** | **0.429** | 0.468 | **0.510** | **0.495** | **19** |
+| biblio-2o | 0.440 | 0.490 | 0.476 | 0.400 | 0.436 | 0.429 | 0.468 | 0.510 | 0.495 | 19 |
+| solo-biblio | 0.440 | 0.445 | 0.431 | 0.400 | 0.397 | 0.390 | 0.468 | 0.465 | 0.452 | **71** |
+| posicion | 0.440 | 0.437 | 0.427 | 0.400 | 0.336 | 0.326 | 0.468 | 0.468 | 0.457 | 19 |
+
+**F1@3 es +0.000 en las tres muestras en las cuatro celdas, como tiene que
+ser:** el experimento solo reordena fragmentos, los documentos no se tocan.
+
+### La hipotesis esta refutada de la forma mas limpia posible: por identidad
+
+**`biblio-2o` y la entregada producen archivos IDENTICOS byte a byte** (`cmp`
+sin salida, 617.402 bytes los dos), y las **27 lecturas dan +0.000 con 0
+victorias y 0 derrotas.** Permutar los criterios 2 y 3 no cambia una sola
+posicion de un solo fragmento de una sola consulta.
+
+Eso dice algo mas fuerte que "no mejora": **los dos criterios nunca entran en
+conflicto.** Dentro del top-3 de documentos no existe el par de fragmentos que
+la permutacion tendria que reordenar —uno legible y bibliografico contra otro
+ilegible y no bibliografico—; los fragmentos ilegibles del top-3 (traducciones
+de SIPRI al coreano) practicamente no traen aparato bibliografico detectable, y
+donde hay bibliografia el idioma ya empataba. **La posicion del criterio no era
+el techo del gate**, que es exactamente lo que la hipotesis afirmaba. Y como no
+hay conflicto, tampoco hay ningun orden alternativo que rescatar: la palanca es
+inerte, no mal calibrada.
+
+### El veto pre-registrado se activo, y confirma la nota del 2 de agosto
+
+`solo-biblio` (quitar el criterio de idioma) sube los fragmentos ilegibles de
+**19 a 71 de 500** y ademas pierde el penalizado (−0.045 [−0.075, −0.017], 2
+victorias contra 8 derrotas). El riesgo nº 2 fijado antes de medir decia que si
+los ilegibles suben el cambio se rechaza **aunque el penalizado mejore**; acá no
+hizo falta invocarlo, porque el penalizado tambien cae. Vale igual como
+medicion independiente de la nota de CLAUDE.md ("la prioridad de idioma no es
+opcional si se alinea"): sin ella los ilegibles se **cuadruplican**.
+
+`posicion` como cuarto desempate es la peor celda en fragmentos (NDp −0.049 en
+las 50, **−0.103 en las independientes**). Preferir el chunk mas temprano del
+documento suena a "la introduccion resume el documento" y mide lo contrario:
+las primeras filas son portadas, indices y prologos.
+
+**Veredicto: REFUTADO. `Entrega/` sin cambios.** El orden entregado
+(top-3 → idioma → aparato) gana o empata las 27 lecturas de las tres
+alternativas.
+
+### La regla que queda
+
+**El gate de bibliografia queda cerrado como palanca en las dos direcciones.**
+E10 mostro que llevarlo al ranking de documentos pierde (es buen INDICIO de
+tema, mala RESPUESTA); E11 muestra que darle mas prioridad entre los fragmentos
+no cambia nada porque no compite con nada. Su efecto medido —NDp +0.007— es
+todo lo que da, y ya esta entregado. **No abrir un tercer experimento sobre
+`calidad_chunk.py`** sin un detector distinto, no un orden distinto.
+
+## E12 — el reparto de los 10 fragmentos entre los 3 documentos: REFUTADO, y monotono (8 ago 2026)
+
+**Hipotesis previa:** repartir los 10 fragmentos entre los 3 documentos del
+top-3 con un cupo maximo por documento mejora el NDCG@10, porque hoy nada
+impide que un solo documento se lleve 8 de los 10 cupos y, si ese documento es
+el equivocado, la respuesta entrega ocho ceros.
+
+**Justificacion mecanica (escrita antes de medir):** `ordenar_para_fragmentos`
+ordena por (top-3, idioma, aparato) y dentro de cada bloque por score, **sin
+ninguna nocion de a cual de los tres documentos pertenece cada fragmento**. La
+alineacion ya concentra el 98% de los fragmentos en el top-3, asi que el
+reparto INTERNO de esos 10 cupos entre 3 documentos es la variable que quedo
+sin tocar cuando se adopto la alineacion. Y la diferencia de score entre el
+documento 1 y el 3 es chica comparada con la de estar o no estar en el top-3:
+con F1@3 0.440 el caso tipico es acertar 1 o 2 de 3, o sea que cubrir los tres
+es cubrir donde esta la respuesta.
+
+**No es el barrido de `--cupo-alineado` ya refutado:** ese reservaba cupos
+FUERA del top-3 y los gastaba en documentos que la propia respuesta declara no
+relevantes. Este redistribuye DENTRO del top-3 y no toca un solo documento del
+ranking.
+
+`dev/scripts/barrido_cupo_doc_e12.py`, una sola pasada de FAISS; las celdas son
+reordenamientos del mismo pool. Crudos en `dev/intermedios/cupo_e12/`, log en
+`dev/intermedios/log_cupo_e12.txt`. La fila base reproduce exacto el
+0.440 / 0.490 / 0.476 (regla de E09).
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | NDp(ind) | F1(hum) | ND(hum) | NDp(hum) | ilegibles |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **entregada** | 0.440 | **0.490** | **0.476** | 0.400 | **0.436** | **0.429** | 0.468 | **0.510** | **0.495** | **19** |
+| cupo6 | 0.440 | 0.485 | 0.470 | 0.400 | 0.436 | 0.429 | 0.468 | 0.504 | 0.488 | 21 |
+| cupo5 | 0.440 | 0.480 | 0.465 | 0.400 | 0.430 | 0.423 | 0.468 | 0.503 | 0.487 | 25 |
+| cupo4 | 0.440 | 0.465 | 0.449 | 0.400 | 0.423 | 0.416 | 0.468 | 0.489 | 0.472 | 48 |
+| round-robin | 0.440 | 0.447 | 0.430 | 0.400 | 0.430 | 0.423 | 0.468 | 0.471 | 0.452 | 57 |
+
+**F1@3 es +0.000 en las tres muestras en las cuatro celdas**, como el riesgo
+nº 1 exigia para poder leer el barrido: solo se reordenan fragmentos y
+`aggregate_documents` no se toca.
+
+### La hipotesis esta refutada, y por una monotona sin un solo cruce
+
+**Cuanto mas estricto el cupo, peor el NDCG.** En las 50: 0.490 → 0.485 → 0.480
+→ 0.465 → 0.447. En las humanas: 0.510 → 0.504 → 0.503 → 0.489 → 0.471. `NDp`
+sigue a `ND` en las doce lecturas, o sea que **no** es el caso sospechoso que el
+riesgo nº 2 anticipaba (NDCG que sube sin que el penalizado lo acompane): las
+dos metricas ven lo mismo y las dos ven una perdida.
+
+**Ninguna celda gana una sola consulta neta.** cupo6 va 0g/3p en las 50, cupo5
+2g/8p, cupo4 4g/12p, round-robin 12g/20p. cupo6 y cupo5 *pasan* el umbral del
+IC (su cota baja no llega a −0.02), pero pasar el criterio no es ganarlo: son
+perdidas estrictas, no empates, y la regla 5 —ante empate se conserva la
+entregada— se aplica con mas razon todavia.
+
+**Lo que la medicion dice del sistema, que vale mas que el descarte.** La
+concentracion que la hipotesis daba por defecto **no existe**: la entregada ya
+reparte los 10 fragmentos en **2.74 documentos por consulta con mediana del
+maximo en 5**. El caso "un documento se lleva 8 de 10" es la cola (max 9), no el
+caso tipico. La hipotesis estaba construida sobre una patologia que el sistema
+no tiene, y el cupo, al forzar mas reparto (3.00 docs/consulta en cupo4 y
+round-robin), **compra diversidad con score**: mete fragmentos peores del
+documento 3 desplazando fragmentos mejores del documento 1. Es exactamente el
+intercambio que el riesgo nº 3 describia, y el mercado esta en contra.
+
+### El veto pre-registrado tambien se activo, por segunda vez en la ronda
+
+Los fragmentos ilegibles suben **monotonamente con el cupo: 19 → 21 → 25 → 48 →
+57 de 500**. El riesgo nº 4 decia que si suben el cambio se rechaza aunque el
+NDCG mejore; acá no hizo falta invocarlo porque el NDCG tambien cae, pero la
+causa merece quedar escrita: **el cupo compite contra la prioridad de idioma**
+por los mismos cupos. Cuando el documento nº 1 se queda sin turno, el siguiente
+fragmento sale del documento nº 2 aunque sea una traduccion de SIPRI al
+coreano. Es el mismo mecanismo que E11 encontro en `solo-biblio` (19 → 71), por
+otra puerta: **cualquier criterio que desplace al idioma de su segundo lugar
+paga en fragmentos que el evaluador no puede leer.** Dos experimentos
+independientes de la misma ronda apuntan ahi.
+
+**Veredicto: REFUTADO. `Entrega/` sin cambios.** El orden entregado gana o
+empata las 36 lecturas de las cuatro alternativas, y el reparto de fragmentos
+entre documentos del top-3 queda cerrado: no es una variable libre que quedo sin
+calibrar, es una que el score ya resuelve mejor que cualquier cuota.
+
+---
+
+## E30 — desempate por entidades del grafo: INERTE-NEGATIVO (9 ago 2026)
+
+Detalle completo en `E30_entidades_del_grafo.md`. Resumen:
+
+**Puerta de entrada (antes de medir):** 37/50 consultas tienen alguna entidad
+de spaCy, 34/50 la tienen tambien en el grafo, pero la **mediana es 1 entidad
+por consulta** y solo el **17% de los 222 documentos saturados** comparte
+alguna. El criterio empata casi siempre: cambia **3 de 50 lineas**.
+
+**Resultado:** F1(50) 0.440 → 0.433, delta **-0.007 [-0.020, +0.000]**, **0
+gana / 1 pierde**. Inerte exacto en las 10 independientes. No pasa el criterio.
+
+**Lo que importa mas que el numero:** las 7 consultas de hermano equivocado
+(`q005 q007 q034 q037 q044 q046 q047`) **no se mueven ni una**. La
+justificacion mecanica fallo, igual que en el control de E24. Toda la perdida
+es q041, una consulta de hermanos MAPPOEA donde el grafo eligio al hermano
+equivocado — el escenario exacto para el que se diseno.
+
+**Causa:** los hermanos de una serie nombran las MISMAS entidades. El grafo
+discrimina la coleccion, que ya se acierta el 92% de las veces, y es ciego a
+periodo/region/operacion. Ademas el NER que lo construyo excluye DATE, TIME y
+CARDINAL, que es justo lo que separaria dos informes trimestrales.
+
+**Cerrado: el grafo no aporta al ranking de documentos por ninguna via.**
+Fusionado en la recuperacion perdio 11-0; como desempate, esto. Se sigue
+entregando como bonus de la sec. 8.5. Queda el instrumento
+`mapa_entidades_grafo.py` (cache entidad -> doc_id, 14,4 MB, RAM cero).

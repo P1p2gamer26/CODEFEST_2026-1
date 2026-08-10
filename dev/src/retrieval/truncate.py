@@ -8,10 +8,39 @@ describe como posible, no obligatoria); ver limitaciones en
 informe_tecnico.pdf.
 """
 
+import re
+
 from ..chunking.sentence_split import split_sentences
 from ..config import MAX_FRAGMENT_WORDS, N_FRAGMENTS_PER_QUERY
 from .calidad_chunk import fraccion_aparato
+from .glosario import _normalizar as _sin_acentos
 from .search import Hit
+
+# E23. Palabras vacias de espanol y de ingles: sin ellas, "sobre", "entre" o
+# "which" harian que casi cualquier pasaje "cubra" la consulta y el criterio
+# seria inerte. No es una lista exhaustiva ni pretende serlo -- se fijo antes
+# de medir y no se retoco despues, que es lo que la vuelve honesta.
+STOPWORDS = frozenset("""
+para como cual cuales cuanto cuantos donde desde entre sobre segun hacia hasta
+ante bajo cabe contra durante mediante salvo tras esta este estos estas esos
+esas aquel aquella ellos ellas nosotros vosotros pero sino aunque porque
+cuando mientras siempre nunca tambien tanto tanta menos mismo misma otro otra
+otros otras cada todo toda todos todas algun alguna algunos algunas ningun
+ninguna mucho mucha muchos muchas poco poca pocos pocas
+that this these those with from have been they their there where which what
+when while about into over under between during through after before more
+most such than then them your ours will would could should because being
+""".split())
+
+
+def tokens_de(texto: str) -> set[str]:
+    """Palabras de contenido: sin acentos, de 4 letras o mas, sin vacias.
+
+    El umbral de 4 caracteres deja fuera las siglas de 2-3 letras, pero esas
+    ya llegan por la via del encoder; lo que este criterio busca es si el
+    pasaje menciona el OBJETO de la consulta, no afinar la coincidencia.
+    """
+    return {w for w in re.findall(r"[a-z0-9]{4,}", _sin_acentos(texto)) if w not in STOPWORDS}
 
 
 def _split_oversized(hit: Hit, max_words: int) -> list[dict]:
@@ -83,11 +112,14 @@ def ordenar_para_fragmentos(
     doc_ids_prioritarios: list[str] | None = None,
     priorizar_idioma: bool = True,
     degradar_aparato: bool = True,
+    tokens_consulta: frozenset[str] | None = None,
 ) -> list[Hit]:
     """Reordena los hits ANTES de armar los fragmentos. No filtra nada.
 
-    Dos criterios, en este orden:
+    Cuatro criterios, en este orden:
 
+    0. **Idioma legible, POR ENCIMA de la alineacion** (E22). Ver el punto 2:
+       el orden entre estos dos no es cosmetico y se midio.
     1. **Alineacion con los documentos entregados.** `build_result_object`
        calculaba las dos mitades de la respuesta por caminos independientes:
        los documentos por agregacion del pool, los fragmentos por score crudo
@@ -97,9 +129,44 @@ def ordenar_para_fragmentos(
        distintos entre los 10 fragmentos. La respuesta se contradecia a si
        misma, y un fragmento de un documento que uno mismo dejo fuera del
        top-3 es casi seguro un cero en NDCG@10.
-    2. **Idioma legible**, dentro de cada grupo (ver IDIOMAS_LEGIBLES). Es un
-       post-filtro por metadata, que la sec. 8.7 autoriza; no interviene
-       ningun modelo generativo.
+    2. **Idioma legible** (ver IDIOMAS_LEGIBLES). Es un post-filtro por
+       metadata, que la sec. 8.7 autoriza; no interviene ningun modelo
+       generativo.
+
+       **E22 (9 ago 2026): este criterio va ANTES que la alineacion, y el
+       cambio se midio.** Con la alineacion primero, un fragmento en coreano
+       del documento nº 1 le ganaba a uno legible del documento nº 4. Para un
+       evaluador que lee espanol/ingles el primero vale **r=0 con certeza**;
+       el segundo tiene probabilidad no nula de valer mas. Los 19 fragmentos
+       ilegibles de la entrega salian de solo DOS documentos (`F3-SIPRI-002`
+       y `F3-SIPRI-100`, traducciones al coreano 100% ilegibles), y en las 5
+       consultas afectadas habia documentos del top-3 completamente legibles
+       de donde sacar el reemplazo. Resultado: **ilegibles 19 -> 0**, NDCG@10
+       **+0.007 [+0.001, +0.015]** (3 victorias, 0 derrotas), F1@3 sin mover
+       una milesima, y la alineacion baja de 499/500 a 480/500 -- exactamente
+       los 19 intercambiados y ni uno mas.
+
+       Se pre-registro la prediccion de que "el proxy va a mostrar una
+       perdida" y **no se cumplio**: los documentos coreanos resultaron ser
+       los irrelevantes en 4 de las 5 consultas. Queda anotado porque la
+       prediccion era nuestra y el dato la corrigio.
+
+    4. **Cobertura lexica de la consulta** (E23), como ultimo desempate. La
+       sec. 10.2.1 juzga la relevancia sobre el campo `text` y con escala
+       graduada: un pasaje del documento correcto que no menciona el objeto de
+       la consulta en ninguno de sus dos idiomas entro por el TEMA del
+       documento, no por responder. Medido: **175 de 500 fragmentos entregados
+       no contenian ni una palabra de contenido de la consulta expandida**, y
+       bajan a 138. NDCG penalizado **+0.009 [-0.001, +0.021]**.
+
+       Se probo tambien la version GRADUADA (ordenar por numero de palabras en
+       comun) y **se descarto**: misma cobertura final, efecto **-0.001**, y
+       mueve 355 de 500 fragmentos. Mucha rotacion para nada; la binaria mueve
+       159.
+
+       Salvedad que va junto al numero: **la evidencia es enteramente de las
+       50** y su IC cruza el cero. Pasa por el criterio de dano, no por
+       demostrar ganancia.
     3. **No ser aparato bibliografico.** La sec. 10.2.1 dice que la relevancia
        del fragmento se juzga sobre su campo `text`, asi que un chunk que es
        una lista de notas al pie puntua 0 aunque venga de un documento
@@ -124,8 +191,9 @@ def ordenar_para_fragmentos(
     if not doc_ids_prioritarios and not priorizar_idioma and not degradar_aparato:
         return hits
     top = set(doc_ids_prioritarios or ())
+    toks = tokens_consulta or frozenset()
 
-    def clave(hit: Hit) -> tuple[int, int, int]:
+    def clave(hit: Hit) -> tuple[int, int, int, int]:
         fuera_del_top = 1 if (top and hit.doc_id not in top) else 0
         ilegible = 1 if (priorizar_idioma and hit.idioma not in IDIOMAS_LEGIBLES) else 0
         aparato = (
@@ -133,7 +201,9 @@ def ordenar_para_fragmentos(
             if (degradar_aparato and fraccion_aparato(hit.texto) >= UMBRAL_APARATO)
             else 0
         )
-        return (fuera_del_top, ilegible, aparato)
+        sin_cobertura = 0 if (toks and (tokens_de(hit.texto) & toks)) else 1
+        # E22: `ilegible` va PRIMERO, antes que `fuera_del_top`.
+        return (ilegible, fuera_del_top, aparato, sin_cobertura)
 
     return sorted(hits, key=clave)
 
