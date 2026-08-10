@@ -351,10 +351,20 @@ def load_index(encoder_name: str, index_dir: Path | None = None) -> tuple[faiss.
             if line:
                 metadata.append(json.loads(line))
 
-    if index.ntotal != len(metadata):
+    # Filas metadata-only (documentos sin texto, marcadas `en_indice: false`)
+    # no tienen vector: la alineacion se verifica contra las que si lo tienen,
+    # y esas tienen que ser exactamente las primeras `ntotal` (el parche las
+    # anade al final; una intercalada romperia el mapeo id->metadata).
+    con_vector = [m for m in metadata if m.get("en_indice") is not False]
+    if index.ntotal != len(con_vector):
         raise ValueError(
             f"indice desalineado al cargar: index.ntotal={index.ntotal} vs "
             f"lineas de metadata={len(metadata)} ({index_dir})"
+        )
+    if metadata[: index.ntotal] != con_vector:
+        raise ValueError(
+            f"indice desalineado al cargar: filas sin vector intercaladas "
+            f"entre las primeras {index.ntotal} ({index_dir})"
         )
 
     return index, metadata
@@ -1351,6 +1361,30 @@ def graph_search(query: str, graph, lang: str | None = None, k: int = 10) -> lis
     ]
 
 
+def desempatar_con_grafo(hits: list[Hit], graph_hits: list[GraphHit]) -> list[Hit]:
+    """Integra el grafo en la recuperacion SIN desplazar candidatos (sec. 8.5).
+
+    En vez de fusionar los vecinos del grafo como una lista mas (medido sobre
+    las 50 oficiales: F1@3 0.455 -> 0.358, NDCG@10 0.516 -> 0.390; 11-0 de
+    perdidas), el grafo entra como clave secundaria de orden: reordena los
+    hits que el pool vectorial ya trae, rompiendo SOLO empates exactos de
+    score por la evidencia de primer orden. El conjunto del pool no cambia,
+    asi que los documentos que entran al top-3 solo pueden variar donde el
+    recuperador los tenia exactamente empatados (el caso de q005/q026).
+
+    `sorted` es estable: dos hits con el mismo score y la misma evidencia
+    conservan su orden original.
+    """
+    if not graph_hits:
+        return hits
+    evidencia = {gh.chunk_id: gh.score for gh in graph_hits}
+    return sorted(
+        hits,
+        key=lambda h: (h.score, evidencia.get(h.chunk_id, 0.0)),
+        reverse=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -1912,17 +1946,21 @@ def main() -> None:
                     for lista in ranked_lists
                 ]
 
-        # El grafo entra como una lista mas a fusionar (sec. 8.5: "RRF
-        # tratando el grafo como un indice adicional").
+        # El grafo NO se fusiona como una lista mas (medido sobre las 50
+        # oficiales: F1@3 0.455 -> 0.358, NDCG@10 0.516 -> 0.390, pierde
+        # 11-0; ver informe). Entra como desempate sobre los candidatos que
+        # el pool ya trae: reordena sin desplazar (sec. 8.5 integrado sin
+        # degradar la recuperacion vectorial). A proposito con la consulta
+        # SIN expandir: el grafo empareja entidades extraidas con NER, no
+        # vectores, y las siglas inglesas que agrega el glosario no son
+        # entidades del grafo.
+        graph_hits: list[GraphHit] = []
         if graph is not None:
             first = ranked_lists[0]
             query_lang = first[0].idioma if first else None
-            # A proposito con la consulta SIN expandir: el grafo empareja
-            # entidades extraidas con NER, no vectores, y las siglas inglesas
-            # que agrega el glosario no son entidades del grafo.
-            graph_hits = graph_search(consulta["text"], graph, lang=query_lang, k=args.k_pool)
-            if graph_hits:
-                ranked_lists.append(graph_hits)
+            graph_hits = graph_search(
+                consulta["text"], graph, lang=query_lang, k=args.k_pool
+            )
 
         if len(ranked_lists) == 1:
             hits = ranked_lists[0]
@@ -1935,6 +1973,9 @@ def main() -> None:
         # que la profundidad extra sirva para REORDENAR y no para ampliar el
         # pool, que es un cambio distinto y no medido.
         hits = hits[: args.k_pool]
+
+        if graph_hits:
+            hits = desempatar_con_grafo(hits, graph_hits)
 
         resultados.append(
             build_result_object(

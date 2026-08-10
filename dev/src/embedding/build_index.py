@@ -162,10 +162,20 @@ def load_index(encoder_name: str, index_dir: Path | None = None) -> tuple[faiss.
             if line:
                 metadata.append(json.loads(line))
 
-    if index.ntotal != len(metadata):
+    # Filas metadata-only (documentos sin texto, marcadas `en_indice: false`)
+    # no tienen vector: la alineacion se verifica contra las que si lo tienen,
+    # y esas tienen que ser exactamente las primeras `ntotal` (el parche las
+    # anade al final; una intercalada romperia el mapeo id->metadata).
+    con_vector = [m for m in metadata if m.get("en_indice") is not False]
+    if index.ntotal != len(con_vector):
         raise ValueError(
             f"indice desalineado al cargar: index.ntotal={index.ntotal} vs "
             f"lineas de metadata={len(metadata)} ({index_dir})"
+        )
+    if metadata[: index.ntotal] != con_vector:
+        raise ValueError(
+            f"indice desalineado al cargar: filas sin vector intercaladas "
+            f"entre las primeras {index.ntotal} ({index_dir})"
         )
 
     return index, metadata

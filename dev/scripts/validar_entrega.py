@@ -184,7 +184,12 @@ def validar_metadata(encoder_dir: Path, filas: list[dict]) -> None:
         import faiss
 
         index = faiss.read_index(str(encoder_dir / "index.faiss"))
-        if index.ntotal != len(filas):
+        # Filas `en_indice: false` son documentos sin texto (imagenes del
+        # manifest): no tienen vector y van al final. La alineacion se exige
+        # contra las filas con vector, y solo si son las primeras.
+        con_vector = [f for f in filas if f.get("en_indice") is not False]
+        desalineadas = index.ntotal != len(con_vector) or filas[: index.ntotal] != con_vector
+        if desalineadas:
             fallo(
                 f"{encoder_dir.name}: indice y metadata DESALINEADOS "
                 f"(index.ntotal={index.ntotal} vs {len(filas)} lineas). "
