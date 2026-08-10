@@ -139,3 +139,24 @@ def test_el_cli_de_verificacion_arranca(tmp_path):
     res = verificar_reconstruccion(ruta)
     assert res["docs_revisados"] == 1
     assert res["docs_con_perdida"] == 0
+
+
+def test_la_contabilidad_del_solape_es_exacta():
+    """La puerta exige igualdad, no un porcentaje tolerado.
+
+    El umbral por fraccion fallaba en documentos de pocas oraciones por chunk
+    (F3-ALERTAS-391, F2-INPE-011, F3-ALERTAS-415): con 3 oraciones por chunk y
+    1 de solape, borrar un tercio del texto es CORRECTO, no perdida. Contar
+    los caracteres deduplicados quita el umbral del medio.
+    """
+    from scripts.rechunkear_e38 import _flujo_alfanumerico
+    chunks = [
+        {"posicion": 0, "titulo_seccion": "S", "idioma": "es",
+         "texto": "Uno uno. Dos dos. Tres tres."},
+        {"posicion": 1, "titulo_seccion": "S", "idioma": "es",
+         "texto": "Tres tres. Cuatro cuatro."},
+    ]
+    secciones, cuenta = reconstruir_oraciones(chunks, con_contabilidad=True)
+    rec = _flujo_alfanumerico(o for _, oraciones in secciones for o in oraciones)
+    assert len(rec) == cuenta["oraciones"] - cuenta["solape"]
+    assert cuenta["solape"] == len(_flujo_alfanumerico(["Tres tres."]))

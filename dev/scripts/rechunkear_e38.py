@@ -38,25 +38,41 @@ from src.chunking.sentence_split import split_sentences
 # presupuesto de tokens: la rejilla no los toca y se copian tal cual.
 FORMATOS_TABULARES = ("csv", "xlsx")
 
-# Cuanto del documento puede desaparecer al quitar el solape. Con
-# CHUNK_OVERLAP_SENTENCES=1 y chunks de ~280 tokens, una oracion repetida por
-# chunk ronda el 10%. El 25% deja margen para documentos de oraciones largas
-# sin dejar pasar la perdida de un parrafo entero.
-TOPE_BORRADO = 0.25
+# Cuanto del documento puede descartar el SEGMENTADOR por no formar oracion.
+# No es el solape --ese se verifica por igualdad exacta-- sino la basura
+# tipografica del PDF. Medido: ronda el 0% y el peor caso visto es el 0,03%.
+# El 1% es holgado y aun asi delata la perdida de un parrafo.
+TOPE_DESCARTE_SEGMENTADOR = 0.01
 
 
-def reconstruir_oraciones(chunks_del_doc):
+def reconstruir_oraciones(chunks_del_doc, con_contabilidad=False):
     """Devuelve [(titulo_seccion, [oraciones])] en orden de posicion.
 
     Quita de cada chunk el prefijo de oraciones que repite la cola del chunk
     anterior de la MISMA seccion. Solo mira la frontera: una repeticion en
     cualquier otro punto es contenido real del documento y se conserva.
+
+    Con `con_contabilidad` devuelve ademas un desglose que separa DOS causas
+    distintas de que el reconstruido sea mas corto, que un solo umbral
+    confundia:
+
+      `oraciones`: caracteres alfanumericos que el segmentador si devolvio.
+                   Lo que el original tiene de mas es basura tipografica que
+                   no forma oracion (ver E38_rejilla_chunking.md).
+      `solape`:    caracteres borrados por deduplicar la frontera. Es el
+                   objetivo del ejercicio, no una perdida.
+
+    Con eso la puerta exige IGUALDAD EXACTA sobre el solape, en vez de
+    tolerar un porcentaje inventado que dependia de cuantas oraciones tuviera
+    cada chunk.
     """
     secciones = []
+    cuenta = {"oraciones": 0, "solape": 0}
     for ch in sorted(chunks_del_doc, key=lambda c: c["posicion"]):
         oraciones = split_sentences(ch["texto"], ch.get("idioma"))
         if not oraciones:
             continue
+        cuenta["oraciones"] += len(_flujo_alfanumerico(oraciones))
         heading = ch.get("titulo_seccion")
         if secciones and secciones[-1][0] == heading:
             previas = secciones[-1][1]
@@ -65,10 +81,11 @@ def reconstruir_oraciones(chunks_del_doc):
                 if previas[-n:] == oraciones[:n]:
                     solape = n
                     break
+            cuenta["solape"] += len(_flujo_alfanumerico(oraciones[:solape]))
             previas.extend(oraciones[solape:])
         else:
             secciones.append((heading, list(oraciones)))
-    return secciones
+    return (secciones, cuenta) if con_contabilidad else secciones
 
 
 def reempaquetar(chunks_del_doc, token_budget, overlap_sentences, count_tokens):
@@ -167,7 +184,7 @@ def verificar_reconstruccion(ruta_chunks, limite_docs=None):
             break
         revisados += 1
 
-        secciones = reconstruir_oraciones(chunks)
+        secciones, cuenta = reconstruir_oraciones(chunks, con_contabilidad=True)
         original = _flujo_alfanumerico(
             ch["texto"] for ch in sorted(chunks, key=lambda c: c["posicion"])
         )
@@ -175,19 +192,29 @@ def verificar_reconstruccion(ruta_chunks, limite_docs=None):
             o for _, oraciones in secciones for o in oraciones
         )
 
+        # 1. El reconstruido es el original con trozos borrados: nada
+        #    inventado, nada reordenado.
         if not _es_subsecuencia(reconstruido, original):
             docs_con_perdida.append(doc_id)
             peor_fraccion = 1.0
             peor_doc = doc_id
             continue
 
-        # Cuanto se borro. El solape es una oracion por chunk; un documento
-        # que pierda mucho mas que eso perdio contenido, no solape.
-        borrado = 1 - len(reconstruido) / max(1, len(original))
-        if borrado > TOPE_BORRADO:
+        # 2. Todo lo que desaparecio respecto de las oraciones del segmentador
+        #    es EXACTAMENTE el solape deduplicado. Igualdad, sin tolerancia.
+        if len(reconstruido) != cuenta["oraciones"] - cuenta["solape"]:
             docs_con_perdida.append(doc_id)
-            if borrado > peor_fraccion:
-                peor_fraccion = borrado
+            peor_fraccion = 1.0
+            peor_doc = doc_id
+            continue
+
+        # 3. Lo que el segmentador descarto por no formar oracion. Es basura
+        #    tipografica del PDF y ronda el 0%; si crece, se perdio contenido.
+        descartado = 1 - cuenta["oraciones"] / max(1, len(original))
+        if descartado > TOPE_DESCARTE_SEGMENTADOR:
+            docs_con_perdida.append(doc_id)
+            if descartado > peor_fraccion:
+                peor_fraccion = descartado
                 peor_doc = doc_id
 
     return {
