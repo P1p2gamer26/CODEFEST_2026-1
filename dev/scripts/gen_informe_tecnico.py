@@ -27,7 +27,7 @@ OUT_PATH = ROOT / "Entrega" / "informe_tecnico.pdf"
 styles = getSampleStyleSheet()
 styles.add(ParagraphStyle("H1custom", parent=styles["Heading1"], spaceBefore=12, spaceAfter=5, textColor=colors.HexColor("#1a2b4c")))
 styles.add(ParagraphStyle("H2custom", parent=styles["Heading2"], spaceBefore=8, spaceAfter=4, textColor=colors.HexColor("#1a2b4c"), fontSize=12))
-styles.add(ParagraphStyle("Body", parent=styles["BodyText"], spaceAfter=4, leading=12.5))
+styles.add(ParagraphStyle("Body", parent=styles["BodyText"], spaceAfter=3, leading=12))
 styles.add(ParagraphStyle("Small", parent=styles["BodyText"], fontSize=8.5, leading=11, textColor=colors.HexColor("#444444")))
 styles.add(ParagraphStyle("TitlePage", parent=styles["Title"], fontSize=20, spaceAfter=4))
 styles.add(ParagraphStyle("Subtitle", parent=styles["Normal"], fontSize=12, textColor=colors.HexColor("#555555"), spaceAfter=20))
@@ -524,14 +524,11 @@ def build_story() -> list:
         "evita sobreajustar a un ground truth reducido."
     ))
     story.append(p(
-        "<b>El promedio de F1@3 no basta para decidir.</b> El tamano del pool parecia "
-        "importar (con 26 consultas, 30 daba 0,309 frente a 0,274 con 60, y la ventaja "
-        "se repetia con 10, 19 y 26 consultas), pero contando por consulta el "
-        "resultado es <b>30 gana en 5, 60 en 3 y empatan 18</b>, que es lo que "
-        "produce el azar: con unas 30 consultas cada una pesa 0,033 en la media, y "
-        "dos que cambien de lado la mueven mas que cualquier efecto real. El pool "
-        "quedo en 60 hasta que una medicion posterior, con criterio de intervalo de "
-        "confianza y no de promedio, justifico ampliarlo a 100."
+        "<b>El promedio de F1@3 no basta para decidir.</b> Con 26 consultas el pool "
+        "de 30 parecia superior a 60 (0,309 frente a 0,274), pero contando por "
+        "consulta el reparto es <b>5-3 con 18 empates</b>, lo que produce el azar. "
+        "El pool quedo en 60 hasta que una medicion posterior, con criterio de "
+        "intervalo de confianza, justifico ampliarlo a 100."
     ))
     story.append(p(
         "El mismo criterio descarto dos hipotesis prometedoras: la recuperacion "
@@ -658,12 +655,25 @@ def build_story() -> list:
         "no confirman. Se adoptan porque ganan de forma consistente en las 41 de "
         "anotacion humana &mdash; F1@3 +0,038 (IC 90% [+0,002, +0,073]) y NDCG@10 "
         "+0,051 ([+0,008, +0,095]) &mdash; y porque las dos tienen explicacion "
-        "mecanica previa a la medicion. Otros dos ajustes se midieron y "
-        "<i>no</i> se adoptaron: reservar cupos de fragmento degrada el NDCG@10 de "
-        "forma monotona (&minus;0,025 con 8 cupos, &minus;0,082 con 4) sin mover el "
-        "F1@3, y el prior de recencia resulta inerte; quedan implementados y "
-        "apagados. El grafo como fusion pierde 11-0 (seccion 5); como clave "
-        "secundaria de orden no desplaza nada y se adopta sin tocar las metricas."
+        "mecanica previa a la medicion. Dos ajustes se midieron y "
+        "<i>no</i> se adoptaron: reservar cupos de fragmento degrada el NDCG@10 "
+        "de forma monotona (&minus;0,025 con 8, &minus;0,082 con 4) y el prior de "
+        "recencia es inerte; quedan apagados. El grafo fusionado pierde 11-0 "
+        "(seccion 5); como clave secundaria no desplaza nada y se adopta sin "
+        "tocar metricas."
+    ))
+    story.append(p(
+        "<b>El cross-encoder se evaluo y se descarto.</b> ADL confirmo que la "
+        "sec. 8.3 aplica a arquitecturas decoder, asi que un <i>cross-encoder</i> "
+        "(encoder, no generativo) como re-puntuador esta permitido. Se probo "
+        "<i>bge-reranker-v2-m3</i> sobre el pool entregado, con el arnes verificado "
+        "contra <i>resultados.jsonl</i> (50/50 identicas). La mejor celda sobre las "
+        "50 da F1@3 0,465, pero en las 10 independientes cae de 0,433 a 0,367 (IC "
+        "[&minus;0,133, 0,000]): ganancia de pooling, la firma que descarto a las "
+        "hipotesis anteriores; y sumarla a gte y e5 sube las consultas en cero de "
+        "11 a 12. Se descarta por el criterio vigente y por costo: ~85 s/consulta "
+        "en CPU contra milisegundos de la cascada, que lee vectores sin releer "
+        "texto."
     ))
     story.append(p(
         "La entrega se verifica de punta a punta antes de empaquetarse con "

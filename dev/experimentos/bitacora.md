@@ -978,3 +978,33 @@ CARDINAL, que es justo lo que separaria dos informes trimestrales.
 Fusionado en la recuperacion perdio 11-0; como desempate, esto. Se sigue
 entregando como bonus de la sec. 8.5. Queda el instrumento
 `mapa_entidades_grafo.py` (cache entidad -> doc_id, 14,4 MB, RAM cero).
+
+---
+
+## E39 — cross-encoder bge-reranker-v2-m3: CERRADO POR MEDICION (10 ago 2026)
+
+Detalle completo en E39_cross_encoder.md. Resumen:
+
+**Puerta de entrada (antes de medir):** ADL confirmo que la sec. 8.3 aplica a
+arquitecturas decoder, asi que un cross-encoder (XLM-RoBERTa, Apache 2.0,
+100+ idiomas) esta permitido. El eje "otro encoder" se habia cerrado tres
+veces (E04, E25, E31) pero siempre con bi-encoders via producto punto; el
+cross-encoder relee el par (consulta, fragmento), que es otra arquitectura de
+uso. Justificacion mecanica: el fallo documentado del pool es cross-lingue
+(NBQR/CBRN), y v2-m3 fue entrenado en pares multilingues de relevancia.
+
+**Resultado (base entregada 0.455/0.516, ind 0.433/0.474):** la mejor celda,
+S100-replace (cross reemplaza a gte+e5 solo sobre el pool), da el mejor F1@3
+de TODO el proyecto sobre las 50 (0.465, ND 0.521) y aun asi NO se adopta:
+en las 10 independientes pierde F1 -0.067 [-0.133, 0.000] y ND -0.043; sus 6
+victorias incluyen q011 y q012 (panel-agentes) y en las 41 humanas el F1
+queda plano (4-3). Las celdas de SUMA suben los ceros de 11 a 12 (veto).
+
+**Firma:** la de E04/E25/E31/200:top5 — ganancia de pooling, evaporada en la
+muestra independiente. Costo medido: ~850 ms/pair en CPU del evaluador (85
+s/consulta a 100 pares) hubiera sido un trade-off explicito; sin ganancia, el
+costo es inmoral. El arnes reproduce esultados.jsonl byte a byte (50/50),
+lo que valida que midio lo mismo que se entrega.
+
+**Cerrado: el cross-encoder no aporta sobre el pool que la cascada ya dejo.
+No reabrir sin un pool anotado que no venga de la cascada.**
