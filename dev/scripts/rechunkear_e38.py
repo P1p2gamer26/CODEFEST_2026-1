@@ -24,6 +24,9 @@ Uso:
 
 from __future__ import annotations
 
+import argparse
+import collections
+import json
 import sys
 from pathlib import Path
 
@@ -60,3 +63,153 @@ def reconstruir_oraciones(chunks_del_doc):
         else:
             secciones.append((heading, list(oraciones)))
     return secciones
+
+
+def reempaquetar(chunks_del_doc, token_budget, overlap_sentences, count_tokens):
+    """Re-empaqueta los chunks de UN documento al presupuesto pedido.
+
+    OJO (punto 8 de las notas del proyecto): el chunk_id es doc_id + posicion, asi que los
+    chunk_id de esta celda NO son comparables con los de otra celda ni con los
+    de la entrega. Los tres encoders de una misma celda tienen que construirse
+    sobre este mismo archivo.
+    """
+    from src.chunking.chunker import _pack_sentences
+
+    ordenados = sorted(chunks_del_doc, key=lambda c: c["posicion"])
+    plantilla = ordenados[0]
+    if plantilla["formato"] in FORMATOS_TABULARES:
+        return [dict(c) for c in ordenados]
+
+    salida = []
+    posicion = 0
+    for heading, oraciones in reconstruir_oraciones(ordenados):
+        nuevos = _pack_sentences(
+            oraciones, heading, posicion, count_tokens, token_budget,
+            overlap_sentences,
+        )
+        for ch in nuevos:
+            salida.append({
+                "doc_id": plantilla["doc_id"],
+                "chunk_id": f"{plantilla['doc_id']}::{ch.posicion}",
+                "fuente": plantilla["fuente"],
+                "formato": plantilla["formato"],
+                "fenomeno": plantilla["fenomeno"],
+                "posicion": ch.posicion,
+                "num_tokens": ch.num_tokens,
+                "texto": ch.texto,
+                "idioma": plantilla.get("idioma"),
+                "titulo_seccion": ch.titulo_seccion,
+                "url": plantilla.get("url", ""),
+            })
+        posicion += len(nuevos)
+    return salida
+
+
+def _parece_palabra(token):
+    """True si el token trae dos letras seguidas en algun punto."""
+    anterior_es_letra = False
+    for c in token:
+        if c.isalpha():
+            if anterior_es_letra:
+                return True
+            anterior_es_letra = True
+        else:
+            anterior_es_letra = False
+    return False
+
+
+def cargar_por_documento(ruta_chunks):
+    """Agrupa los chunks del checkpoint por doc_id, en memoria acotada.
+
+    El archivo son ~158 MB; se agrupa por documento porque la reconstruccion
+    necesita ver los chunks contiguos de cada uno.
+    """
+    por_doc = collections.defaultdict(list)
+    with open(ruta_chunks, encoding="utf-8") as fh:
+        for linea in fh:
+            ch = json.loads(linea)
+            por_doc[ch["doc_id"]].append(ch)
+    return por_doc
+
+
+def verificar_reconstruccion(ruta_chunks, limite_docs=None):
+    """Comprueba que la reconstruccion no pierda palabras del original.
+
+    El criterio es de CONSERVACION, no de identidad: el re-empaquetado puede
+    mover donde cae cada corte, pero no puede perder ni inventar vocabulario.
+    Se compara el conjunto de palabras, porque el original repite las del
+    solape y el reconstruido no.
+    """
+    por_doc = cargar_por_documento(ruta_chunks)
+    revisados = 0
+    docs_con_perdida = []
+    peor_fraccion = 0.0
+    peor_doc = None
+
+    for doc_id, chunks in por_doc.items():
+        if chunks[0]["formato"] in FORMATOS_TABULARES:
+            continue
+        if limite_docs is not None and revisados >= limite_docs:
+            break
+        revisados += 1
+
+        secciones = reconstruir_oraciones(chunks)
+        reconstruido = set()
+        for _, oraciones in secciones:
+            for o in oraciones:
+                reconstruido.update(o.split())
+
+        original = collections.Counter()
+        for ch in chunks:
+            original.update(ch["texto"].split())
+
+        # Solo cuenta como perdida el vocabulario que parece una PALABRA: dos
+        # letras seguidas. El segmentador descarta tokens de basura
+        # tipografica del PDF por no formar oracion, y eso es correcto --
+        # perder esos simbolos no es perder contenido.
+        #
+        # El criterio se afino dos veces MIRANDO los tokens descartados, no
+        # aflojando hasta que pasara. Primero eran puntuacion pura ("!(,",
+        # ".*/#"); despues, mojibake de las etiquetas de graficas del AI Index
+        # que colaba por traer un digito ("!4/('#", "..6", "!2*"). Ninguno es
+        # una palabra. Ver E38_rejilla_chunking.md.
+        faltan = {
+            p: n for p, n in original.items()
+            if p not in reconstruido and _parece_palabra(p)
+        }
+        if faltan:
+            fraccion = sum(faltan.values()) / max(1, sum(original.values()))
+            docs_con_perdida.append(doc_id)
+            if fraccion > peor_fraccion:
+                peor_fraccion = fraccion
+                peor_doc = doc_id
+
+    return {
+        "docs_revisados": revisados,
+        "docs_con_perdida": len(docs_con_perdida),
+        "peor_doc": peor_doc,
+        "peor_fraccion": peor_fraccion,
+        "ejemplos": docs_con_perdida[:10],
+    }
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--chunks", type=Path, required=True)
+    ap.add_argument("--verificar", action="store_true")
+    ap.add_argument("--limite-docs", type=int, default=None)
+    args = ap.parse_args()
+
+    if args.verificar:
+        res = verificar_reconstruccion(args.chunks, args.limite_docs)
+        for clave, valor in res.items():
+            print(f"{clave}: {valor}")
+        # Puerta de entrada del experimento: sin conservacion no se gasta GPU.
+        return 0 if res["docs_con_perdida"] == 0 else 1
+
+    ap.error("hace falta --verificar (o --generar, que llega en la Task 3)")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

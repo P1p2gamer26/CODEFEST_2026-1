@@ -10,7 +10,7 @@ falle a la vista. De ahi que estos casos sean la puerta de entrada del
 experimento y no un detalle de implementacion.
 """
 
-from scripts.rechunkear_e38 import reconstruir_oraciones
+from scripts.rechunkear_e38 import reconstruir_oraciones, reempaquetar
 
 
 def test_quita_la_oracion_de_solape_entre_chunks_contiguos():
@@ -63,3 +63,40 @@ def test_reconstruccion_conserva_toda_oracion_no_solapada():
     for esperada in ["Uno uno.", "Dos dos.", "Tres tres.", "Cuatro cuatro."]:
         assert esperada in unidas
     assert unidas.count("Tres tres.") == 1
+
+
+def _doc(texto, formato="pdf"):
+    return [{
+        "doc_id": "D1", "posicion": 0, "titulo_seccion": None, "idioma": "es",
+        "formato": formato, "fuente": "a.pdf", "fenomeno": 1, "url": "",
+        "texto": texto,
+    }]
+
+
+def test_reempaquetar_conserva_la_identidad_del_documento():
+    salida = reempaquetar(_doc("Uno uno uno. Dos dos dos. Tres tres tres."),
+                          token_budget=280, overlap_sentences=1,
+                          count_tokens=lambda t: len(t.split()))
+    assert len(salida) == 1
+    assert salida[0]["doc_id"] == "D1"
+    assert salida[0]["posicion"] == 0
+    assert salida[0]["chunk_id"] == "D1::0"
+    assert "Tres tres tres." in salida[0]["texto"]
+    assert sorted(salida[0]) == [
+        "chunk_id", "doc_id", "fenomeno", "formato", "fuente", "idioma",
+        "num_tokens", "posicion", "texto", "titulo_seccion", "url",
+    ]
+
+
+def test_presupuesto_menor_produce_mas_chunks():
+    ct = lambda t: len(t.split())
+    doc = _doc("Uno uno uno. Dos dos dos. Tres tres tres. Cuatro cuatro.")
+    assert len(reempaquetar(doc, 4, 0, ct)) > len(reempaquetar(doc, 280, 1, ct))
+
+
+def test_los_tabulares_no_se_re_empaquetan():
+    """CSV y XLSX se fragmentan por filas, el presupuesto de tokens no aplica."""
+    doc = _doc("fila uno. fila dos.", formato="csv")
+    salida = reempaquetar(doc, 4, 0, lambda t: len(t.split()))
+    assert len(salida) == 1
+    assert salida[0]["texto"] == "fila uno. fila dos."
