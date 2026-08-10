@@ -46,11 +46,15 @@ verifica corriendo `generador.py` desde un directorio fuera del repo, con
 
 | métrica | valor | sobre qué |
 |---|---|---|
-| **F1@3** | **0,440** | las 50 consultas — **el 49% del techo de 0,906**, no el 44% de 1 |
-| **NDCG@10** | **0,506** | las 50; aproximado, relevancia heredada del documento |
-| **NDCG@10 penalizado** | **0,491** | las 50, descontando aparato bibliográfico |
-| F1@3 / NDCG@10 | 0,468 / 0,510 | 41 de anotación humana |
-| F1@3 / NDCG@10 | 0,400 / 0,436 | 10 sin sesgo de pooling |
+| **F1@3** | **0,455** | las 50 consultas — **el 50% del techo de 0,906**, no el 46% de 1 |
+| **NDCG@10** | **0,516** | las 50; aproximado, relevancia heredada del documento |
+| **NDCG@10 penalizado** | **0,499** | las 50, descontando aparato bibliográfico |
+| F1@3 / NDCG@10 | 0,486 / 0,537 | 41 de anotación humana |
+| F1@3 / NDCG@10 | 0,433 / 0,474 | 10 sin sesgo de pooling |
+
+Actualizadas el 9 ago 2026 tras adoptar **E32** (post-filtrado por fenómeno con
+umbral 0,8). Antes de E32 eran 0,440 / 0,506 / 0,491. **Once consultas siguen
+con F1@3 = 0**, y ese número es uno de los vetos de cualquier cambio nuevo.
 
 **La métrica de decisión es la media sobre las 50** (forma de las ecs. 10 y 14
 del PDF). Los desgloses son diagnóstico. Y el techo es **0,906, no 1**: hay que
