@@ -1008,3 +1008,26 @@ lo que valida que midio lo mismo que se entrega.
 
 **Cerrado: el cross-encoder no aporta sobre el pool que la cascada ya dejo.
 No reabrir sin un pool anotado que no venga de la cascada.**
+---
+
+## E39b - control de truncamiento 512 vs 8192: CERRADO, no explica nada (10 ago 2026)
+
+Detalle completo en E39_cross_encoder.md (seccion E39b). Resumen:
+
+La salvedad del diseno de E39 quedaba abierta: la perdida en independientes
+(q017, q033) podia ser artefacto del truncamiento a 512. La corrida completa a
+8192 que lanzo el usuario murio en q041 con CUBLAS_STATUS_EXECUTION_FAILED
+(TDR del driver: un batch de 24 pares padded a ~1010 tokens). No hacia falta:
+los pares <=512 tokens son identicos por construccion a 512 y a 8192, y la
+sonda de determinismo lo confirmo (150 pares cortos, max|d| = 0.000001). Solo
+19 de 10.000 pares superan 512 tokens, y los que importan caen en consultas
+independientes: q017 (+0.089), q033 (+0.315), q040 (+0.145).
+
+completar_8192_e39b.py re-escoreo solo esos 19 pares a 8192 (28 s de GPU) y
+escribio X8192.npy = X512 corregido. Fase 2 contra ese archivo, comparada
+digito a digito con la de 512: s100_rep/s200_rep/s100_add cambian 0 de 50
+consultas; s200_add cambia 1 (q006, no independiente, swap de posiciones 2 y
+3 del top-3, mismo conjunto de docs y mismos fragmentos). El truncamiento no
+explica la perdida: el veredicto de E39 se sostiene. No volver a correr
+10.000 pares para esto: el control correcto es re-escorear solo los pares que
+la truncacion toca.
