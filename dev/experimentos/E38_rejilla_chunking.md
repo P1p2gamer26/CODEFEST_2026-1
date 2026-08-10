@@ -112,8 +112,109 @@ no cambió nunca. Queda anotado para que se pueda auditar en contra.
 
 ## Resultados
 
-Pendiente: la corrida no había terminado cuando se escribió este archivo.
+Corrida completa el 9-10 ago 2026, 21:12 a 23:16. Seis celdas, seis índices de
+MiniLM en GPU, diez lecturas. Todas con MiniLM solo, que es el diseño de E21.
+
+| celda | chunks | F1@3 (50) | NDCG@10 (50) | F1@3 (41 hum.) |
+|---|---|---|---|---|
+| corpus **entregado** (280/1 original) | 128.526 | 0.369 | 0.464 | 0.391 |
+| **280/1 reconstruido (control)** | **132.146** | **0.411** | **0.469** | **0.434** |
+| 280/0 | 114.724 | 0.395 | 0.426 | 0.424 |
+| 384/1, k_pool 73 | 95.082 | 0.295 | 0.360 | 0.309 |
+| 384/1, k_pool 100 | 95.082 | 0.290 | 0.347 | 0.303 |
+| 384/0, k_pool 73 | 85.038 | 0.268 | 0.296 | 0.301 |
+| 384/0, k_pool 100 | 85.038 | 0.299 | 0.343 | 0.331 |
+| 512/1, k_pool 55 | 70.665 | 0.240 | 0.302 | 0.250 |
+| 512/1, k_pool 100 | 70.665 | 0.253 | 0.323 | 0.283 |
+| 512/0, k_pool 55 | 64.554 | 0.283 | 0.304 | 0.320 |
+| 512/0, k_pool 100 | 64.554 | 0.344 | 0.361 | 0.376 |
+
+### La hipótesis está REFUTADA, y monótonamente
+
+Ordenando por presupuesto, con el mejor `k_pool` de cada uno:
+
+    280   0.411   <- el control
+    384   0.299
+    512   0.344
+
+**Agrandar el chunk empeora, en las dos métricas y en las tres muestras.** No
+hay una sola celda de 384 o 512 que se acerque al control. La caída es enorme:
+−0.11 de F1 y −0.11 de NDCG en el mejor de los casos.
+
+**El eje del tamaño de chunk queda cerrado por los dos lados.** E21 midió hacia
+abajo (128 tokens: 0.294 contra 0.375) y esto mide hacia arriba. El 280 vigente
+no es un valor sin calibrar: es un óptimo con evidencia a ambos costados.
+
+**Quitar el solape también pierde** (280/0 da 0.395 contra 0.411, y −0.043 de
+NDCG). Era la variable que E21 había dejado confundida con el tamaño; ya no lo
+está, y aporta en la misma dirección.
+
+**La corrección de `k_pool` por volumen de texto no ayudó, y eso es
+informativo:** en 384 y en 512 el `k_pool` crudo (100) gana al escalado en casi
+todas las lecturas. Ver más chunks es mejor aunque cada uno sea más largo, o
+sea que el pool ancho no estaba compensando de más.
+
+## El control falló, y es el hallazgo que hay que mirar
+
+**La celda 280/1 debía reproducir el corpus entregado y no lo hace.** Da
+**132.146 chunks contra 128.526, un 2,82%** por encima del tope del 2% que el
+plan fijó de antemano. Y lo que importa más que el conteo: **puntúa 0.411
+contra 0.369 del corpus entregado, +0.042 de F1 con los mismos parámetros
+nominales.**
+
+Ese salto es **más grande que casi cualquier efecto que este proyecto
+persigue**. Consecuencias, en orden de importancia:
+
+1. **La comparación entre celdas SIGUE SIENDO VÁLIDA.** Las seis salen del
+   mismo pipeline de reconstrucción, así que el confundidor es común y se
+   cancela. El veredicto de arriba se sostiene.
+2. **Comparar cualquier celda contra el corpus entregado NO es válido.** El
+   baseline correcto de esta rejilla es el 280/1 reconstruido, no el 0.369.
+3. **No se adopta nada.** El 0.411 es tentador y sería un error tomarlo: es
+   MiniLM solo, sobre 50 consultas, con la diferencia equivalente a unas dos
+   consultas, y vendría de un corpus cuyo parecido con el entregado no
+   controlamos. Adoptarlo exigiría rehacer los tres índices.
+
+**Por qué la reconstrucción produce más chunks, hipótesis sin medir:** el
+segmentador re-parte el texto de cada chunk y no recupera exactamente las
+mismas fronteras de oración que la corrida original, así que el empaquetado
+cae distinto. Queda **pre-registrable como E39** si alguien quiere perseguir
+ese +0.042 — pero con un pool anotado propio, porque medir un corpus nuevo con
+el ground truth armado sobre el viejo tiene la misma firma de sesgo que hundió
+a `doc_rrf`, a gte-primario y a E31.
 
 ## Veredicto
 
-Pendiente.
+**REFUTADO. `Entrega/` sin cambios.** Vigésimo negativo del proyecto, y el que
+cierra el último eje estructural que quedaba abierto.
+
+Lo que el experimento deja, más allá del negativo:
+
+- El tamaño de chunk está **acotado por medición a ambos lados**. No volver a
+  proponerlo sin datos nuevos.
+- El solape, aislado por primera vez, **aporta**: quitarlo cuesta.
+- Un instrumento nuevo, `rechunkear_e38.py`, que re-empaqueta el corpus a
+  cualquier presupuesto **sin re-extraer ni pasar OCR**, con una puerta de
+  conservación que verifica subsecuencia e igualdad exacta del solape.
+- La anomalía del control, que es la única pista viva que salió de la noche.
+
+### Lo que costó, y la lección de método
+
+**La puerta de conservación cerró tres veces, y las tres el defecto estaba en
+el instrumento, no en el dato.** Comparar tokens crudos confundía
+re-tokenización con pérdida (`CHUCHINGAL;` → `CHUCHINGAL ;`, `IV(h)(1)` →
+`IV(h)` + `(1)`), y después un tope por fracción del 25% castigaba a los
+documentos de pocas oraciones por chunk, donde borrar un tercio del texto es
+exactamente el solape.
+
+El criterio final no tiene tolerancia inventada: subsecuencia de caracteres
+más **igualdad exacta** entre lo que desapareció y el solape deduplicado, que
+el propio código contabiliza. El único umbral que queda mide una sola cosa —lo
+que el segmentador descarta por no formar oración— y vale 0,0000% en los
+documentos revisados.
+
+**La lección, que es la 5 aplicada a código de hace dos horas:** un criterio
+que se afloja hasta que pasa es indistinguible de uno que funciona, salvo por
+los controles negativos. Los tests exigen ahora que la puerta **rechace**
+texto inventado y texto reordenado. Sin eso no había forma de saber si estaba
+midiendo algo.
