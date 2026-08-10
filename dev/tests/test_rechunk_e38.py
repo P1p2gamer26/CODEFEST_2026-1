@@ -100,3 +100,17 @@ def test_los_tabulares_no_se_re_empaquetan():
     salida = reempaquetar(doc, 4, 0, lambda t: len(t.split()))
     assert len(salida) == 1
     assert salida[0]["texto"] == "fila uno. fila dos."
+
+
+def test_la_puerta_no_confunde_re_tokenizacion_con_perdida():
+    """El segmentador separa la puntuacion: "X;" reaparece como "X ;".
+
+    Medido en F3-ALERTAS-005 ("CHUCHINGAL;"), F1-CSET-034 ('qualities."') y
+    F2-CSIS-002 (".vi"): en los tres la palabra esta en el reconstruido. Si la
+    puerta compara tokens crudos, aborta la rejilla por un cambio de
+    tokenizacion y no por perdida de contenido.
+    """
+    from scripts.rechunkear_e38 import _nucleo
+    assert _nucleo("CHUCHINGAL;") == _nucleo("CHUCHINGAL") == "CHUCHINGAL"
+    assert _nucleo('qualities."') == "qualities"
+    assert _nucleo(".vi") == "vi"
