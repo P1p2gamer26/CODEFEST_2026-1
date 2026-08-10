@@ -116,3 +116,26 @@ def test_la_puerta_RECHAZA_texto_inventado():
 def test_la_puerta_RECHAZA_texto_reordenado():
     from scripts.rechunkear_e38 import _es_subsecuencia
     assert not _es_subsecuencia("mundohola", "holamundo")
+
+
+def test_el_cli_de_verificacion_arranca(tmp_path):
+    """Un borrado quirurgico se llevo cargar_por_documento y ningun test lo vio.
+
+    Los unitarios no tocaban el camino del CLI, asi que el driver murio con
+    NameError recien al lanzarse. Este caso ejercita ese camino de punta a
+    punta sobre un archivo minusculo.
+    """
+    import json as _json
+    from scripts.rechunkear_e38 import verificar_reconstruccion
+
+    ruta = tmp_path / "chunks.jsonl"
+    ruta.write_text("\n".join(_json.dumps(c) for c in [
+        {"doc_id": "D1", "posicion": 0, "titulo_seccion": None, "idioma": "es",
+         "formato": "pdf", "texto": "Uno uno. Dos dos."},
+        {"doc_id": "D1", "posicion": 1, "titulo_seccion": None, "idioma": "es",
+         "formato": "pdf", "texto": "Dos dos. Tres tres."},
+    ]), encoding="utf-8")
+
+    res = verificar_reconstruccion(ruta)
+    assert res["docs_revisados"] == 1
+    assert res["docs_con_perdida"] == 0
