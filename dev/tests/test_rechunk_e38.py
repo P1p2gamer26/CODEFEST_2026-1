@@ -102,15 +102,17 @@ def test_los_tabulares_no_se_re_empaquetan():
     assert salida[0]["texto"] == "fila uno. fila dos."
 
 
-def test_la_puerta_no_confunde_re_tokenizacion_con_perdida():
-    """El segmentador separa la puntuacion: "X;" reaparece como "X ;".
+def test_la_puerta_acepta_borrar_el_solape():
+    from scripts.rechunkear_e38 import _es_subsecuencia
+    assert _es_subsecuencia("holamundo", "holaholamundo")
 
-    Medido en F3-ALERTAS-005 ("CHUCHINGAL;"), F1-CSET-034 ('qualities."') y
-    F2-CSIS-002 (".vi"): en los tres la palabra esta en el reconstruido. Si la
-    puerta compara tokens crudos, aborta la rejilla por un cambio de
-    tokenizacion y no por perdida de contenido.
-    """
-    from scripts.rechunkear_e38 import _nucleo
-    assert _nucleo("CHUCHINGAL;") == _nucleo("CHUCHINGAL") == "CHUCHINGAL"
-    assert _nucleo('qualities."') == "qualities"
-    assert _nucleo(".vi") == "vi"
+
+def test_la_puerta_RECHAZA_texto_inventado():
+    """Control negativo: una puerta que nunca falla no sirve de nada."""
+    from scripts.rechunkear_e38 import _es_subsecuencia
+    assert not _es_subsecuencia("holaxmundo", "holamundo")
+
+
+def test_la_puerta_RECHAZA_texto_reordenado():
+    from scripts.rechunkear_e38 import _es_subsecuencia
+    assert not _es_subsecuencia("mundohola", "holamundo")
