@@ -8,9 +8,10 @@ a partir de consultas en lenguaje natural. Especificación completa en
 
 **Cómo recupera:** MiniLM trae 200 candidatos y los re-puntúan
 `gte-multilingual-base` y `multilingual-e5-base`; los 10 fragmentos se
-ordenan hacia los 3 documentos entregados. F1@3 **0,386** y NDCG@10
-**0,406** sobre las 41 consultas anotadas a mano. El detalle de por qué cada
-encoder está donde está: `dev/docs/arquitectura_encoders.md`.
+ordenan hacia los 3 documentos entregados, y el pool se post-filtra por
+fenómeno. F1@3 **0,455** y NDCG@10 **0,516** sobre las 50 consultas. El
+detalle de por qué cada encoder está donde está:
+`dev/docs/arquitectura_encoders.md`.
 
 > Sin modelos generativos en ningún punto del pipeline (prohibido por la
 > sec. 8.3 de la especificación). Todo el sistema es recuperación pura sobre
@@ -45,10 +46,15 @@ encoder está donde está: `dev/docs/arquitectura_encoders.md`.
 
 | métrica | valor | sobre qué |
 |---|---|---|
-| **F1@3** | **0,386** | 41 consultas anotadas a mano |
-| **F1@3** | 0,333 | 10 consultas sin sesgo de pooling ← *el número honesto* |
-| **NDCG@10** | **0,406** | 41 anotadas; aproximado |
-| **NDCG@10** | 0,360 | 10 sin sesgo de pooling |
+| **F1@3** | **0,455** | las 50 consultas — **el 50% del techo de 0,906** |
+| **F1@3** | 0,433 | 10 consultas sin sesgo de pooling ← *el número honesto* |
+| **NDCG@10** | **0,516** | las 50; aproximado |
+| **NDCG@10** | 0,474 | 10 sin sesgo de pooling |
+| F1@3 / NDCG@10 | 0,486 / 0,537 | 41 de anotación humana |
+
+**El techo del F1@3 es 0,906 y no 1**: la sec. 10.2.2 fija P@3 = aciertos/3 con
+los tres cupos siempre llenos, así que una consulta con un solo documento
+relevante topa en 0,50. Citar siempre el 0,455 con el techo al lado.
 
 **Cómo leer esto, sin autoengaños:**
 
