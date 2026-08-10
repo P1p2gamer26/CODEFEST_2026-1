@@ -111,6 +111,20 @@ def reempaquetar(chunks_del_doc, token_budget, overlap_sentences, count_tokens):
     return salida
 
 
+def cargar_por_documento(ruta_chunks):
+    """Agrupa los chunks del checkpoint por doc_id.
+
+    El archivo son ~158 MB; se agrupa por documento porque la reconstruccion
+    necesita ver los chunks contiguos de cada uno.
+    """
+    por_doc = collections.defaultdict(list)
+    with open(ruta_chunks, encoding="utf-8") as fh:
+        for linea in fh:
+            ch = json.loads(linea)
+            por_doc[ch["doc_id"]].append(ch)
+    return por_doc
+
+
 def _flujo_alfanumerico(textos):
     """Concatena los caracteres alfanumericos, en orden, en minusculas."""
     return "".join(c.lower() for t in textos for c in t if c.isalnum())
