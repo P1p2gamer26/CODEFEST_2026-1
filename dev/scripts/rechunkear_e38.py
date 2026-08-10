@@ -118,6 +118,19 @@ def _parece_palabra(token):
     return False
 
 
+def _nucleo(token):
+    """Deja solo los caracteres alfanumericos del token.
+
+    La comparacion de conservacion NO puede hacerse sobre tokens crudos: el
+    segmentador re-tokeniza la puntuacion y "CHUCHINGAL;" reaparece como
+    "CHUCHINGAL ;". Verificado en F3-ALERTAS-005, F1-CSET-034 ('qualities."')
+    y F2-CSIS-002 ('.vi'): en los tres la palabra ESTA en el reconstruido y lo
+    unico que cambio fue donde quedo pegado el signo. Comparar nucleos mide
+    conservacion de contenido, que es lo que la puerta quiere decir.
+    """
+    return "".join(c for c in token if c.isalnum())
+
+
 def cargar_por_documento(ruta_chunks):
     """Agrupa los chunks del checkpoint por doc_id, en memoria acotada.
 
@@ -157,11 +170,11 @@ def verificar_reconstruccion(ruta_chunks, limite_docs=None):
         reconstruido = set()
         for _, oraciones in secciones:
             for o in oraciones:
-                reconstruido.update(o.split())
+                reconstruido.update(_nucleo(t) for t in o.split())
 
         original = collections.Counter()
         for ch in chunks:
-            original.update(ch["texto"].split())
+            original.update(_nucleo(t) for t in ch["texto"].split())
 
         # Solo cuenta como perdida el vocabulario que parece una PALABRA: dos
         # letras seguidas. El segmentador descarta tokens de basura
