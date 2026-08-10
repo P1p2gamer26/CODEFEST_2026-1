@@ -20,6 +20,30 @@ class GraphHit:
     doc_id: str
 
 
+def desempatar_con_grafo(hits: list, graph_hits: list[GraphHit]) -> list:
+    """Integra el grafo en la recuperacion SIN desplazar candidatos (sec. 8.5).
+
+    En vez de fusionar los vecinos del grafo como una lista mas (medido sobre
+    las 50 oficiales: F1@3 0.455 -> 0.358, NDCG@10 0.516 -> 0.390; 11-0 de
+    perdidas), el grafo entra como clave secundaria de orden: reordena los
+    hits que el pool vectorial ya trae, rompiendo SOLO empates exactos de
+    score por la evidencia de primer orden. El conjunto del pool no cambia,
+    asi que los documentos que entran al top-3 solo pueden variar donde el
+    recuperador los tenia exactamente empatados (el caso de q005/q026).
+
+    `sorted` es estable: dos hits con el mismo score y la misma evidencia
+    conservan su orden original.
+    """
+    if not graph_hits:
+        return hits
+    evidencia = {gh.chunk_id: gh.score for gh in graph_hits}
+    return sorted(
+        hits,
+        key=lambda h: (h.score, evidencia.get(h.chunk_id, 0.0)),
+        reverse=True,
+    )
+
+
 def _normalize(text: str) -> str:
     return text.strip().lower()
 
