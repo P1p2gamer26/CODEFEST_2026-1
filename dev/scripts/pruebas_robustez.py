@@ -73,6 +73,83 @@ def validar_esquema(path):
     return problemas
 
 
+def _cargar_generador():
+    """Importa generador.py como modulo suelto, sin tocar sys.path del repo.
+
+    Cargarlo no arranca ningun modelo (los imports pesados son perezosos), asi
+    que probar `load_consultas` cuesta milisegundos en vez de un minuto de
+    carga de encoders por variante. Es honesto: lo unico que cambia entre las
+    variantes de formato es el PARSEO de la entrada; si las 50 consultas
+    quedan identicas, el resto del camino tambien.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("generador_entrega", GENERADOR)
+    mod = importlib.util.module_from_spec(spec)
+    # Registrarlo antes de ejecutarlo: `@dataclass` mira sys.modules[__module__].
+    sys.modules["generador_entrega"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def pruebas_formato_entrada(tmp):
+    """El archivo de consultas lo entrega ADL y no controlamos como lo guardan.
+
+    Windows escribe BOM y CRLF por defecto, Excel y PowerShell tambien, y un
+    editor viejo puede dejarlo en cp1252. Cada variante que no se lea es un
+    cero: sec. 1.4, lo que no se puede reproducir se excluye.
+    """
+    import hashlib
+
+    gen = _cargar_generador()
+    ok("generador.py no importa nada de dev/src/",
+       not [m for m in sys.modules if m == "src" or m.startswith("src.")])
+
+    src = CONSULTAS.read_text(encoding="utf-8")
+    objs = [json.loads(l) for l in src.splitlines() if l.strip()]
+
+    def huella(path):
+        cargadas = gen.load_consultas(Path(path))
+        crudo = json.dumps(cargadas, ensure_ascii=False, sort_keys=True)
+        return hashlib.sha256(crudo.encode("utf-8")).hexdigest()
+
+    base = tmp / "fmt_base.jsonl"
+    base.write_bytes(src.encode("utf-8"))
+    esperado = huella(base)
+
+    variantes = {
+        "BOM (Bloc de notas / PowerShell)": src.encode("utf-8-sig"),
+        "CRLF (Windows)": src.replace("\n", "\r\n").encode("utf-8"),
+        "BOM + CRLF": b"\xef\xbb\xbf" + src.replace("\n", "\r\n").encode("utf-8"),
+        "lineas en blanco intercaladas": ("\n\n" + src.replace("\n", "\n\n") + "  \n").encode("utf-8"),
+        "sin salto de linea final": src.rstrip("\n").encode("utf-8"),
+        "campos extra por consulta": "\n".join(
+            json.dumps(dict(o, lang="es", extra={"a": 1}), ensure_ascii=False) for o in objs
+        ).encode("utf-8"),
+        "claves alternativas id/query": "\n".join(
+            json.dumps({"id": o["query_id"], "query": o["text"]}, ensure_ascii=False) for o in objs
+        ).encode("utf-8"),
+        # cp1252 es el default de Set-Content en Windows PowerShell 5.1.
+        "cp1252 (Set-Content de PowerShell)": src.encode("cp1252", "replace"),
+    }
+    for nombre, contenido in variantes.items():
+        p = tmp / ("fmt_" + str(abs(hash(nombre))) + ".jsonl")
+        p.write_bytes(contenido)
+        try:
+            igual = huella(p) == esperado
+            detalle = "" if igual else "las consultas cargadas no coinciden con el original"
+        except BaseException as exc:  # SystemExit incluido
+            igual, detalle = False, f"{type(exc).__name__}: {str(exc)[:90]}"
+        ok(f"lee el archivo de consultas con {nombre}", igual, detalle)
+
+    # El orden de salida tiene que seguir al del archivo de entrada, no a un
+    # orden propio: ADL puede mandar las 50 en cualquier orden.
+    p = tmp / "fmt_orden.jsonl"
+    p.write_bytes("\n".join(json.dumps(o, ensure_ascii=False) for o in reversed(objs)).encode("utf-8"))
+    ids = [c["query_id"] for c in gen.load_consultas(p)]
+    ok("respeta el orden de las consultas del archivo",
+       ids == [o["query_id"] for o in reversed(objs)])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rapido", action="store_true")
@@ -86,6 +163,9 @@ def main():
     print("== esquema de lo entregado (sec. 9.3) ==")
     probs = validar_esquema(OFICIAL)
     ok("resultados.jsonl cumple el esquema", not probs, "; ".join(probs[:3]))
+
+    print("\n== formato del archivo de consultas (lo guarda ADL, no nosotros) ==")
+    pruebas_formato_entrada(tmp)
 
     print("\n== el script arranca y explica ==")
     r = correr(["--help"], cwd=tmp)

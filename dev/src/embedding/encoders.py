@@ -14,6 +14,8 @@ import numpy as np
 from ..config import (
     E5_PASSAGE_PREFIX,
     E5_QUERY_PREFIX,
+    ENCODER_BGE_M3_HF_ID,
+    ENCODER_BGE_M3_NAME,
     ENCODER_E5_LARGE_HF_ID,
     ENCODER_E5_LARGE_NAME,
     ENCODER_E5_SMALL_HF_ID,
@@ -264,6 +266,16 @@ KNOWN_ENCODERS: dict[str, dict] = {
         "hf_id": ENCODER_E5_LARGE_HF_ID,
         "query_prefix": E5_QUERY_PREFIX,
         "passage_prefix": E5_PASSAGE_PREFIX,
+    },
+    # E25: sin prefijos (el model card lo dice explicitamente). Se recorta a
+    # 512 aunque la ventana sea de 8192: el p99 de los chunks es 466 tokens,
+    # asi que 8192 solo gastaria memoria de una GPU de 4 GB sin leer un token
+    # mas de texto real. Mismo criterio que se aplico a GTE.
+    ENCODER_BGE_M3_NAME: {
+        "hf_id": ENCODER_BGE_M3_HF_ID,
+        "query_prefix": "",
+        "passage_prefix": "",
+        "max_seq_length": 512,
     },
 }
 
