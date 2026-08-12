@@ -1,3 +1,4 @@
+# Notas de trabajo locales del equipo, fuera de la entrega.
 [Cc][Ll][Aa][Uu][Dd][Ee].md
 .[Cc][Ll][Aa][Uu][Dd][Ee]/
 __pycache__/
@@ -36,5 +37,10 @@ Entrega/base_vectorial/**/*.gz
 # exacta de Entrega/ y validar_entrega.py falla si aparece.
 Entrega/__pycache__/
 
-# Overrides locales de Claude Code, no compartidos con el equipo.
+# Overrides locales del editor, no compartidos con el equipo.
 .claude/settings.local.json
+
+# Notas de trabajo y temporales, fuera de la entrega
+**/superpowers/
+*.patch
+dev/scripts/_tmp_*.py
