@@ -40,7 +40,7 @@ detalle de por qué cada encoder está donde está:
 
 | verificación | estado |
 |---|---|
-| `pytest dev/tests` | 155 passed |
+| `pytest dev/tests` | 157 passed, 1 skipped |
 | `python dev/scripts/validar_entrega.py` | en verde |
 | `python dev/scripts/pruebas_robustez.py` | todas pasan |
 | **corrida en frío** desde fuera del repo | **reproduce byte a byte** |
@@ -48,17 +48,23 @@ detalle de por qué cada encoder está donde está:
 
 ### Métricas
 
-| métrica | valor | sobre qué |
-|---|---|---|
-| **F1@3** | **0,455** | las 50 consultas — **el 50% del techo de 0,906** |
-| **F1@3** | 0,433 | 10 consultas sin sesgo de pooling ← *el número honesto* |
-| **NDCG@10** | **0,516** | las 50; aproximado |
-| **NDCG@10** | 0,474 | 10 sin sesgo de pooling |
-| F1@3 / NDCG@10 | 0,486 / 0,537 | 41 de anotación humana |
+Última medición local reproducida el **12 de agosto de 2026** con
+`Entrega/resultados.jsonl` y `dev/scripts/eval_mini.py`:
+
+| muestra | F1@3 | NDCG@10 | NDCG penalizado |
+|---|---:|---:|---:|
+| **50 consultas** | **0,499** | **0,558** | **0,539** |
+| 41 de anotación humana | 0,518 | 0,573 | 0,554 |
+| 10 sin sesgo de pooling | 0,433 | 0,477 | 0,470 |
+
+El F1@3 global equivale al **55% del techo alcanzable de 0,906**. Hay
+**8 de 50 consultas con F1@3 igual a cero**, frente a 11 en la configuración
+anterior. Estas métricas se calculan contra el ground truth local y no son una
+calificación oficial de ADL.
 
 **El techo del F1@3 es 0,906 y no 1**: la sec. 10.2.2 fija P@3 = aciertos/3 con
 los tres cupos siempre llenos, así que una consulta con un solo documento
-relevante topa en 0,50. Citar siempre el 0,455 con el techo al lado.
+relevante topa en 0,50. Citar siempre el 0,499 con el techo al lado.
 
 **Cómo leer esto, sin autoengaños:**
 
@@ -91,12 +97,13 @@ recuperación (pierde 11-0), re-chunkear a 128 tokens (0,294 vs 0,375),
 pool y `topM` (E33, E37), el glosario (E35, ya está completo) y la decisión
 de fenómeno (E36).
 
-**Lo que queda abierto es la construcción del pool.** El fallo documentado es
-entre idiomas: consulta en español, documento en inglés (NBQR/CBRN,
-"reabastecimiento en órbita"/*on-orbit servicing*); el glosario bilingüe lo
-mitiga parcialmente. En curso: **E38**, la rejilla de chunking
-(280/384/512 tokens × 2 solapes), el único eje estructural que las mediciones
-anteriores tocaron solo hacia abajo.
+**Último cambio adoptado: E39.** Calibra por consulta los cosenos de los tres
+encoders, pondera GTE con 0,50 y E5 con 1,00, amplía el reranking a 200
+candidatos y agrega hasta seis chunks por documento. Frente a la configuración
+anterior mejora F1@3 en +0,045, NDCG@10 en +0,042 y NDCG penalizado en +0,040.
+El chunking de producción se conserva en 280 tokens con solape de 1: la prueba
+de 128 tokens perdió claramente y las alternativas de E38 no superaron la
+puerta de evaluación en esta máquina.
 
 ### Documentación
 
@@ -104,6 +111,7 @@ anteriores tocaron solo hacia abajo.
 |---|---|
 | `dev/docs/PLAN_MAESTRO.md` | **empezar por acá**: estado, todo lo probado, lo que queda |
 | `dev/docs/arquitectura_encoders.md` | cómo funcionan los tres encoders y por qué |
+| `dev/experimentos/E39_calibracion_faiss.md` | configuración actual y comparación pareada de métricas |
 | `dev/docs/lecciones_metodologia.md` | **cómo se decide si un cambio sirve** — leer antes de proponer mejoras |
 | `dev/docs/PROYECTO_EXPLICADO.md` | mapa módulo por módulo |
 | `dev/docs/Explicacion_reto_final.md` | Q&A con ADL y reglas |

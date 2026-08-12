@@ -1,6 +1,6 @@
 # Plan maestro — CODEFEST AD ASTRA 2026, Etapa 1
 
-Estado al **9 de agosto de 2026**. Este documento es el punto de entrada para
+Estado al **12 de agosto de 2026**. Este documento es el punto de entrada para
 cualquiera que retome el proyecto: qué hay, qué se probó, qué falló, qué queda
 y qué hace falta para competir. Los detalles de implementación están en
 `CLAUDE.md`; el método de decisión, en `lecciones_metodologia.md`.
@@ -23,7 +23,7 @@ Bogotá **18-19 de septiembre**.
 | Grafo (bonus) | 224.101 nodos, 754.876 aristas |
 | `informe_tecnico.pdf` | 8 de 8 páginas |
 | `validar_entrega.py` | ✅ en verde (ahora falla también ante archivos de más) |
-| `pytest dev/tests` | ✅ **138 passed** |
+| `pytest dev/tests` | ✅ **157 passed, 1 skipped** |
 | `pruebas_robustez.py` | ✅ todas — el script corrido como lo correrá ADL |
 | **Corrida en frío** | ✅ **reproduce byte a byte** (sha256 `987293ac…`) |
 
@@ -44,17 +44,16 @@ verifica corriendo `generador.py` desde un directorio fuera del repo, con
 
 ### 1.2 Las métricas
 
-| métrica | valor | sobre qué |
-|---|---|---|
-| **F1@3** | **0,455** | las 50 consultas — **el 50% del techo de 0,906**, no el 46% de 1 |
-| **NDCG@10** | **0,516** | las 50; aproximado, relevancia heredada del documento |
-| **NDCG@10 penalizado** | **0,499** | las 50, descontando aparato bibliográfico |
-| F1@3 / NDCG@10 | 0,486 / 0,537 | 41 de anotación humana |
-| F1@3 / NDCG@10 | 0,433 / 0,474 | 10 sin sesgo de pooling |
+| muestra | F1@3 | NDCG@10 | NDCG penalizado |
+|---|---:|---:|---:|
+| **50 consultas** | **0,499** | **0,558** | **0,539** |
+| 41 de anotación humana | 0,518 | 0,573 | 0,554 |
+| 10 sin sesgo de pooling | 0,433 | 0,477 | 0,470 |
 
-Actualizadas el 9 ago 2026 tras adoptar **E32** (post-filtrado por fenómeno con
-umbral 0,8). Antes de E32 eran 0,440 / 0,506 / 0,491. **Once consultas siguen
-con F1@3 = 0**, y ese número es uno de los vetos de cualquier cambio nuevo.
+Actualizadas el 12 ago 2026 tras adoptar **E39** (calibración min-max de los
+encoders y agregación `top6`). La configuración E32 anterior medía
+0,455 / 0,516 / 0,499. **Ocho consultas tienen F1@3 = 0**, tres menos que
+antes de E39. El F1@3 actual es el **55% del techo alcanzable de 0,906**.
 
 **La métrica de decisión es la media sobre las 50** (forma de las ecs. 10 y 14
 del PDF). Los desgloses son diagnóstico. Y el techo es **0,906, no 1**: hay que
@@ -62,12 +61,12 @@ entregar exactamente 3 documentos, así que una consulta con un solo relevante
 topa en 0,50.
 
 **Advertencia que hay que repetir siempre:** 9 de las 50 llevan etiqueta de
-panel de agentes y dan F1@3 **0,311** contra **0,468** de las 41 humanas. Ese
+panel de agentes y dan F1@3 **0,415** contra **0,518** de las 41 humanas. Ese
 es el eslabón podrido del promedio, y re-anotarlas a mano sigue siendo la tarea
 de mayor impacto del proyecto.
 
 El 2 de agosto eran 0,344 y **0,206**. **El NDCG@10 se ha multiplicado por
-2,5** y es la mitad del puntaje; había sido medido **una sola vez** y nunca
+2,7** y es la mitad del puntaje; había sido medido **una sola vez** y nunca
 optimizado, mientras todo el esfuerzo iba al F1@3. Ahí estaba el margen.
 
 **Y el ranking del concurso es relativo.** Dos tablas independientes (NDCG@10
@@ -83,9 +82,10 @@ mismos chunks**.
 
 **Online:** la consulta se vectoriza con MiniLM y se recuperan 200
 candidatos —con la consulta **expandida por el glosario bilingüe ES→EN**—;
-**`gte-multilingual-base` y `multilingual-e5-base` los re-puntúan**, cada uno
-sumando su similitud con peso **0,60** (cascada, no fusión); se agregan a
-documento **sumando los 5 mejores chunks** sobre un pool de **100**; y los
+**`gte-multilingual-base` y `multilingual-e5-base` los re-puntúan**; los tres
+cosenos se calibran min-max por consulta y GTE/E5 se combinan con pesos
+**0,50 / 1,00** (cascada, no fusión); se agregan a documento **sumando los
+6 mejores chunks** sobre un pool de **200**; y los
 fragmentos se ordenan por **idioma legible, alineación con los 3 documentos
 entregados, aparato bibliográfico y cobertura léxica de la consulta**, antes de
 truncar a 250 palabras.
@@ -122,12 +122,13 @@ F1@3 no se mueve, y es lo correcto: no tocan los documentos.
   peso limpio detrás — aporta +0,019 de F1 **por encima del efecto del peso**.
   No se adopta porque las independientes no confirman y exige 14 h de GPU.
 
-**El diagnóstico que más vale:** las **11 consultas con F1@3 = 0 son un solo
-fallo, no once problemas**. Ninguna es fallo de pool — las once tienen
-documentos relevantes dentro y los pierden en la agregación, seis en las
-posiciones **4-8**, y el mejor chunk del perdedor **no es peor** que el del
-ganador (1,55-1,69 contra mediana 1,672). Pierde por aportar 2-5 chunks donde
-el ganador aporta 7.
+**El diagnóstico que más vale:** antes de E39, las **11 consultas con F1@3 = 0
+eran principalmente un fallo de agregación, no once problemas distintos**.
+No faltaban documentos relevantes en el pool: se perdían al combinar scores y
+evidencia por documento. E39 calibra los tres encoders y suma hasta seis chunks
+coherentes; con ello rescata tres consultas y deja **8 de 50 con F1@3 = 0**.
+Las ocho restantes requieren análisis individual y mejor ground truth, no más
+profundidad de FAISS por defecto.
 
 **Y dos fallos de cumplimiento que valían más que cualquier décima:** un
 archivo de consultas en **cp1252** (lo que escribe PowerShell por defecto, y lo
@@ -251,9 +252,9 @@ relevantes existen pero el pool de 12 candidatos no los contiene, así que
 anotarlas con lo que hay mete una afirmación falsa. Para q001 hay que sacar
 candidatos de los 20 documentos con CBRN; para q038, del subcorpus ALERTAS.
 
-### 4.2 Prioridad 2 — NDCG@10, la mitad de la nota sin explorar
+### 4.2 Prioridad 2 — Ground truth real para NDCG@10
 
-Nunca se optimizó nada a nivel fragmento. Hace falta:
+E22/E23 y E39 mejoraron el proxy de NDCG@10, pero todavía hace falta:
 
 1. **Ground truth de fragmentos**, aunque sea de 10 consultas, para saber
    cuánto miente la aproximación actual.
@@ -265,10 +266,10 @@ Nunca se optimizó nada a nivel fragmento. Hace falta:
 
 **Este eje está muerto y no hay que reabrirlo.** El dato que lo motivaba era
 que el pool de 60 alcanzaba solo el 52% de los documentos relevantes. Con la
-configuración actual (pool 100 sobre 200 candidatos re-puntuados) **E18 midió
-que el pool ya trae el 93,2%**, y el diagnóstico de las 11 consultas con
-F1@3 = 0 lo remata: **ninguna es fallo de pool** — las once tienen documentos
-relevantes dentro y los pierden en la agregación.
+configuración evaluada en E18 (pool 100 sobre 200 candidatos re-puntuados),
+**el pool ya traía el 93,2%**. E39 conserva los 200 candidatos completos y
+reduce de 11 a 8 las consultas con F1@3 = 0 mediante calibración y agregación
+`top6`, sin atribuir la ganancia a mayor recall de FAISS.
 
 **E17 lo confirma desde el otro lado:** unir el pool de MiniLM con el de gte
 mete 149 candidatos nuevos por consulta y solo **8 pares** (consulta,
