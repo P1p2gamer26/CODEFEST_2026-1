@@ -24,14 +24,20 @@ detalle de por qué cada encoder está donde está:
 **Los índices no se versionan en el repositorio.** Los tres `index.faiss`,
 sus `metadata.jsonl` y el grafo suman **1,6 GB**, muy por encima de lo que
 admite Git (y de la cuota de 1 GB de Git LFS), así que se publican como
-**GitHub Release**. La estructura de carpetas que exige la sec. 1.4 ya está
-creada en `Entrega/base_vectorial/`; sólo hay que depositar los archivos.
+**GitHub Release**. Git no versiona carpetas vacías, así que el clon no trae
+`Entrega/base_vectorial/`: hay que crearla y depositar los archivos. Estos
+comandos dejan la estructura **exacta** que exige la sec. 1.4.
 
 ```bash
 gh release download indices-v2 -D /tmp/idx     # o descargar los assets a mano
 gunzip /tmp/idx/*.gz
 
-cd Entrega/base_vectorial
+cd Entrega/base_vectorial 2>/dev/null || { mkdir -p Entrega/base_vectorial && cd $_; }
+mkdir -p encoder_paraphrase-multilingual-MiniLM-L12-v2 \
+         encoder_multilingual-e5-base \
+         encoder_gte-multilingual-base \
+         grafo
+
 cp /tmp/idx/minilm-index.faiss encoder_paraphrase-multilingual-MiniLM-L12-v2/index.faiss
 cp /tmp/idx/e5-index.faiss     encoder_multilingual-e5-base/index.faiss
 cp /tmp/idx/gte-index.faiss    encoder_gte-multilingual-base/index.faiss
