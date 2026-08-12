@@ -1,12 +1,13 @@
 """E42: la normalizacion por tamano penaliza al documento que inunda el pool."""
 
+import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from barrido_norm_doc_e42 import agregar_normalizado
+from barrido_norm_doc_e42 import agregar_normalizado, conteos_del_corpus
 from src.retrieval.search import Hit
 
 
@@ -52,3 +53,17 @@ def test_denominador_corpus_usa_el_conteo_externo():
                                denominador="n_corpus", conteos_corpus=conteos)
     # mismo denominador para los dos => el orden vuelve a ser el de top5
     assert norm[0].doc_id == "GAN"
+
+
+def test_cache_invalido_se_recalcula(tmp_path):
+    """Un cache con firma (tamano, mtime) que no coincide con metadata.jsonl
+    se descarta y se recalcula, en vez de servir conteos viejos en silencio."""
+    metadata = tmp_path / "metadata.jsonl"
+    metadata.write_text('{"doc_id": "A"}\n{"doc_id": "A"}\n{"doc_id": "B"}\n',
+                        encoding="utf-8")
+    cache = tmp_path / "cache.json"
+    cache.write_text(json.dumps({"firma": [999999, 0.0], "conteos": {"A": 1}}),
+                     encoding="utf-8")
+
+    conteos = conteos_del_corpus(path=metadata, cache=cache)
+    assert conteos == {"A": 2, "B": 1}
