@@ -1660,7 +1660,12 @@ def build_result_object(
     }
 
 
-def main() -> None:
+def build_arg_parser() -> argparse.ArgumentParser:
+    """La CLI, aparte de `main` para poder afirmar sus defaults en un test.
+
+    Los defaults SON la configuracion entregada: correr el script sin ningun
+    flag salvo `--consultas` tiene que reproducir `resultados.jsonl`.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -1781,12 +1786,34 @@ def main() -> None:
         "consultas y no se pudo validar contra el indice. Probar con 0.05 y decidir "
         "con eval_mini.py --comparar-con.",
     )
+    # El grafo va ACTIVO por defecto: la sec. 7 solo concede el bonus si esta
+    # INTEGRADO a la recuperacion, y construirlo sin usarlo no cuenta. Entra
+    # como desempate no desplazante (ver desempatar_con_grafo), no por fusion
+    # RRF -- la fusion esta medida y pierde 11-0.
+    #
+    # Medido sobre las 50 oficiales: activarlo cambia 0 de 50 lineas y deja
+    # F1@3 0.455 / NDCG@10 0.516 / penalizado 0.499 intactos. Es integracion
+    # real del artefacto en el camino online, no una mejora de metrica: no
+    # venderlo como tal.
+    parser.add_argument(
+        "--sin-grafo",
+        dest="use_graph",
+        action="store_false",
+        default=True,
+        help="Apaga el desempate por grafo de conocimiento (bonus, sec. 8.5).",
+    )
     parser.add_argument(
         "--use-graph",
+        dest="use_graph",
         action="store_true",
-        help="Fusiona la recuperacion vectorial con el grafo de conocimiento (bonus, sec. 8.5) via RRF.",
+        help="Compatibilidad: el grafo ya entra por defecto. No hace falta pasarlo.",
     )
     parser.add_argument("--graph-path", type=Path, default=GRAFO_PATH)
+    return parser
+
+
+def main() -> None:
+    parser = build_arg_parser()
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -1890,16 +1917,25 @@ def main() -> None:
     if args.use_graph:
         import networkx as nx
 
-        # --use-graph es opcional (bonus): si el grafo no esta, conviene decirlo
-        # en una linea y no con un traceback de networkx.
+        # El grafo es el BONUS de la sec. 7, no un requisito de la sec. 1.4:
+        # si el archivo no esta (p. ej. la base_vectorial sin rehidratar del
+        # todo), se avisa y se sigue. Abortar dejaria al evaluador sin
+        # resultados por un componente opcional. Como es inerte sobre las 50
+        # consultas oficiales, seguir sin el da la MISMA salida.
         if not args.graph_path.is_file():
-            parser.exit(2, f"error: no existe el grafo {args.graph_path}; correr sin --use-graph\n")
-        graph = nx.read_graphml(args.graph_path)
-        logger.info(
-            "grafo cargado: %d nodos, %d aristas",
-            graph.number_of_nodes(),
-            graph.number_of_edges(),
-        )
+            logger.warning(
+                "no existe el grafo %s: se continua sin el desempate por grafo "
+                "(bonus sec. 8.5). La salida no cambia sobre las 50 oficiales.",
+                args.graph_path,
+            )
+            args.use_graph = False
+        else:
+            graph = nx.read_graphml(args.graph_path)
+            logger.info(
+                "grafo cargado: %d nodos, %d aristas",
+                graph.number_of_nodes(),
+                graph.number_of_edges(),
+            )
 
     consultas = load_consultas(args.consultas)
     logger.info("consultas cargadas: %d", len(consultas))

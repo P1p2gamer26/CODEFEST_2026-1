@@ -204,3 +204,25 @@ def test_el_desempate_con_grafo_se_comporta_igual_en_las_dos_copias():
             f"desempate con grafo distinto: dev={[h.chunk_id for h in dev]} "
             f"entrega={[h.chunk_id for h in plano]}"
         )
+
+
+def test_grafo_activo_por_defecto():
+    """El grafo entra en la corrida oficial, no solo con un flag opcional.
+
+    La sec. 7 concede el bonus si el grafo esta INTEGRADO a la recuperacion;
+    construirlo y no usarlo no cuenta. Entra como desempate no desplazante
+    (`desempatar_con_grafo`), NO por fusion RRF -- la fusion esta medida y
+    pierde 11-0.
+
+    Medido el 12 ago 2026 sobre las 50 oficiales: activarlo cambia 0 de 50
+    lineas de `resultados.jsonl` y deja F1@3 0.455 / NDCG@10 0.516 /
+    penalizado 0.499 intactos. Es integracion del artefacto, no una mejora
+    de metrica.
+    """
+    entrega = _cargar_generador()
+    parser = entrega.build_arg_parser()
+
+    assert parser.parse_args(["--consultas", "x.jsonl"]).use_graph is True
+    assert parser.parse_args(["--consultas", "x.jsonl", "--sin-grafo"]).use_graph is False
+    # `--use-graph` sigue aceptandose para no romper los scripts que lo pasan.
+    assert parser.parse_args(["--consultas", "x.jsonl", "--use-graph"]).use_graph is True
