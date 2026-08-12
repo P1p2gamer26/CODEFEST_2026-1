@@ -24,6 +24,64 @@ import numpy as np
 from .search import Hit
 
 
+def _normalizar_scores(valores: np.ndarray, modo: str) -> np.ndarray:
+    if modo == "raw":
+        return valores
+    if modo == "minmax":
+        minimo = float(valores.min())
+        maximo = float(valores.max())
+        rango = maximo - minimo
+        return (valores - minimo) / rango if rango > 1e-12 else np.zeros_like(valores)
+    raise ValueError(f"normalizacion desconocida: {modo}")
+
+
+def rerank_por_encoders_calibrados(
+    hits: list[Hit],
+    secundarios: list[tuple[faiss.Index, np.ndarray, float]],
+    normalizacion: str = "minmax",
+) -> list[Hit]:
+    """Combina varios espacios vectoriales calibrando su rango por consulta.
+
+    Compartir el intervalo teorico [-1, 1] no implica compartir dispersion.
+    En las 50 consultas, los rangos medianos fueron 0.120 (MiniLM), 0.276
+    (GTE) y 0.103 (E5); sumar cosenos crudos daba a GTE mas autoridad de la
+    declarada. ``minmax`` lleva cada senal a [0, 1] dentro del mismo pool.
+    """
+    if not hits:
+        return []
+
+    primario = np.array([hit.score for hit in hits], dtype="float64")
+    total = _normalizar_scores(primario, normalizacion).copy()
+    for index, vector_consulta, peso in secundarios:
+        consulta = np.asarray(vector_consulta, dtype="float32").reshape(-1)
+        scores = np.array(
+            [
+                float(np.dot(consulta, index.reconstruct(hit.fila)))
+                if hit.fila >= 0 else 0.0
+                for hit in hits
+            ],
+            dtype="float64",
+        )
+        total += peso * _normalizar_scores(scores, normalizacion)
+
+    orden = np.argsort(-total, kind="stable")
+    return [
+        Hit(
+            rank=rank,
+            score=float(total[i]),
+            chunk_id=hits[i].chunk_id,
+            doc_id=hits[i].doc_id,
+            fuente=hits[i].fuente,
+            texto=hits[i].texto,
+            formato=hits[i].formato,
+            fenomeno=hits[i].fenomeno,
+            idioma=hits[i].idioma,
+            fila=hits[i].fila,
+        )
+        for rank, i in enumerate(orden, start=1)
+    ]
+
+
 def rerank_por_segundo_encoder(
     hits: list[Hit],
     index_secundario: faiss.Index,

@@ -45,7 +45,7 @@ anotaciones se EVALUAN al definir la funcion, asi que sin la linea de abajo el
 script muere con `TypeError: unsupported operand type(s) for |` en el import
 -- antes de leer una sola consulta, y la sec. 1.4 excluye lo que no es
 reproducible. `from __future__ import annotations` las difiere a texto (PEP
-563) y funciona desde 3.7. Auditado con AST: las 11 uniones del archivo son
+563) y funciona desde 3.7. Auditado con AST: las 14 uniones del archivo son
 todas de anotacion, ninguna se evalua en ejecucion, y no hay otra sintaxis
 posterior a 3.9. **No quitar esta linea ni mover imports por encima de ella.**
 """
@@ -449,6 +449,58 @@ def search(
 # ---------------------------------------------------------------------------
 
 
+def _normalizar_scores(valores: np.ndarray, modo: str) -> np.ndarray:
+    if modo == "raw":
+        return valores
+    if modo == "minmax":
+        minimo = float(valores.min())
+        maximo = float(valores.max())
+        rango = maximo - minimo
+        return (valores - minimo) / rango if rango > 1e-12 else np.zeros_like(valores)
+    raise ValueError(f"normalizacion desconocida: {modo}")
+
+
+def rerank_por_encoders_calibrados(
+    hits: list[Hit],
+    secundarios: list[tuple[faiss.Index, np.ndarray, float]],
+    normalizacion: str = "minmax",
+) -> list[Hit]:
+    """Combina varios espacios vectoriales calibrando su rango por consulta."""
+    if not hits:
+        return []
+
+    primario = np.array([hit.score for hit in hits], dtype="float64")
+    total = _normalizar_scores(primario, normalizacion).copy()
+    for index, vector_consulta, peso in secundarios:
+        consulta = np.asarray(vector_consulta, dtype="float32").reshape(-1)
+        scores = np.array(
+            [
+                float(np.dot(consulta, index.reconstruct(hit.fila)))
+                if hit.fila >= 0 else 0.0
+                for hit in hits
+            ],
+            dtype="float64",
+        )
+        total += peso * _normalizar_scores(scores, normalizacion)
+
+    orden = np.argsort(-total, kind="stable")
+    return [
+        Hit(
+            rank=rank,
+            score=float(total[i]),
+            chunk_id=hits[i].chunk_id,
+            doc_id=hits[i].doc_id,
+            fuente=hits[i].fuente,
+            texto=hits[i].texto,
+            formato=hits[i].formato,
+            fenomeno=hits[i].fenomeno,
+            idioma=hits[i].idioma,
+            fila=hits[i].fila,
+        )
+        for rank, i in enumerate(orden, start=1)
+    ]
+
+
 def rerank_por_segundo_encoder(
     hits: list[Hit],
     index_secundario: faiss.Index,
@@ -527,6 +579,49 @@ class DocumentHit:
     rank: int
     doc_id: str
     score: float
+
+
+# --- de src/retrieval/aggregate.py (E32) ---
+# Fraccion del score total que el fenomeno ganador debe superar para que el
+# filtro se aplique. Por debajo, se abstiene. Ver el comentario largo en
+# build_result_object para por que 0.8 y no el argmax de la grilla.
+UMBRAL_FENOMENO = 0.8
+
+
+def filtrar_por_fenomeno_dominante(hits: list[Hit], umbral: float = 0.0) -> list[Hit]:
+    """Descarta del pool los fragmentos que no son del fenomeno dominante.
+
+    La sec. 8.7 permite post-filtrar por metadata, y el fenomeno es la senal
+    mas barata que hay: **41 de las 50 consultas anotadas tienen TODOS sus
+    documentos relevantes en un solo fenomeno**, y sin filtrar se gastan 24 de
+    150 cupos (16%) en documentos del fenomeno equivocado.
+
+    El fenomeno se decide por VOTO PONDERADO POR SCORE del propio pool, no por
+    conteo: un fragmento en rank 1 debe pesar mas que uno en rank 100.
+
+    `umbral` es la fraccion del score total que el fenomeno ganador debe
+    superar para que se aplique el filtro. Por debajo **se abstiene** y
+    devuelve el pool intacto, que es lo que evita el fallo de las consultas
+    donde el pool esta repartido y el ganador no es de fiar. `umbral=0` filtra
+    siempre; `umbral=1` no filtra nunca.
+    """
+    if not hits:
+        return hits
+
+    peso: dict[int, float] = defaultdict(float)
+    for hit in hits:
+        if hit.fenomeno is not None:
+            peso[hit.fenomeno] += max(hit.score, 0.0)
+    if not peso:
+        return hits
+
+    total = sum(peso.values())
+    ganador, mejor = max(peso.items(), key=lambda kv: kv[1])
+    if total <= 0 or mejor / total < umbral:
+        return hits
+
+    filtrados = [h for h in hits if h.fenomeno == ganador]
+    return filtrados or hits
 
 
 def aggregate_documents(
@@ -1011,12 +1106,38 @@ IDIOMAS_LEGIBLES = frozenset({"es", "en", "pt"})
 # dos empatados.
 UMBRAL_APARATO = 0.60
 
+# --- de src/retrieval/truncate.py (E23) ---
+# Palabras vacias de espanol y de ingles. Sin ellas, "sobre", "entre" o
+# "which" harian que casi cualquier pasaje "cubra" la consulta y el criterio
+# seria inerte. Se fijo antes de medir y no se retoco despues.
+STOPWORDS = frozenset("""
+para como cual cuales cuanto cuantos donde desde entre sobre segun hacia hasta
+ante bajo cabe contra durante mediante salvo tras esta este estos estas esos
+esas aquel aquella ellos ellas nosotros vosotros pero sino aunque porque
+cuando mientras siempre nunca tambien tanto tanta menos mismo misma otro otra
+otros otras cada todo toda todos todas algun alguna algunos algunas ningun
+ninguna mucho mucha muchos muchas poco poca pocos pocas
+that this these those with from have been they their there where which what
+when while about into over under between during through after before more
+most such than then them your ours will would could should because being
+""".split())
+
+
+def tokens_de(texto: str) -> set:
+    """Palabras de contenido: sin acentos, de 4 letras o mas, sin vacias."""
+    return {
+        w
+        for w in re.findall(r"[a-z0-9]{4,}", _normalizar_glosario(texto))
+        if w not in STOPWORDS
+    }
+
 
 def ordenar_para_fragmentos(
     hits: list[Hit],
     doc_ids_prioritarios: list[str] | None = None,
     priorizar_idioma: bool = True,
     degradar_aparato: bool = True,
+    tokens_consulta: frozenset | None = None,
 ) -> list[Hit]:
     """Reordena los hits ANTES de armar los fragmentos. No filtra nada.
 
@@ -1057,7 +1178,9 @@ def ordenar_para_fragmentos(
         return hits
     top = set(doc_ids_prioritarios or ())
 
-    def clave(hit: Hit) -> tuple[int, int, int]:
+    toks = tokens_consulta or frozenset()
+
+    def clave(hit: Hit) -> tuple:
         fuera_del_top = 1 if (top and hit.doc_id not in top) else 0
         ilegible = 1 if (priorizar_idioma and hit.idioma not in IDIOMAS_LEGIBLES) else 0
         aparato = (
@@ -1065,7 +1188,12 @@ def ordenar_para_fragmentos(
             if (degradar_aparato and fraccion_aparato(hit.texto) >= UMBRAL_APARATO)
             else 0
         )
-        return (fuera_del_top, ilegible, aparato)
+        # E23: sin tokens de consulta el criterio es constante y por tanto
+        # inerte, que es lo que deja intactos los barridos viejos que llaman
+        # a build_result_object sin pasar la consulta.
+        sin_cobertura = 0 if (toks and (tokens_de(hit.texto) & toks)) else 1
+        # E22: `ilegible` va PRIMERO, antes que `fuera_del_top`.
+        return (ilegible, fuera_del_top, aparato, sin_cobertura)
 
     return sorted(hits, key=clave)
 
@@ -1279,7 +1407,7 @@ def graph_search(query: str, graph, lang: str | None = None, k: int = 10) -> lis
 # CLI
 # ---------------------------------------------------------------------------
 
-DEFAULT_K_POOL = 100  # candidatos usados para agregar a nivel documento (sec. 8.6);
+DEFAULT_K_POOL = 200  # E39: candidatos usados para agregar a nivel documento;
 # mayor que los 10 fragmentos que se devuelven, para que la relevancia de un
 # documento no dependa solo de si su mejor chunk entro en el top-10 mostrado.
 #
@@ -1307,7 +1435,8 @@ DEFAULT_K_POOL = 100  # candidatos usados para agregar a nivel documento (sec. 8
 # seis lecturas; 0,75 y 0,90 fallan sobre las 50. Por eso la grilla quedo
 # cerrada y NO se escala a "el re-puntuador deberia ser el primario", que es
 # otra hipotesis y necesita su propio experimento.
-DEFAULT_RERANK_WEIGHT = 0.60
+DEFAULT_RERANK_WEIGHTS = [0.50, 1.00]  # GTE, E5; E39, calibrados por consulta
+DEFAULT_RERANK_NORMALIZATION = "minmax"
 DEFAULT_RERANK_DEPTH = 200
 
 # La cascada viene ACTIVADA por defecto porque es la configuracion con la que
@@ -1348,11 +1477,24 @@ def load_consultas(path: Path) -> list[dict]:
     """Lee el archivo de consultas. Tolerante en la ENTRADA, estricto en la
     salida: el formato exacto de q001-q050 lo define ADL y no lo controlamos.
 
-    `utf-8-sig` en vez de `utf-8` NO es cosmetico. Cualquier archivo guardado
-    con Excel, Bloc de notas o PowerShell en Windows lleva BOM, y con `utf-8`
-    la primera linea falla con "Unexpected UTF-8 BOM" -- el script muere antes
-    de la primera consulta y la sec. 1.4 excluye lo que no se puede
-    reproducir. `utf-8-sig` se come el BOM si esta y no molesta si no.
+    La cadena de codecs NO es cosmetica, y cubre dos fallos distintos que
+    matarian el script antes de la primera consulta -- la sec. 1.4 excluye lo
+    que no se puede reproducir. El archivo lo entrega ADL y no controlamos con
+    que lo guarden:
+
+    - `utf-8-sig` se come el BOM que ponen Excel, Bloc de notas y PowerShell,
+      y no molesta si no esta. Con `utf-8` a secas la primera linea falla con
+      "Unexpected UTF-8 BOM".
+    - `cp1252` cubre el guardado ANSI. `Set-Content` de Windows PowerShell 5.1
+      escribe cp1252 por defecto y las 50 consultas van en espanol con
+      acentos, asi que el primer acento revienta con UnicodeDecodeError.
+    - `latin-1` cierra la cadena porque **no puede fallar**: decodifica
+      cualquier byte. Si el archivo no era ninguno de los tres, el texto sale
+      raro pero el script corre y los errores de JSON salen con su mensaje.
+
+    El orden importa: los tres primeros son estrictos y solo aceptan lo suyo,
+    asi que un archivo UTF-8 valido siempre lo decodifica `utf-8-sig` y el
+    resultado no cambia (verificado sobre las 50 consultas oficiales).
 
     Los errores salen como mensaje, no como traceback: quien reciba solo esta
     carpeta necesita saber QUE arreglar, y un volcado de pila parece un script
@@ -1361,34 +1503,41 @@ def load_consultas(path: Path) -> list[dict]:
     if not path.is_file():
         raise SystemExit(f"error: no existe el archivo de consultas: {path}")
 
+    crudo = path.read_bytes()
+    for codec in ("utf-8-sig", "cp1252", "latin-1"):
+        try:
+            texto = crudo.decode(codec)
+            break
+        except UnicodeDecodeError:
+            continue
+
     consultas = []
-    with path.open(encoding="utf-8-sig") as f:
-        for line_number, line in enumerate(f, start=1):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError as exc:
-                raise SystemExit(
-                    f"error: {path}:{line_number} no es JSON valido ({exc.msg}).\n"
-                    f"  Se espera JSON Lines: un objeto por linea, sin comas entre lineas.\n"
-                    f"  Linea: {line[:120]}"
-                ) from exc
-            if not isinstance(obj, dict):
-                raise SystemExit(
-                    f"error: {path}:{line_number}: se esperaba un objeto JSON, "
-                    f"no {type(obj).__name__}"
-                )
-            query_id = obj.get("query_id") or obj.get("id")
-            text = obj.get("text") or obj.get("query") or obj.get("consulta")
-            if query_id is None or text is None:
-                raise SystemExit(
-                    f"error: {path}:{line_number}: se esperaban los campos "
-                    f"'query_id'/'id' y 'text'/'query'/'consulta'; campos "
-                    f"encontrados: {sorted(obj)}"
-                )
-            consultas.append({"query_id": str(query_id), "text": str(text)})
+    for line_number, line in enumerate(texto.splitlines(), start=1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(
+                f"error: {path}:{line_number} no es JSON valido ({exc.msg}).\n"
+                f"  Se espera JSON Lines: un objeto por linea, sin comas entre lineas.\n"
+                f"  Linea: {line[:120]}"
+            ) from exc
+        if not isinstance(obj, dict):
+            raise SystemExit(
+                f"error: {path}:{line_number}: se esperaba un objeto JSON, "
+                f"no {type(obj).__name__}"
+            )
+        query_id = obj.get("query_id") or obj.get("id")
+        text = obj.get("text") or obj.get("query") or obj.get("consulta")
+        if query_id is None or text is None:
+            raise SystemExit(
+                f"error: {path}:{line_number}: se esperaban los campos "
+                f"'query_id'/'id' y 'text'/'query'/'consulta'; campos "
+                f"encontrados: {sorted(obj)}"
+            )
+        consultas.append({"query_id": str(query_id), "text": str(text)})
 
     if not consultas:
         raise SystemExit(
@@ -1410,7 +1559,7 @@ def build_result_object(
     # default distinto la GUI muestra documentos que no son los de
     # resultados.jsonl. Ya paso una vez (cuando el default era "max"). El CLI
     # siempre la pasa explicita, por eso el desfase no se ve en la entrega.
-    agg_strategy: str = "top5",
+    agg_strategy: str = "top6",
     alinear_fragmentos: bool = True,
     priorizar_idioma: bool = True,
     cupo_alineado: int = N_FRAGMENTS_PER_QUERY,
@@ -1418,7 +1567,32 @@ def build_result_object(
     # no se pudo validar contra el indice cuando se escribio. Ver
     # `aplicar_prior_recencia`.
     prior_recencia: float = 0.0,
+    # E23: texto de la consulta YA EXPANDIDA por el glosario. Es opcional a
+    # proposito -- sin el, el criterio de cobertura queda inerte y los
+    # barridos historicos siguen midiendo lo que median.
+    texto_consulta: str | None = None,
 ) -> dict:
+    toks_consulta = frozenset(tokens_de(texto_consulta)) if texto_consulta else None
+    # E32: post-filtrado por fenomeno (sec. 8.7), solo cuando el pool es
+    # CLARAMENTE de un fenomeno. El umbral 0.8 no es el argmax de la grilla
+    # -- 0.7 da mejor F1(50) -- sino el unico valor que no dispara el veto
+    # pre-registrado: por debajo de 0.8 las consultas con F1@3 = 0 suben de 11
+    # a 12, y por debajo de 0.6 q025 se queda sin 3 documentos distintos y
+    # ROMPE la sec. 9.2. O sea que se elige por regla, no por numero.
+    #
+    # Medido sobre las 50: F1@3 0.440 -> 0.455 y, lo que importa, en las 10
+    # consultas independientes 0.400 -> 0.433 (NDCG 0.436 -> 0.474). Es el
+    # unico cambio del proyecto, junto con E22/E23, que pasa el criterio en
+    # las NUEVE lecturas, y las 4 consultas que toca son todas de anotacion
+    # humana: la objecion de E31 (que la ganancia venga de las 9 etiquetadas
+    # por agentes) no aplica aqui.
+    #
+    # Lo que hay que decir junto al numero: solo cambia 8 de 150 documentos, y
+    # q027 no queda ARREGLADA sino ESQUIVADA -- a 0.8 el filtro se abstiene de
+    # tocarla. Cuando el filtro actua de verdad (umbrales bajos), el resultado
+    # se cae. Y q019 pierde en TODOS los umbrales porque tiene documentos
+    # relevantes en dos fenomenos a la vez: es imposible de salvar filtrando.
+    hits = filtrar_por_fenomeno_dominante(hits, umbral=UMBRAL_FENOMENO)
     doc_hits = aggregate_documents(hits, top_n=top_docs, strategy=agg_strategy)
     if prior_recencia > 0:
         doc_hits = aplicar_prior_recencia(
@@ -1442,6 +1616,7 @@ def build_result_object(
                 [h for h in hits if h.doc_id in set(top_ids)],
                 doc_ids_prioritarios=top_ids,
                 priorizar_idioma=priorizar_idioma,
+                tokens_consulta=toks_consulta,
             ),
             max_fragments=cupo_alineado,
             max_words=max_words,
@@ -1452,6 +1627,7 @@ def build_result_object(
                 [h for h in hits if h.chunk_id not in vistos],
                 doc_ids_prioritarios=None,
                 priorizar_idioma=priorizar_idioma,
+                tokens_consulta=toks_consulta,
             ),
             max_fragments=max_fragments - len(del_top),
             max_words=max_words,
@@ -1461,7 +1637,10 @@ def build_result_object(
             frag["rank"] = i
     else:
         hits_ordenados = ordenar_para_fragmentos(
-            hits, doc_ids_prioritarios=top_ids, priorizar_idioma=priorizar_idioma
+            hits,
+            doc_ids_prioritarios=top_ids,
+            priorizar_idioma=priorizar_idioma,
+            tokens_consulta=toks_consulta,
         )
         fragments = enforce_word_limit(
             hits_ordenados, max_fragments=max_fragments, max_words=max_words
@@ -1549,8 +1728,16 @@ def main() -> None:
     parser.add_argument(
         "--rerank-weight",
         type=float,
-        default=DEFAULT_RERANK_WEIGHT,
-        help="Autoridad del segundo encoder en la mezcla de scores.",
+        nargs="+",
+        default=list(DEFAULT_RERANK_WEIGHTS),
+        help="Pesos de los re-puntuadores en el mismo orden de --rerank-encoder. "
+        "Un solo valor se aplica a todos.",
+    )
+    parser.add_argument(
+        "--rerank-normalization",
+        choices=["raw", "minmax"],
+        default=DEFAULT_RERANK_NORMALIZATION,
+        help="Calibracion de scores por consulta antes de mezclar encoders.",
     )
     parser.add_argument(
         "--rerank-depth",
@@ -1578,8 +1765,8 @@ def main() -> None:
         # chunks mediocres desplaza al bueno -- medido, con pool 200 `sum` cae
         # a 0,298 de F1@3 mientras `top5` sube a 0,406. `top5` acota ese modo
         # de fallo sin cambiar nada de lo que ya funcionaba.
-        default="top5",
-        choices=["max", "sum", "mean", "top2", "top3", "top5", "top10"],
+        default="top6",
+        choices=["max", "sum", "mean", "top2", "top3", "top4", "top5", "top6", "top10"],
     )
     # Las dos banderas siguientes APAGAN comportamientos activos por defecto.
     # Existen para poder medir cada uno por separado contra la entrega
@@ -1668,7 +1855,14 @@ def main() -> None:
     if args.use_fake_encoder:
         # El encoder falso no tiene un indice secundario real que re-puntuar.
         nombres_rerank = []
-    for nombre_r in nombres_rerank:
+    pesos_rerank = list(args.rerank_weight)
+    if not nombres_rerank:
+        pesos_rerank = []
+    if len(pesos_rerank) == 1 and nombres_rerank:
+        pesos_rerank *= len(nombres_rerank)
+    if len(pesos_rerank) != len(nombres_rerank):
+        parser.error("--rerank-weight requiere uno o tantos valores como --rerank-encoder")
+    for nombre_r, peso_r in zip(nombres_rerank, pesos_rerank):
         try:
             enc_r = get_encoder(name=nombre_r, use_fake=args.use_fake_encoder)
         except Exception as exc:  # noqa: BLE001
@@ -1704,13 +1898,13 @@ def main() -> None:
             verificar_alineacion(metadata, meta_r)
         except ValueError as exc:
             parser.exit(2, f"error: {exc}\n")
-        reranks.append((enc_r, idx_r))
+        reranks.append((enc_r, idx_r, peso_r))
         logger.info(
             "cascada: %s re-puntua los %d candidatos de %s (peso %.2f)",
             enc_r.name,
             args.rerank_depth,
             encoders_indices[0][0].name,
-            args.rerank_weight,
+            peso_r,
         )
 
     # Los indices deben compartir exactamente los mismos chunks: RRF fusiona
@@ -1773,18 +1967,20 @@ def main() -> None:
             for enc, idx, meta in encoders_indices
         ]
 
-        # Cada re-puntuador suma su similitud sobre la MISMA lista, uno tras
-        # otro. El recorte a rerank_depth se hace una sola vez, antes del
-        # primero: repetirlo por cada re-puntuador iria descartando candidatos
-        # entre pasadas y el resultado dependeria del orden de los encoders.
+        # Los tres espacios se calibran sobre el MISMO pool antes de sumar.
+        # Compartir el rango teorico del coseno no implica compartir dispersion.
         if reranks:
             ranked_lists = [lista[: args.rerank_depth] for lista in ranked_lists]
-            for enc_r, idx_r in reranks:
-                qv = enc_r.encode_query(texto_busqueda)
-                ranked_lists = [
-                    rerank_por_segundo_encoder(lista, idx_r, qv, peso=args.rerank_weight)
-                    for lista in ranked_lists
-                ]
+            secundarios = [
+                (idx_r, enc_r.encode_query(texto_busqueda), peso_r)
+                for enc_r, idx_r, peso_r in reranks
+            ]
+            ranked_lists = [
+                rerank_por_encoders_calibrados(
+                    lista, secundarios, normalizacion=args.rerank_normalization
+                )
+                for lista in ranked_lists
+            ]
 
         # El grafo entra como una lista mas a fusionar (sec. 8.5: "RRF
         # tratando el grafo como un indice adicional").
@@ -1818,6 +2014,7 @@ def main() -> None:
                 alinear_fragmentos=not args.sin_alinear_fragmentos,
                 priorizar_idioma=not args.sin_priorizar_idioma,
                 cupo_alineado=args.cupo_alineado,
+                texto_consulta=texto_busqueda,
                 # Solo donde la consulta pide material reciente. Aplicarlo a
                 # todas castigaria documentos viejos que son la respuesta
                 # correcta -- un tratado de 1967 sigue siendo el tratado.

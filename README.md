@@ -6,11 +6,16 @@ encoders** y grafo de conocimiento bonus) y generación de `resultados.jsonl`
 a partir de consultas en lenguaje natural. Especificación completa en
 `Material de apoyo/CODEFEST_2026-1.pdf`.
 
-**Cómo recupera:** MiniLM trae 200 candidatos y los re-puntúan
-`gte-multilingual-base` y `multilingual-e5-base`; los 10 fragmentos se
-ordenan hacia los 3 documentos entregados. F1@3 **0,386** y NDCG@10
-**0,406** sobre las 41 consultas anotadas a mano. El detalle de por qué cada
-encoder está donde está: `dev/docs/arquitectura_encoders.md`.
+**Cómo recupera:** la consulta se expande con un glosario bilingüe ES→EN,
+MiniLM trae 200 candidatos y los re-puntúan `gte-multilingual-base` y
+`multilingual-e5-base`; sus cosenos se calibran min-max por consulta y se
+combinan con pesos 0,50 y 1,00. El pool se agrega a documento con `top6`
+sobre `k_pool=200` y se post-filtra por fenómeno dominante
+(umbral 0,8); los 10 fragmentos se ordenan hacia los 3 documentos
+entregados. F1@3 **0,499**, NDCG@10 **0,558** y NDCG penalizado **0,539**
+sobre las 50 consultas. El
+detalle de por qué cada encoder está donde está:
+`dev/docs/arquitectura_encoders.md`.
 
 > Sin modelos generativos en ningún punto del pipeline (prohibido por la
 > sec. 8.3 de la especificación). Todo el sistema es recuperación pura sobre
@@ -35,7 +40,7 @@ encoder está donde está: `dev/docs/arquitectura_encoders.md`.
 
 | verificación | estado |
 |---|---|
-| `pytest dev/tests` | 94 passed |
+| `pytest dev/tests` | 159 passed, 1 skipped |
 | `python dev/scripts/validar_entrega.py` | en verde |
 | `python dev/scripts/pruebas_robustez.py` | todas pasan |
 | **corrida en frío** desde fuera del repo | **reproduce byte a byte** |
@@ -43,12 +48,23 @@ encoder está donde está: `dev/docs/arquitectura_encoders.md`.
 
 ### Métricas
 
-| métrica | valor | sobre qué |
-|---|---|---|
-| **F1@3** | **0,386** | 41 consultas anotadas a mano |
-| **F1@3** | 0,333 | 10 consultas sin sesgo de pooling ← *el número honesto* |
-| **NDCG@10** | **0,406** | 41 anotadas; aproximado |
-| **NDCG@10** | 0,360 | 10 sin sesgo de pooling |
+Última medición local reproducida el **12 de agosto de 2026** con
+`Entrega/resultados.jsonl` y `dev/scripts/eval_mini.py`:
+
+| muestra | F1@3 | NDCG@10 | NDCG penalizado |
+|---|---:|---:|---:|
+| **50 consultas** | **0,499** | **0,558** | **0,539** |
+| 41 de anotación humana | 0,518 | 0,573 | 0,554 |
+| 10 sin sesgo de pooling | 0,433 | 0,477 | 0,470 |
+
+El F1@3 global equivale al **55% del techo alcanzable de 0,906**. Hay
+**8 de 50 consultas con F1@3 igual a cero**, frente a 11 en la configuración
+anterior. Estas métricas se calculan contra el ground truth local y no son una
+calificación oficial de ADL.
+
+**El techo del F1@3 es 0,906 y no 1**: la sec. 10.2.2 fija P@3 = aciertos/3 con
+los tres cupos siempre llenos, así que una consulta con un solo documento
+relevante topa en 0,50. Citar siempre el 0,499 con el techo al lado.
 
 **Cómo leer esto, sin autoengaños:**
 
@@ -70,13 +86,24 @@ encoder está donde está: `dev/docs/arquitectura_encoders.md`.
 
 Están todas medidas, con sus números, en la sección "Medido y descartado" de
 `CLAUDE.md`. Las principales: híbrido BM25 + denso (pierde 15-4), fusión RRF
-simétrica de encoders (0,268 vs 0,306), invertir la cascada (0,250), filtrar
-el pool por fenómeno, deduplicar documentos, concatenar chunks vecinos,
-cribar el ground truth con anotadores-agente (F1 0,23 contra el humano).
+simétrica de encoders (0,268 vs 0,306), invertir la cascada (0,250),
+deduplicar documentos, concatenar chunks vecinos, fusionar el grafo en la
+recuperación (pierde 11-0), re-chunkear a 128 tokens (0,294 vs 0,375),
+`bge-m3` como cuarto encoder, y cribar el ground truth con anotadores-agente
+(F1 0,23 contra el humano).
 
-**Lo único que queda abierto es la construcción del pool.** El fallo
-documentado es entre idiomas: consulta en español, documento en inglés
-(NBQR/CBRN, "reabastecimiento en órbita"/*on-orbit servicing*).
+**Ejes cerrados por medición, no reabrir sin datos nuevos:** otro encoder
+(E04, E25, E31), reordenar lo que el pool ya trajo (E27–E29), el ancho del
+pool y `topM` (E33, E37), el glosario (E35, ya está completo) y la decisión
+de fenómeno (E36).
+
+**Último cambio adoptado: E39.** Calibra por consulta los cosenos de los tres
+encoders, pondera GTE con 0,50 y E5 con 1,00, amplía el reranking a 200
+candidatos y agrega hasta seis chunks por documento. Frente a la configuración
+anterior mejora F1@3 en +0,045, NDCG@10 en +0,042 y NDCG penalizado en +0,040.
+El chunking de producción se conserva en 280 tokens con solape de 1: la prueba
+de 128 tokens perdió claramente y las alternativas de E38 no superaron la
+puerta de evaluación en esta máquina.
 
 ### Documentación
 
@@ -84,6 +111,7 @@ documentado es entre idiomas: consulta en español, documento en inglés
 |---|---|
 | `dev/docs/PLAN_MAESTRO.md` | **empezar por acá**: estado, todo lo probado, lo que queda |
 | `dev/docs/arquitectura_encoders.md` | cómo funcionan los tres encoders y por qué |
+| `dev/experimentos/E39_calibracion_faiss.md` | configuración actual y comparación pareada de métricas |
 | `dev/docs/lecciones_metodologia.md` | **cómo se decide si un cambio sirve** — leer antes de proponer mejoras |
 | `dev/docs/PROYECTO_EXPLICADO.md` | mapa módulo por módulo |
 | `dev/docs/Explicacion_reto_final.md` | Q&A con ADL y reglas |
@@ -325,7 +353,7 @@ normal a internet (PyPI); no funciona en entornos con proxy restringido.
 pytest dev/tests -v
 ```
 
-Debería dar **`81 passed`**. Estos tests usan un encoder falso y determinista
+Debería dar **`155 passed`**. Estos tests usan un encoder falso y determinista
 (`HashingFakeEncoder`) solo para validar la mecánica del pipeline sin
 depender de red ni de calidad semántica real — es normal y esperado que
 corran sin conexión.
@@ -398,9 +426,10 @@ que sirve en CI.
 ### Medir la calidad de recuperación
 
 ADL no publica su ground truth, así que para no elegir configuraciones a ojo
-hay uno propio en `dev/eval/` que cubre las 50 consultas (41 anotadas, 9
-revisadas sin ningún candidato relevante). Su `README.md` explica las
-limitaciones, que conviene leer antes de creerle a los números.
+hay uno propio en `dev/eval/` que cubre las 50 consultas: **41 anotadas a
+mano y 9 por un panel de anotadores-agente** (marcadas con
+`anotador: "panel-agentes"`, no equivalentes a las humanas). Su `README.md`
+explica las limitaciones, que conviene leer antes de creerle a los números.
 
 ```bash
 # F1@3 sobre el ground truth propio
@@ -455,10 +484,13 @@ correr `generador.py` sin flags reproduce `resultados.jsonl`.
 
 ```
 consulta
+   ├─ glosario bilingüe ES→EN ──────► consulta expandida
    ├─ MiniLM la vectoriza ──► FAISS ──► 200 candidatos      [RECALL]
-   ├─ gte re-puntúa  ────────────────┤ +0,25 × similitud    [PRECISIÓN]
-   ├─ e5 re-puntúa   ────────────────┤ +0,25 × similitud    [PRECISIÓN]
-   ├─ agregar a documento ───────────► 3 documentos
+   ├─ calibración min-max por encoder y consulta
+   ├─ gte re-puntúa  ────────────────┤ +0,50 × señal        [PRECISIÓN]
+   ├─ e5 re-puntúa   ────────────────┤ +1,00 × señal        [PRECISIÓN]
+   ├─ recorte a k_pool=200 ──────────► agregación top6
+   ├─ post-filtro por fenómeno ──────► 3 documentos
    └─ fragmentos hacia esos 3 docs ──► 10 fragmentos ≤250 palabras
 ```
 
@@ -512,9 +544,20 @@ encontró es otro trabajo.
 | fusión RRF simétrica | 0,167 | 0,268 | pierde 1-5 y 8-13 |
 | **cascada 0,25 @ 200** | **0,300** | **0,352** | **gana 5-0** |
 
-El peso 0,25 **no** es el que maximiza el promedio (0,5 y 1,0 dan más sobre
-las 41), pero es el único que **no empeora ninguna consulta de ninguna de las
-dos muestras**. Reproducible con `dev/scripts/barrido_dos_encoders.py`.
+(Esa tabla es la medición **histórica** que eligió la cascada, con un solo
+re-puntuador y peso 0,25.)
+
+**E39 reemplaza el peso único 0,60.** El 0,25 se había fijado con `k_pool=60`,
+agregación `sum` y sin glosario — las tres cosas cambiaron después. La grilla
+0,10/0,25/0,40/0,60/0,75/0,90 (`dev/scripts/barrido_peso.py`) muestra una
+**meseta, no una tendencia**, y 0,60 es el único valor que pasa el criterio de
+adopción histórico bajo suma cruda. E39 midió que los rangos medianos de los
+cosenos eran 0,120 (MiniLM), 0,276 (GTE) y 0,103 (E5): el mismo peso daba a
+GTE mucha más autoridad efectiva. La configuración actual calibra cada señal
+a [0,1] dentro del pool y usa 0,50 para GTE y 1,00 para E5. El detalle y los
+controles están en `dev/experimentos/E39_calibracion_faiss.md`.
+Reproducible con `dev/scripts/barrido_dos_encoders.py` y
+`dev/scripts/barrido_thomas.py`.
 
 **Detalle importante:** el chunking se hace **una sola vez** (con el tokenizer
 del primer encoder) y esos mismos fragmentos se indexan con todos. Si cada
@@ -561,10 +604,11 @@ python Entrega/generador.py --consultas dev/consultas_prueba/consultas_prueba.js
 ## 5. Interfaz gráfica (GUI)
 
 Alternativa a los comandos de arriba para quien prefiera no usar la
-terminal. Es una capa opcional sobre el mismo pipeline: llama exactamente a
-las mismas funciones de `dev/src/` que usan `dev/scripts/build_corpus_index.py` y
-`Entrega/generador.py` (ver `dev/src/gui/runner.py`) — los comandos de CLI
-documentados arriba siguen funcionando igual, uno no reemplaza al otro.
+terminal. Es una capa opcional sobre el mismo pipeline E39: llama a las
+funciones de `dev/src/` equivalentes a `Entrega/generador.py` (ver
+`dev/src/gui/runner.py`). Arranca **sin fusionar el grafo**, igual que
+`Entrega/resultados.jsonl`: el grafo se conserva como artefacto bonus, pero su
+fusión RRF se midió y empeora la recuperación.
 
 Requiere el venv activado (secciones 3.2–3.3). Sin dependencias nuevas: usa
 `tkinter`, que viene incluido con la instalación estándar de Python en
@@ -587,8 +631,8 @@ Es una interfaz tipo chat, no un panel de botones con ventanas emergentes:
 escribes cualquier consulta y el sistema responde con los 3 documentos + 10
 fragmentos más relevantes, formateados como una burbuja de respuesta. No hay
 ningún modelo generativo detrás (prohibido por la sec. 8.3): lo que
-"responde" es la recuperación vectorial + FAISS + grafo de siempre, solo que
-presentada de forma legible.
+"responde" es la recuperación vectorial con los tres encoders y FAISS, solo
+que presentada de forma legible.
 
 Al abrir la ventana, carga el índice y el encoder una sola vez en segundo
 plano (la caja de texto queda deshabilitada mientras tanto) y después cada
@@ -597,8 +641,9 @@ consulta que escribas es casi instantánea, porque ya no recarga el modelo.
 La ventana está dividida en dos partes:
 
 - **Chat (izquierda)**: caja de texto + botones "Enviar" y "Correr las 50
-  consultas de prueba" (usa `dev/consultas_prueba/consultas_50.jsonl`, cada una
-  aparece en el chat como si fuera una conversación). Cada respuesta muestra
+  consultas de prueba" (usa
+  `dev/consultas_prueba/consultas_50_oficiales.jsonl`; cada una aparece en el
+  chat como si fuera una conversación). Cada respuesta muestra
   cuántos tokens procesó el encoder para esa consulta y cuánto tardó (no es
   costo de API/LLM — es el conteo de tokens de entrada del encoder,
   `Encoder.count_tokens()` en `dev/src/embedding/encoders.py`).
@@ -606,6 +651,12 @@ La ventana está dividida en dos partes:
   hay que abrir), que muestra en vivo qué está pasando: carga del modelo,
   cada consulta respondida, y el progreso documento por documento cuando se
   reconstruye el índice.
+
+El panel de métricas muestra primero el promedio **total** sobre las consultas
+procesadas y luego los desgloses `humano` (41) y `agente` (9). Al terminar las
+50 oficiales con E39 debe reproducir aproximadamente **F1@3 0,499** y
+**NDCG@10 0,558**. Son métricas contra el ground truth local, no la nota de
+ADL.
 
 Arriba también hay un botón **"Reconstruir índice (offline)"** (recorre el
 corpus, reconstruye `index.faiss`/`metadata.jsonl`/el grafo, y recarga la
@@ -653,18 +704,14 @@ embedding, retrieval, graph, ingestion), y la lógica central de
 `dev/corpus/` (o apuntar `--corpus-dir` a otra carpeta) y volver a
 correr `dev/scripts/build_corpus_index.py`.
 
-### Limitación de red de este entorno de desarrollo
+### Herencia del entorno de desarrollo inicial
 
-El proxy de salida de este sandbox bloqueaba (403) tanto los dominios de las
-fuentes documentales reales (sipri.org, esa.int, cepal.org, etc.) como
-`huggingface.co`. Esto significó que:
-
-1. No se pudo descargar un corpus real → se generó uno sintético (ver
-   arriba).
-2. No se pudieron descargar los pesos del encoder real ni el modelo de NER
-   de HuggingFace originalmente considerado para el grafo.
-
-Mitigación:
+Al comienzo del proyecto el proxy de salida bloqueaba (403) tanto los
+dominios documentales (sipri.org, esa.int, cepal.org…) como
+`huggingface.co`. **Eso ya no aplica** —el corpus real y los tres encoders
+están descargados y los índices de `Entrega/` se generaron con encoders
+reales—, pero dejó dos decisiones de diseño que siguen vigentes y conviene
+conocer:
 
 - El encoder está detrás de una interfaz intercambiable
   (`dev/src/embedding/encoders.py`): `SentenceTransformerEncoder` (real,
@@ -777,6 +824,12 @@ dev/                        todo el desarrollo (NO se entrega)
     victorias_ndcg.py         cuenta victorias por consulta en NDCG@10 entre dos resultados
     estado_corrida.ps1        informe de una corrida larga: cuanto lleva, cuanto falta, recursos
     compare_encoders.py       diagnostico: cuanto difieren dos encoders entre si
+    eval_mini.py              F1@3 + NDCG@10 (binario y penalizado) contra el ground truth propio
+    volcar_pools.py           congela los pools entregados: experimentos de orden sin FAISS
+    reparar_guiones.py        arregla el guion de fin de linea (U+FFFE) sin re-extraer
+    rechunkear_e38.py         re-empaqueta chunks a otro presupuesto, con puerta de conservacion
+    correr_e38.py             corre la rejilla de chunking en serie, reanudable
+    barrido_*.py              un experimento medido por archivo (E01-E38, ver CLAUDE.md)
     gen_informe_tecnico.py    genera Entrega/informe_tecnico.pdf
     gui_app.py                lanza la interfaz grafica (Tkinter)
   tests/                    pytest (corren con HashingFakeEncoder, sin red)

@@ -6,7 +6,14 @@ sesión que lo montó. Mismo rol que `handoff_gte.md`.
 
 ## Acceso
 
+**Hace falta estar en la VPN de la Javeriana (ARPUJ) antes de cualquier SSH.**
+La IP es interna: sin la VPN, `ssh` no falla con un error claro sino con
+`Connection timed out`, que se parece a "la VM está apagada" y hace perder el
+tiempo buscando el problema donde no está.
+
 ```bash
+# 1. conectarse a la VPN ARPUJ de la Javeriana
+# 2. recien ahi:
 ssh estudiante@10.43.97.37          # llave publica ya instalada, sin password
 cd ~/CODEFEST_2026-1
 ```
@@ -80,6 +87,13 @@ cd ~/CODEFEST_2026-1
 Tiene que dar **136 passed** y **F1@3 0.402 / NDCG@10 0.457**. Verificado el
 6 ago 2026. Si esos números no salen, el entorno remoto dejó de ser equivalente
 al local y **ninguna medición hecha acá es comparable** con lo de `CLAUDE.md`.
+
+## SUSPENDIDO: no correr agentes en la VM (8 ago 2026)
+
+Decisión del usuario. La VM sigue siendo válida como banco de cómputo para
+correr scripts a mano, pero **no se despliegan sesiones de Claude ahí**. Todo
+lo de abajo describe cómo estuvo montado el loop remoto y se conserva como
+referencia histórica, no como instrucción vigente.
 
 ## Cómo se trabaja acá
 

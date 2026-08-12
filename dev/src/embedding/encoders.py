@@ -14,6 +14,8 @@ import numpy as np
 from ..config import (
     E5_PASSAGE_PREFIX,
     E5_QUERY_PREFIX,
+    ENCODER_BGE_M3_HF_ID,
+    ENCODER_BGE_M3_NAME,
     ENCODER_E5_LARGE_HF_ID,
     ENCODER_E5_LARGE_NAME,
     ENCODER_E5_SMALL_HF_ID,
@@ -43,6 +45,10 @@ class Encoder(ABC):
         src/chunking/chunker.py para que el presupuesto de tokens del
         chunking sea exacto respecto al limite de entrada del modelo
         (sec. 4.3), no una aproximacion por palabras."""
+
+    def count_tokens_many(self, texts: list[str]) -> list[int]:
+        """Cuenta un lote; el fallback conserva compatibilidad de encoders."""
+        return [self.count_tokens(text) for text in texts]
 
     def encode_one(self, text: str) -> np.ndarray:
         return self.encode([text])[0]
@@ -193,6 +199,17 @@ class SentenceTransformerEncoder(Encoder):
         tokens = self._model.tokenizer(text, add_special_tokens=False)
         return len(tokens["input_ids"])
 
+    def count_tokens_many(self, texts: list[str]) -> list[int]:
+        if not texts:
+            return []
+        tokens = self._model.tokenizer(
+            texts,
+            add_special_tokens=False,
+            padding=False,
+            truncation=False,
+        )
+        return [len(ids) for ids in tokens["input_ids"]]
+
 
 class HashingFakeEncoder(Encoder):
     """Encoder determinista por hashing, SIN modelo de lenguaje real.
@@ -227,6 +244,9 @@ class HashingFakeEncoder(Encoder):
 
     def count_tokens(self, text: str) -> int:
         return len(text.split())
+
+    def count_tokens_many(self, texts: list[str]) -> list[int]:
+        return [len(text.split()) for text in texts]
 
 
 # Encoders conocidos: nombre corto (el que se usa en la carpeta de entrega
@@ -264,6 +284,16 @@ KNOWN_ENCODERS: dict[str, dict] = {
         "hf_id": ENCODER_E5_LARGE_HF_ID,
         "query_prefix": E5_QUERY_PREFIX,
         "passage_prefix": E5_PASSAGE_PREFIX,
+    },
+    # E25: sin prefijos (el model card lo dice explicitamente). Se recorta a
+    # 512 aunque la ventana sea de 8192: el p99 de los chunks es 466 tokens,
+    # asi que 8192 solo gastaria memoria de una GPU de 4 GB sin leer un token
+    # mas de texto real. Mismo criterio que se aplico a GTE.
+    ENCODER_BGE_M3_NAME: {
+        "hf_id": ENCODER_BGE_M3_HF_ID,
+        "query_prefix": "",
+        "passage_prefix": "",
+        "max_seq_length": 512,
     },
 }
 
