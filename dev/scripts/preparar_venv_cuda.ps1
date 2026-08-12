@@ -1,5 +1,5 @@
 # Crea un entorno APARTE con torch+CUDA para medir si la GPU vuelve factible
-# un encoder grande (gte tarda 97 h en esta CPU, ver las notas del proyecto).
+# un encoder grande (gte tarda 97 h en esta CPU, ver dev/docs/PLAN_MAESTRO.md).
 #
 # Deliberadamente NO toca .venv: ese entorno produce hoy una entrega valida y
 # reproducible byte a byte, y reinstalar torch encima puede romperlo. El

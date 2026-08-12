@@ -80,7 +80,7 @@ def generar(args: argparse.Namespace) -> None:
     if args.solo:
         # Nombrar una consulta explicitamente con --solo la genera AUNQUE ya
         # este anotada: es la unica forma de rehacer a mano las 9 que quedaron
-        # con etiquetas del panel de agentes (F1 0.23 contra el humano). Al
+        # con etiquetas del la anotacion asistida (F1 0.23 contra el humano). Al
         # recolectar, el registro se reemplaza entero, asi que el campo
         # `anotador` desaparece solo y eval_mini deja de contarlas como
         # debiles.
@@ -150,7 +150,7 @@ def generar(args: argparse.Namespace) -> None:
         if bm25 is not None:
             # Union por DOCUMENTO, sin fusionar scores: aca no hay que rankear,
             # hay que no perder candidatos. Mezclar un coseno (~0.4) con un
-            # BM25 (~20) es el error documentado en las notas del proyecto -- la magnitud
+            # BM25 (~20) es el error documentado en dev/docs/PLAN_MAESTRO.md -- la magnitud
             # de BM25 decidiria toda la lista.
             ya = {d.doc_id for d in docs}
             lexicos = bm25.search(texto_lexico, k=K_POOL)

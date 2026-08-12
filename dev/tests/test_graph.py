@@ -50,6 +50,51 @@ def test_graph_search_returns_empty_when_no_entities_match():
     assert hits == []
 
 
+# -- desempatar_con_grafo: integracion no-desplazante (sec. 8.5) -------------
+
+
+def _hit(chunk_id, score):
+    from src.retrieval.search import Hit
+
+    return Hit(rank=1, score=score, chunk_id=chunk_id, doc_id=chunk_id.split("-c")[0],
+               fuente="f.pdf", texto="x", formato="pdf", fenomeno=1, idioma="es")
+
+
+def test_desempate_no_desplaza_quienes_no_estan_empatados():
+    """El grafo solo puede reordenar empates exactos de score: con scores
+    distintos el orden queda intacto aunque la evidencia favorezca a otro."""
+    from src.graph.graph_retrieval import GraphHit, desempatar_con_grafo
+
+    hits = [_hit("d1-c0", 0.9), _hit("d2-c0", 0.8), _hit("d3-c0", 0.7)]
+    graph_hits = [GraphHit(rank=1, score=3.0, chunk_id="d3-c0", doc_id="d3")]
+    ordenado = desempatar_con_grafo(hits, graph_hits)
+    assert [h.chunk_id for h in ordenado] == ["d1-c0", "d2-c0", "d3-c0"]
+
+
+def test_desempate_rompe_empates_exactos_por_evidencia():
+    from src.graph.graph_retrieval import GraphHit, desempatar_con_grafo
+
+    hits = [_hit("d1-c0", 0.5), _hit("d2-c0", 0.5), _hit("d3-c0", 0.5)]
+    graph_hits = [
+        GraphHit(rank=1, score=5.0, chunk_id="d2-c0", doc_id="d2"),
+        GraphHit(rank=2, score=2.0, chunk_id="d1-c0", doc_id="d1"),
+    ]
+    ordenado = desempatar_con_grafo(hits, graph_hits)
+    assert [h.chunk_id for h in ordenado] == ["d2-c0", "d1-c0", "d3-c0"]
+
+
+def test_desempate_sin_evidencia_es_inerte_y_estable():
+    """El grafo no puede desplazar a nadie: sin evidencia (o con evidencia
+    cero) el orden de entrada se conserva porque `sorted` es estable."""
+    from src.graph.graph_retrieval import GraphHit, desempatar_con_grafo
+
+    hits = [_hit("d1-c0", 0.5), _hit("d2-c0", 0.5)]
+    assert [h.chunk_id for h in desempatar_con_grafo(hits, [])] == ["d1-c0", "d2-c0"]
+
+    graph_hits = [GraphHit(rank=1, score=0.0, chunk_id="d2-c0", doc_id="d2")]
+    assert [h.chunk_id for h in desempatar_con_grafo(hits, graph_hits)] == ["d1-c0", "d2-c0"]
+
+
 def test_graph_ignora_formatos_sin_narrativa():
     """NER sobre una fila de CSV o los atributos de una tesela produce basura:
     en el corpus real las entidades mas frecuentes eran FALSO, VERDADEIRO y el

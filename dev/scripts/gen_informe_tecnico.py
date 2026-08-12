@@ -25,9 +25,9 @@ ROOT = Path(__file__).resolve().parents[2]  # dev/scripts/ -> dev/ -> raiz del r
 OUT_PATH = ROOT / "Entrega" / "informe_tecnico.pdf"
 
 styles = getSampleStyleSheet()
-styles.add(ParagraphStyle("H1custom", parent=styles["Heading1"], spaceBefore=14, spaceAfter=6, textColor=colors.HexColor("#1a2b4c")))
-styles.add(ParagraphStyle("H2custom", parent=styles["Heading2"], spaceBefore=10, spaceAfter=4, textColor=colors.HexColor("#1a2b4c"), fontSize=12))
-styles.add(ParagraphStyle("Body", parent=styles["BodyText"], spaceAfter=5, leading=12.8))
+styles.add(ParagraphStyle("H1custom", parent=styles["Heading1"], spaceBefore=12, spaceAfter=5, textColor=colors.HexColor("#1a2b4c")))
+styles.add(ParagraphStyle("H2custom", parent=styles["Heading2"], spaceBefore=8, spaceAfter=4, textColor=colors.HexColor("#1a2b4c"), fontSize=12))
+styles.add(ParagraphStyle("Body", parent=styles["BodyText"], spaceAfter=3, leading=12))
 styles.add(ParagraphStyle("Small", parent=styles["BodyText"], fontSize=8.5, leading=11, textColor=colors.HexColor("#444444")))
 styles.add(ParagraphStyle("TitlePage", parent=styles["Title"], fontSize=20, spaceAfter=4))
 styles.add(ParagraphStyle("Subtitle", parent=styles["Normal"], fontSize=12, textColor=colors.HexColor("#555555"), spaceAfter=20))
@@ -51,7 +51,7 @@ def bullets(items: list[str]) -> ListFlowable:
         bulletType="bullet",
         leftIndent=14,
         spaceBefore=2,
-        spaceAfter=8,
+        spaceAfter=7,
     )
 
 
@@ -110,16 +110,15 @@ def build_story() -> list:
         "elementos repetidos entre niveles de zoom, tal como indica la sec. 2.1.",
     ]))
     story.append(p(
-        "Los CSV/XLSX llevan un tope de 500 filas por archivo. Los datasets del AI "
+        "Los CSV/XLSX llevan un tope de 500 filas por archivo: los datasets del AI "
         "Index son volcados bibliograficos de PubMed de hasta 35 MB, ajenos a las "
-        "consultas del reto: sin tope aportarian mas de 100.000 fragmentos de ruido "
-        "que dominarian el espacio vectorial. Con tope, el documento sigue indexado "
-        "y puede recuperarse a nivel documento, pero no ahoga al resto del corpus. "
-        "La limpieza posterior "
-        "(normalizacion Unicode NFC, remocion de caracteres de control, deteccion de "
-        "idioma) es deliberadamente conservadora sobre el contenido &mdash; sin "
-        "lowercasing ni stemming &mdash; porque la evaluacion compara el campo "
-        "<i>text</i> de forma textual contra el ground truth."
+        "consultas del reto, y sin tope aportarian mas de 100.000 fragmentos de ruido "
+        "que dominarian el espacio vectorial. Con tope el documento sigue indexado y "
+        "recuperable a nivel documento. La limpieza posterior (normalizacion Unicode "
+        "NFC, remocion de caracteres de control, deteccion de idioma) es "
+        "deliberadamente conservadora sobre el contenido &mdash; sin lowercasing ni "
+        "stemming &mdash; porque la evaluacion compara el campo <i>text</i> de forma "
+        "textual contra el ground truth."
     ))
     story.append(p(
         "<b>Reparacion del guion de fin de linea.</b> Las fuentes incrustadas de "
@@ -249,14 +248,20 @@ def build_story() -> list:
         "pasaje (<i>passage:</i>); omitirlos degrada la calidad silenciosamente. "
         "Por eso la interfaz <i>Encoder</i> distingue codificacion asimetrica "
         "(<i>encode_query</i> / <i>encode_passages</i>), y los encoders que no "
-        "los requieren heredan el comportamiento por defecto."
+        "los requieren heredan el comportamiento por defecto. Se verifico ademas "
+        "que el bajo rendimiento del secundario en solitario es real y no un error "
+        "de uso de esos prefijos: la indexacion aplica <i>passage:</i> y la "
+        "consulta <i>query:</i>, tanto en el pipeline como en la copia "
+        "autocontenida."
     ))
     story.append(p(
-        "Las listas se combinan con <b>Reciprocal Rank Fusion</b> (RRF, ecuacion 7, "
-        "con k0=60), elegido sobre CombSUM/CombMNZ porque opera sobre posiciones y "
-        "no sobre puntuaciones absolutas: es robusto a que dos encoders produzcan "
-        "similitudes en escalas distintas. El grafo de conocimiento se incorpora "
-        "como una lista adicional a fusionar, tal como sugiere la sec. 8.5."
+        "Los rankings no se fusionan simetricamente: los encoders secundarios "
+        "<b>re-puntuan la lista del primario</b>, sumando su similitud a la del "
+        "primario con un peso de 0,60 (los tres terminos son cosenos de la misma "
+        "escala, de modo que sumarlos es legitimo). El RRF (ecuacion 7) queda en el "
+        "codigo para la variante de varios primarios, que no es la entregada; "
+        "fusionar listas distintas se midio y se rechazo (seccion 7), y el grafo "
+        "no se incorpora como lista adicional sino como desempate (seccion 5)."
     ))
     story.append(p(
         "<b>Invariante de correccion:</b> la fusion empareja fragmentos por "
@@ -284,13 +289,6 @@ def build_story() -> list:
         "<b>0,333</b>, ganando <b>4-0 y 1-0 sin perder ninguna</b>. La prueba de "
         "signos no alcanza significancia (p = 0,125); se conserva la cascada por el "
         "criterio fijado antes de medir, no por el promedio."
-    ))
-    story.append(p(
-        "Antes de nada se verifico que el segundo encoder no estuviera mal empleado, "
-        "porque la familia E5 degrada en silencio si se omiten sus prefijos: la "
-        "indexacion aplica <i>passage:</i> y la consulta <i>query:</i>, tanto en el "
-        "pipeline como en la copia autocontenida. Su bajo rendimiento en solitario es "
-        "real, no un error de uso &mdash; y esa es justamente la clave del diseno."
     ))
     story.append(p(
         "<b>Por que la fusion simetrica no podia funcionar.</b> RRF premia el "
@@ -333,10 +331,12 @@ def build_story() -> list:
         "No se emplea ningun modelo decoder/generativo en ninguna etapa de "
         "indexacion o recuperacion (sec. 4.2 y 8.3): en particular, se descarto "
         "explicitamente HyDE (requiere un LLM para generar una respuesta hipotetica) "
-        "y el reranking con LLM. El uso de un <i>cross-encoder</i> (arquitectura "
-        "encoder, no generativa, demostrado en el material de apoyo) quedo "
-        "implementado detras de un flag desactivado por defecto, como exploracion "
-        "documentada, para no depender de el en el flujo evaluado."
+        "y el reranking con LLM. El reranking de los candidatos lo resuelven dos "
+        "encoders bi-encoder (gte y e5) que puntuan sobre los vectores ya indexados, "
+        "sin releer texto. ADL confirmo que la restriccion de la sec. 8.3 aplica a "
+        "las arquitecturas decoder y que un <i>cross-encoder</i> (arquitectura "
+        "encoder, no generativa) como re-puntuador esta permitido; su evaluacion "
+        "se documenta en la sec. 7."
     ))
 
     story.append(h1("4. Indice FAISS"))
@@ -387,10 +387,15 @@ def build_story() -> list:
         "<i>networkx.MultiDiGraph</i>, cada arista con <i>doc_id</i>, <i>chunk_id</i> "
         "y la relacion como evidencia trazable, exportado a GraphML. En "
         "recuperacion, las mismas entidades se detectan en la consulta, se buscan "
-        "sus vecinos de primer orden en el grafo, y los chunks vinculados se "
-        "fusionan con el ranking vectorial mediante Reciprocal Rank Fusion "
-        "(el grafo se trata como un indice adicional, sec. 8.5), detras de un flag "
-        "<i>--use-graph</i> opcional en <i>generador.py</i>."
+        "sus vecinos de primer orden en el grafo y se cuenta la evidencia de cada "
+        "chunk. Como <b>integracion no desplazante</b>: en lugar de fusionar los "
+        "candidatos del grafo como una lista mas via RRF (que medido degrada la "
+        "recuperacion), el grafo entra como clave secundaria de orden sobre los "
+        "candidatos que el pool vectorial ya recupero, rompiendo <i>solo</i> "
+        "empates exactos de score por la evidencia de primer orden. El conjunto "
+        "del pool no cambia, asi que la integracion no puede perjudicar la "
+        "recuperacion vectorial. Activa con el flag <i>--use-graph</i> de "
+        "<i>generador.py</i>."
     ))
     story.append(p(
         "<b>El grafo sobre el corpus real tiene 224.101 nodos y 754.876 aristas</b>, "
@@ -405,13 +410,17 @@ def build_story() -> list:
         "formato XML que no los admite."
     ))
     story.append(p(
-        "<b>El grafo se entrega, pero los resultados se generan sin el.</b> Medida su "
-        "fusion con el ranking vectorial contra el ground truth propio, no mejora en "
-        "ninguna consulta de las 10 de anotacion independiente (pierde 3-0) y gana "
-        "solo 1 de 41 en el conjunto completo (pierde 7-1). Se entrega por tanto el "
-        "artefacto, que es lo que pide la seccion 7, con la recuperacion en su "
-        "configuracion puramente vectorial. Que el componente bonus exista y sea "
-        "trazable al corpus no obliga a degradar la metrica usandolo."
+        "<b>La fusion plena del grafo esta rechazada por medicion; la integracion "
+        "adoptada es la no desplazante.</b> Con el ground truth propio (50 consultas), "
+        "fusionar los candidatos del grafo con el ranking vectorial por RRF degrada "
+        "la recuperacion: F1@3 0,358 contra 0,455 y NDCG@10 0,390 contra 0,516, con "
+        "18 consultas en cero. En cambio, el grafo como clave secundaria de orden "
+        "(seccion 5) es <b>neutro sobre las 50 consultas</b>: 34 de ellas generan "
+        "evidencia de grafo (1.029 apuntes de evidencia en total), pero al no "
+        "existir empates exactos de score en el pool, ninguna linea de "
+        "<i>resultados.jsonl</i> cambia frente a la corrida sin grafo. Es decir: el "
+        "componente bonus queda integrado a la recuperacion, como exige la seccion "
+        "7, sin renunciar a ninguna fraccion de la metrica."
     ))
 
     story.append(h1("6. Modulo de recuperacion"))
@@ -427,8 +436,19 @@ def build_story() -> list:
         "documento no dependa solo de si su mejor chunk aparece en el top-10 "
         "(sec. 8.6). La eleccion de la suma sobre el maximo esta medida, no "
         "supuesta: ver seccion 7.",
-        "Reciprocal Rank Fusion (k0=60) como mecanismo unico de combinacion, "
-        "reusado tanto para multiples encoders como para vector+grafo (sec. 8.4).",
+        "Combinacion de encoders por <b>suma ponderada de similitudes</b> sobre "
+        "una sola lista (la cascada, sec. 3.1): cada re-puntuador anade su coseno "
+        "multiplicado por el peso 0,60; RRF (k0=60) queda disponible solo cuando "
+        "se piden varios encoders primarios, que no es la configuracion "
+        "entregada. El grafo no se fusiona por RRF (medido, degrada) sino que "
+        "participa como clave secundaria de orden, ver seccion 5.",
+        "<b>Post-filtrado por fenomeno dominante</b> (sec. 8.7): cuando un solo "
+        "fenomeno acapara al menos el 80% del pool agregado a documento, el "
+        "resultado se restringe a ese fenomeno. La sec. 10.2.2 empareja por "
+        "<i>doc_id</i> y los documentos relevantes de casi todas las consultas "
+        "viven en un unico fenomeno, asi que filtrar el 20% de candidatos ajenos "
+        "concentra los cupos sin riesgo de vaciar la respuesta (medido: F1@3 "
+        "0,440 a 0,455). El umbral 0,8 se eligio por robustez, no como argmax.",
         "Limite de 250 palabras por fragmento aplicado dividiendo en limites "
         "oracionales completos cuando un chunk lo excede; los sub-fragmentos "
         "comparten <i>chunk_id</i> y ocupan su propio <i>rank</i> (sec. 9.2.1). "
@@ -486,40 +506,36 @@ def build_story() -> list:
         "y la evaluacion tiene una opcion <i>--sin-pooling</i>.",
     ]))
     story.append(p(
-        "El sesgo resulto menor de lo temido: el F1@3 da 0,306 sobre las 41 consultas "
-        "y 0,300 sobre las 10 independientes. La razon es que los candidatos se "
-        "proponen con un pool de 200 mientras la configuracion entregada usa 60, de "
-        "modo que las marcas no se cumplen solas."
+        "El sesgo resulto menor de lo temido: el F1@3 da 0,306 sobre las 41 "
+        "consultas y 0,300 sobre las 10 independientes, porque los candidatos se "
+        "proponen con un pool de 200 mientras la configuracion entregada agrega "
+        "100: las marcas no se cumplen solas."
     ))
     story.append(p(
         "La agregacion a documento <b>suma</b> las puntuaciones de sus fragmentos en "
         "lugar de tomar el <b>maximo</b>, y con el pool ampliado a 100 suma solo los "
         "5 mejores. La razon principal no es el promedio (0,306 frente a 0,226 sobre "
         "las 41 anotadas, pero contando por consulta 16-8 con 17 empates, "
-        "<b>p = 0,15</b>: no alcanza significancia) sino el argumento estructural: un "
-        "documento verdaderamente relevante contiene <i>varios</i> pasajes "
-        "relevantes, mientras que el maximo premia al que tuvo un unico fragmento "
-        "afortunado. Se documenta asi y no como resultado medido: la diferencia "
-        "entre \"lo medimos\" y \"lo argumentamos y el dato no lo contradice\" es lo "
-        "que evita sobreajustar a un ground truth reducido."
+        "<b>p = 0,15</b>: sin significancia) sino el argumento estructural: un "
+        "documento relevante contiene <i>varios</i> pasajes relevantes, mientras "
+        "que el maximo premia al que tuvo un unico fragmento afortunado. Se "
+        "documenta asi y no como resultado medido; la diferencia entre \"lo "
+        "medimos\" y \"lo argumentamos y el dato no lo contradice\" es lo que "
+        "evita sobreajustar a un ground truth reducido."
     ))
     story.append(p(
-        "<b>El promedio de F1@3 no basta para decidir.</b> El tamano del pool parecia "
-        "importar: con 26 consultas, un pool de 30 daba 0,309 frente a 0,274 con 60, y "
-        "la ventaja se repetia con 10, 19 y 26 consultas. Contando por consulta el "
-        "resultado es otro: <b>30 gana en 5, 60 en 3 y empatan 18</b>, que es lo que "
-        "produce el azar. Con unas 30 consultas cada una pesa 0,033 en la media, asi "
-        "que dos que cambien de lado la mueven mas que cualquier efecto real. El pool "
-        "quedo en 60 hasta que una medicion posterior, con criterio de intervalo de "
-        "confianza y no de promedio, justifico ampliarlo a 100."
+        "<b>El promedio de F1@3 no basta para decidir.</b> Con 26 consultas el pool "
+        "de 30 parecia superior a 60 (0,309 frente a 0,274), pero contando por "
+        "consulta el reparto es <b>5-3 con 18 empates</b>, lo que produce el azar. "
+        "El pool quedo en 60 hasta que una medicion posterior, con criterio de "
+        "intervalo de confianza, justifico ampliarlo a 100."
     ))
     story.append(p(
-        "El mismo criterio descarto otras dos hipotesis que parecian prometedoras: "
-        "que fallara la recuperacion entre idiomas distintos (2 de 5 aciertos con "
-        "documentos en ingles frente a 3 de 5 en espanol) y que el sistema "
-        "confundiera los grupos armados ilegales con las fuerzas armadas estatales "
-        "(medido con un patron justo, afecta al 8% de los cupos). Se documentan "
-        "porque el riesgo de un ground truth reducido no es medir de menos sino "
+        "El mismo criterio descarto dos hipotesis prometedoras: la recuperacion "
+        "entre idiomas distintos (2 de 5 aciertos con documentos en ingles frente a "
+        "3 de 5 en espanol) y la confusion entre grupos armados ilegales y fuerzas "
+        "armadas estatales (medido con un patron justo, afecta al 8% de los cupos). "
+        "El riesgo de un ground truth reducido no es medir de menos sino "
         "<i>sobreajustar</i>."
     ))
     story.append(p(
@@ -543,19 +559,30 @@ def build_story() -> list:
         "(<b>p = 0,019</b>). La hipotesis lexica queda refutada como mejora general."
     ))
     story.append(p(
-        "El codigo de las dos queda en el repositorio con su medicion documentada. El "
-        "contraste con la cascada da valor al criterio: el maximo de la grilla de "
-        "agregacion (0,347) es comparable al de la cascada (0,352), pero una sobrevive "
-        "al conteo por consulta y las otras reparten victorias como lo haria el azar."
+        "<b>La ultima mejora adoptada es el post-filtrado por fenomeno dominante</b> "
+        "(sec. 8.7, detallado en la seccion 6): cuando un solo fenomeno ocupa al "
+        "menos el 80% del pool agregado, el resultado se restringe a el. El umbral "
+        "0,8 no es el argmax &mdash; 0,7 da mejor F1@3 sobre las 50 &mdash; sino el "
+        "unico que no dispara el veto pre-registrado: por debajo, las consultas en "
+        "cero suben de 11 a 12, y el filtro no toca las consultas con relevantes en "
+        "dos fenomenos a la vez (q019). Cambia 6 de 50 lineas y lleva la entrega a "
+        "su <b>estado final</b>: F1@3 = 0,455 y NDCG@10 = 0,516 (0,499 penalizado), "
+        "con 11 consultas en cero. El F1@3 no tiende a 1: la sec. 10.2.2 fija "
+        "P@3 = aciertos/3 con los tres cupos siempre llenos, asi que una consulta "
+        "con un solo documento relevante topa en 0,50 y el techo sobre este ground "
+        "truth es <b>0,906</b> &mdash; el 0,455 es el 50% de lo alcanzable, no el "
+        "45% de 1."
     ))
     story.append(p(
-        "<b>Estado final de la medicion.</b> Sobre las 50 consultas la entrega da "
-        "<b>F1@3 = 0,440</b> y <b>NDCG@10 = 0,490</b>. El F1@3 no tiende a 1: la "
-        "sec. 10.2.2 fija P@3 = aciertos/3 con los tres cupos siempre llenos, asi "
-        "que una consulta con un solo documento relevante topa en 0,50 y el techo "
-        "sobre este ground truth es <b>0,906</b> &mdash; el 0,440 es el 49% de lo "
-        "alcanzable, no el 44% de 1. Sobre las 41 consultas de anotacion humana da "
-        "0,468 / 0,510 y sobre las 10 de anotacion independiente 0,400 / 0,436."
+        "<b>Los dos ultimos cambios ordenan los fragmentos por lo que la sec. 10.2.1 "
+        "juzga: su campo</b> <font face='Courier'>text</font>. Un fragmento ilegible, "
+        "o que no menciona el objeto de la consulta, vale cero por relevante que sea "
+        "su documento. El <b>idioma legible sube por encima de la alineacion con el "
+        "top-3</b> (antes un fragmento en coreano del documento n.&ordm; 1 desplazaba "
+        "a uno legible del n.&ordm; 4: ilegibles <b>19 a 0</b>) y la <b>cobertura "
+        "lexica de la consulta</b> entra como ultimo desempate (fragmentos sin una "
+        "palabra de la consulta, <b>175 a 122</b> de 500). Juntos, NDCG@10 "
+        "<b>+0,016</b> (IC 90% [+0,004, +0,029], 11-4) y F1@3 inalterado."
     ))
     story.append(p(
         "<b>Las dos ultimas mejoras adoptadas se componen.</b> La primera es "
@@ -588,10 +615,10 @@ def build_story() -> list:
         "obvio: el glosario cambia <i>que</i> candidatos entran al pool y el peso "
         "reordena el pool ya recuperado, de modo que un re-puntuador con mas peso "
         "podia hundir justo los documentos que el glosario acababa de rescatar. "
-        "Medido, no ocurre. Partiendo de 0,402 / 0,457 sobre las 50 consultas: solo "
-        "el peso da 0,425 / 0,476; solo el glosario, 0,423 / 0,486; y <b>las dos "
-        "juntas, 0,440 / 0,490</b>, mejor que cualquiera por separado en las cuatro "
-        "lecturas comparadas."
+        "Medido, no ocurre: partiendo de 0,402 / 0,457 sobre las 50, solo el peso da "
+        "0,425 / 0,476, solo el glosario 0,423 / 0,486, y <b>las dos juntas 0,440 / "
+        "0,490</b>, mejor que cualquiera por separado en las cuatro lecturas "
+        "comparadas."
     ))
     story.append(p(
         "<b>La salvedad, que se declara junto al numero:</b> contra el glosario solo, "
@@ -606,23 +633,18 @@ def build_story() -> list:
         "El glosario dejo ademas un hallazgo que acota su propio alcance: <b>la "
         "asimetria espanol/ingles existe solo en los fenomenos 1 y 2</b>. En el "
         "fenomeno 3, territorial y colombiano, la relacion se invierte "
-        "(\"reclutamiento\" aparece en 682 fragmentos contra 2 de <i>child "
-        "recruitment</i>; \"restitucion de tierras\" 617 contra 22 de <i>land "
-        "restitution</i>), de modo que expandir al ingles una consulta de ese "
-        "fenomeno la alejaria de sus documentos. El glosario es deliberadamente una "
-        "herramienta de dos fenomenos, no de tres. Por la misma razon se rechazo "
-        "<i>capacidades laser</i> &rarr; <i>laser weapons</i>: \"laser\" es un "
-        "cognado, la consulta ya tenia puente al corpus en ingles, y la entrada "
-        "costaba una consulta."
+        "(\"reclutamiento\" en 682 fragmentos contra 2 de <i>child recruitment</i>), "
+        "de modo que expandir al ingles una consulta de ese fenomeno la alejaria de "
+        "sus documentos: es una herramienta de dos fenomenos, no de tres. Por la "
+        "misma razon se rechazo <i>capacidades laser</i> &rarr; <i>laser weapons</i>: "
+        "\"laser\" es cognado y la consulta ya tenia puente al corpus ingles."
     ))
     story.append(p(
         "Con el pool ampliado la agregacion pasa de <i>suma</i> a <b>sumar los 5 "
-        "mejores fragmentos</b> de cada documento, por robustez y no por promedio: "
-        "con pool 60 las dos son <i>identicas</i> (ningun documento aporta mas de 5 "
-        "fragmentos a un pool tan chico), pero al ampliarlo la suma deja de tener "
-        "tope y un documento con muchos fragmentos mediocres desplaza al bueno "
-        "&mdash; con pool 200 la suma cae a <b>0,298</b> mientras el tope de 5 sube "
-        "a 0,406. Por eso el pool quedo en 100 y no en 200."
+        "mejores fragmentos</b> de cada documento, por robustez: con pool 60 las dos "
+        "son identicas, pero al ampliarlo la suma pierde el tope y un documento con "
+        "muchos fragmentos mediocres desplaza al bueno &mdash; con pool 200 cae a "
+        "<b>0,298</b> mientras el tope de 5 sube a 0,406."
     ))
     story.append(p(
         "<b>Lo que cuestan, dicho explicitamente:</b> sobre las 10 consultas de "
@@ -633,12 +655,25 @@ def build_story() -> list:
         "no confirman. Se adoptan porque ganan de forma consistente en las 41 de "
         "anotacion humana &mdash; F1@3 +0,038 (IC 90% [+0,002, +0,073]) y NDCG@10 "
         "+0,051 ([+0,008, +0,095]) &mdash; y porque las dos tienen explicacion "
-        "mecanica previa a la medicion. Otros dos ajustes se midieron y "
-        "<i>no</i> se adoptaron: reservar cupos de fragmento degrada el NDCG@10 de "
-        "forma monotona (&minus;0,025 con 8 cupos, &minus;0,082 con 4) sin mover el "
-        "F1@3, y el prior de recencia resulta inerte; quedan implementados y "
-        "apagados. El grafo, re-medido con NDCG@10, pierde 11-0: se entrega como "
-        "artefacto bonus, no en la recuperacion."
+        "mecanica previa a la medicion. Dos ajustes se midieron y "
+        "<i>no</i> se adoptaron: reservar cupos de fragmento degrada el NDCG@10 "
+        "de forma monotona (&minus;0,025 con 8, &minus;0,082 con 4) y el prior de "
+        "recencia es inerte; quedan apagados. El grafo fusionado pierde 11-0 "
+        "(seccion 5); como clave secundaria no desplaza nada y se adopta sin "
+        "tocar metricas."
+    ))
+    story.append(p(
+        "<b>El cross-encoder se evaluo y se descarto.</b> ADL confirmo que la "
+        "sec. 8.3 aplica a arquitecturas decoder, asi que un <i>cross-encoder</i> "
+        "(encoder, no generativo) como re-puntuador esta permitido. Se probo "
+        "<i>bge-reranker-v2-m3</i> sobre el pool entregado, con el arnes verificado "
+        "contra <i>resultados.jsonl</i> (50/50 identicas). La mejor celda sobre las "
+        "50 da F1@3 0,465, pero en las 10 independientes cae de 0,433 a 0,367 (IC "
+        "[&minus;0,133, 0,000]): ganancia de pooling, la firma que descarto a las "
+        "hipotesis anteriores; y sumarla a gte y e5 sube las consultas en cero de "
+        "11 a 12. Se descarta por el criterio vigente y por costo: ~85 s/consulta "
+        "en CPU contra milisegundos de la cascada, que lee vectores sin releer "
+        "texto."
     ))
     story.append(p(
         "La entrega se verifica de punta a punta antes de empaquetarse con "
@@ -646,7 +681,7 @@ def build_story() -> list:
         "carpetas, las 50 lineas, los 3 documentos y 10 fragmentos por consulta, el "
         "limite de 250 palabras, la alineacion entre el indice FAISS y "
         "<i>metadata.jsonl</i>, y que todo <i>doc_id</i> reportado pertenezca al "
-        "inventario de ADL. La suite de pruebas (126 casos) cubre los invariantes "
+        "inventario de ADL. La suite de pruebas (161 casos) cubre los invariantes "
         "criticos, incluida la ejecucion de <i>generador.py</i> como subproceso con "
         "<i>PYTHONPATH</i> vacio para garantizar que es autocontenido y que los "
         "resultados son reproducibles, requisito del punto 4 de la sec. 1.4."
@@ -665,27 +700,25 @@ def build_story() -> list:
         "se hereda de su documento, porque anotarla de verdad exigiria relevancia "
         "graduada fragmento por fragmento. El proxy sobreestima &mdash; da 1 a la "
         "bibliografia de un documento relevante &mdash; y cuanto, esta acotado por "
-        "abajo: descontando el aparato bibliografico da 0,476 frente a 0,490. El "
+        "abajo: descontando el aparato bibliografico da 0,499 frente a 0,516. El "
         "otro modo de fallo, un pasaje que no responde dentro de un documento que "
         "si es relevante, no lo ve ninguna medicion automatica.",
-        "<b>Documentos sin texto recuperable:</b> 8 de los 1826. Cinco son imagenes "
-        "(una de ellas en formato AVIF, que Pillow no lee sin plugin adicional), una "
-        "es un JSON de 0 bytes y dos son paginas HTML de error guardadas con "
-        "extension .pdf. Estos ultimos se detectan por contenido y se procesan como "
-        "HTML, pero su texto es una pagina de error y no aporta nada. Estos "
-        "documentos quedan en el corpus sin posibilidad de ser recuperados.",
-        "<b>Campo <i>fuente</i>:</b> se reporta siempre el nombre de archivo "
-        "estandarizado del inventario de ADL, nunca la URL de origen (que se "
-        "conserva aparte, en un campo <i>url</i> adicional). La sec. 10.2.1 sugeria "
-        "<i>fuente</i> como clave de emparejamiento y la aclaracion posterior de ADL "
-        "indico <i>doc_id</i>; reportar el nombre de archivo hace que el sistema "
-        "funcione bajo cualquiera de las dos lecturas.",
-        "<b>Fusion de chunks cortos adyacentes</b> (sec. 9.2.1, mencionada como "
-        "posible, no obligatoria) no esta implementada: solo se implemento la "
-        "division obligatoria de chunks que exceden 250 palabras.",
-        "<b>Boilerplate de PDF:</b> la heuristica de lineas repetidas (>=30% de "
-        "paginas) requiere documentos de 3 o mas paginas; PDFs mas cortos no "
-        "reciben este filtro.",
+        "<b>Documentos sin texto recuperable:</b> 8 de los 1826. Las cinco imagenes "
+        "no aportan texto (una en AVIF, que Pillow no lee sin plugin) pero quedan "
+        "presentes en <i>metadata.jsonl</i> con una fila sin vector (<i>en_indice</i> "
+        "= false), manteniendo la alineacion indice&ndash;metadata completa. Los "
+        "otros tres &mdash; un JSON de 0 bytes y dos HTML de error con extension "
+        ".pdf, detectados por contenido &mdash; no aportan texto y quedan sin "
+        "posibilidad de ser recuperados.",
+        "<b>Campo <i>fuente</i>:</b> se reporta el nombre de archivo estandarizado "
+        "del inventario de ADL, nunca la URL (que se conserva en un campo <i>url</i> "
+        "adicional). La sec. 10.2.1 sugeria <i>fuente</i> como clave de "
+        "emparejamiento y ADL aclaro que es <i>doc_id</i>; el nombre de archivo "
+        "funciona bajo cualquiera de las dos lecturas.",
+        "<b>Fusion de chunks adyacentes</b> (sec. 9.2.1, opcional): implementada y "
+        "revertida &mdash; el chunker solapa una oracion y concatenar duplica texto.",
+        "<b>Boilerplate de PDF:</b> el filtro de lineas repetidas pide 3 o mas "
+        "paginas.",
     ]))
 
     return story

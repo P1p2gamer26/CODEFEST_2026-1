@@ -3,7 +3,7 @@
 Escrito el 2 de agosto de 2026, después de una jornada en la que se probaron
 siete hipótesis de mejora y **seis fallaron**. Lo que sigue no es la lista de
 lo que se intentó —eso está en la sección "Medido y descartado" de
-`las notas del proyecto`— sino **cómo se decidió que fallaban**, que es lo reutilizable.
+`dev/docs/PLAN_MAESTRO.md`— sino **cómo se decidió que fallaban**, que es lo reutilizable.
 
 ---
 
@@ -63,7 +63,7 @@ problema sea convincente no hace que la solución funcione.
 
 ## 5. Auditar las afirmaciones heredadas del propio proyecto
 
-`las notas del proyecto` afirmaba que *"q001 es irrecuperable tanto por vía densa como
+`dev/docs/PLAN_MAESTRO.md` afirmaba que *"q001 es irrecuperable tanto por vía densa como
 léxica"*. Era falso: hay 20 documentos con CBRN en el corpus y ninguno entra
 al pool de candidatos. La consulta no es irrecuperable, el recuperador no
 llega.
@@ -126,7 +126,7 @@ no contenía la respuesta**. El desacuerdo entre anotadores es una señal de
 diagnóstico, no un problema a promediar.
 
 Cautela obligatoria: son etiquetas hechas por modelos. Viven en
-`dev/eval/ground_truth_agentes.jsonl`, **separadas** del anotado a mano, y no
+`dev/eval/ground_truth_asistido.jsonl`, **separadas** del anotado a mano, y no
 se funden. Medir contra etiquetas de modelo premia parecerse a un modelo.
 
 ---

@@ -45,7 +45,7 @@ anotaciones se EVALUAN al definir la funcion, asi que sin la linea de abajo el
 script muere con `TypeError: unsupported operand type(s) for |` en el import
 -- antes de leer una sola consulta, y la sec. 1.4 excluye lo que no es
 reproducible. `from __future__ import annotations` las difiere a texto (PEP
-563) y funciona desde 3.7. Auditado con AST: las 11 uniones del archivo son
+563) y funciona desde 3.7. Auditado con AST: las 14 uniones del archivo son
 todas de anotacion, ninguna se evalua en ejecucion, y no hay otra sintaxis
 posterior a 3.9. **No quitar esta linea ni mover imports por encima de ella.**
 """
@@ -351,10 +351,20 @@ def load_index(encoder_name: str, index_dir: Path | None = None) -> tuple[faiss.
             if line:
                 metadata.append(json.loads(line))
 
-    if index.ntotal != len(metadata):
+    # Filas metadata-only (documentos sin texto, marcadas `en_indice: false`)
+    # no tienen vector: la alineacion se verifica contra las que si lo tienen,
+    # y esas tienen que ser exactamente las primeras `ntotal` (el parche las
+    # anade al final; una intercalada romperia el mapeo id->metadata).
+    con_vector = [m for m in metadata if m.get("en_indice") is not False]
+    if index.ntotal != len(con_vector):
         raise ValueError(
             f"indice desalineado al cargar: index.ntotal={index.ntotal} vs "
             f"lineas de metadata={len(metadata)} ({index_dir})"
+        )
+    if metadata[: index.ntotal] != con_vector:
+        raise ValueError(
+            f"indice desalineado al cargar: filas sin vector intercaladas "
+            f"entre las primeras {index.ntotal} ({index_dir})"
         )
 
     return index, metadata
@@ -527,6 +537,49 @@ class DocumentHit:
     rank: int
     doc_id: str
     score: float
+
+
+# --- de src/retrieval/aggregate.py (E32) ---
+# Fraccion del score total que el fenomeno ganador debe superar para que el
+# filtro se aplique. Por debajo, se abstiene. Ver el comentario largo en
+# build_result_object para por que 0.8 y no el argmax de la grilla.
+UMBRAL_FENOMENO = 0.8
+
+
+def filtrar_por_fenomeno_dominante(hits: list[Hit], umbral: float = 0.0) -> list[Hit]:
+    """Descarta del pool los fragmentos que no son del fenomeno dominante.
+
+    La sec. 8.7 permite post-filtrar por metadata, y el fenomeno es la senal
+    mas barata que hay: **41 de las 50 consultas anotadas tienen TODOS sus
+    documentos relevantes en un solo fenomeno**, y sin filtrar se gastan 24 de
+    150 cupos (16%) en documentos del fenomeno equivocado.
+
+    El fenomeno se decide por VOTO PONDERADO POR SCORE del propio pool, no por
+    conteo: un fragmento en rank 1 debe pesar mas que uno en rank 100.
+
+    `umbral` es la fraccion del score total que el fenomeno ganador debe
+    superar para que se aplique el filtro. Por debajo **se abstiene** y
+    devuelve el pool intacto, que es lo que evita el fallo de las consultas
+    donde el pool esta repartido y el ganador no es de fiar. `umbral=0` filtra
+    siempre; `umbral=1` no filtra nunca.
+    """
+    if not hits:
+        return hits
+
+    peso: dict[int, float] = defaultdict(float)
+    for hit in hits:
+        if hit.fenomeno is not None:
+            peso[hit.fenomeno] += max(hit.score, 0.0)
+    if not peso:
+        return hits
+
+    total = sum(peso.values())
+    ganador, mejor = max(peso.items(), key=lambda kv: kv[1])
+    if total <= 0 or mejor / total < umbral:
+        return hits
+
+    filtrados = [h for h in hits if h.fenomeno == ganador]
+    return filtrados or hits
 
 
 def aggregate_documents(
@@ -1011,12 +1064,38 @@ IDIOMAS_LEGIBLES = frozenset({"es", "en", "pt"})
 # dos empatados.
 UMBRAL_APARATO = 0.60
 
+# --- de src/retrieval/truncate.py (E23) ---
+# Palabras vacias de espanol y de ingles. Sin ellas, "sobre", "entre" o
+# "which" harian que casi cualquier pasaje "cubra" la consulta y el criterio
+# seria inerte. Se fijo antes de medir y no se retoco despues.
+STOPWORDS = frozenset("""
+para como cual cuales cuanto cuantos donde desde entre sobre segun hacia hasta
+ante bajo cabe contra durante mediante salvo tras esta este estos estas esos
+esas aquel aquella ellos ellas nosotros vosotros pero sino aunque porque
+cuando mientras siempre nunca tambien tanto tanta menos mismo misma otro otra
+otros otras cada todo toda todos todas algun alguna algunos algunas ningun
+ninguna mucho mucha muchos muchas poco poca pocos pocas
+that this these those with from have been they their there where which what
+when while about into over under between during through after before more
+most such than then them your ours will would could should because being
+""".split())
+
+
+def tokens_de(texto: str) -> set:
+    """Palabras de contenido: sin acentos, de 4 letras o mas, sin vacias."""
+    return {
+        w
+        for w in re.findall(r"[a-z0-9]{4,}", _normalizar_glosario(texto))
+        if w not in STOPWORDS
+    }
+
 
 def ordenar_para_fragmentos(
     hits: list[Hit],
     doc_ids_prioritarios: list[str] | None = None,
     priorizar_idioma: bool = True,
     degradar_aparato: bool = True,
+    tokens_consulta: frozenset | None = None,
 ) -> list[Hit]:
     """Reordena los hits ANTES de armar los fragmentos. No filtra nada.
 
@@ -1057,7 +1136,9 @@ def ordenar_para_fragmentos(
         return hits
     top = set(doc_ids_prioritarios or ())
 
-    def clave(hit: Hit) -> tuple[int, int, int]:
+    toks = tokens_consulta or frozenset()
+
+    def clave(hit: Hit) -> tuple:
         fuera_del_top = 1 if (top and hit.doc_id not in top) else 0
         ilegible = 1 if (priorizar_idioma and hit.idioma not in IDIOMAS_LEGIBLES) else 0
         aparato = (
@@ -1065,7 +1146,12 @@ def ordenar_para_fragmentos(
             if (degradar_aparato and fraccion_aparato(hit.texto) >= UMBRAL_APARATO)
             else 0
         )
-        return (fuera_del_top, ilegible, aparato)
+        # E23: sin tokens de consulta el criterio es constante y por tanto
+        # inerte, que es lo que deja intactos los barridos viejos que llaman
+        # a build_result_object sin pasar la consulta.
+        sin_cobertura = 0 if (toks and (tokens_de(hit.texto) & toks)) else 1
+        # E22: `ilegible` va PRIMERO, antes que `fuera_del_top`.
+        return (ilegible, fuera_del_top, aparato, sin_cobertura)
 
     return sorted(hits, key=clave)
 
@@ -1275,6 +1361,30 @@ def graph_search(query: str, graph, lang: str | None = None, k: int = 10) -> lis
     ]
 
 
+def desempatar_con_grafo(hits: list[Hit], graph_hits: list[GraphHit]) -> list[Hit]:
+    """Integra el grafo en la recuperacion SIN desplazar candidatos (sec. 8.5).
+
+    En vez de fusionar los vecinos del grafo como una lista mas (medido sobre
+    las 50 oficiales: F1@3 0.455 -> 0.358, NDCG@10 0.516 -> 0.390; 11-0 de
+    perdidas), el grafo entra como clave secundaria de orden: reordena los
+    hits que el pool vectorial ya trae, rompiendo SOLO empates exactos de
+    score por la evidencia de primer orden. El conjunto del pool no cambia,
+    asi que los documentos que entran al top-3 solo pueden variar donde el
+    recuperador los tenia exactamente empatados (el caso de q005/q026).
+
+    `sorted` es estable: dos hits con el mismo score y la misma evidencia
+    conservan su orden original.
+    """
+    if not graph_hits:
+        return hits
+    evidencia = {gh.chunk_id: gh.score for gh in graph_hits}
+    return sorted(
+        hits,
+        key=lambda h: (h.score, evidencia.get(h.chunk_id, 0.0)),
+        reverse=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -1348,11 +1458,24 @@ def load_consultas(path: Path) -> list[dict]:
     """Lee el archivo de consultas. Tolerante en la ENTRADA, estricto en la
     salida: el formato exacto de q001-q050 lo define ADL y no lo controlamos.
 
-    `utf-8-sig` en vez de `utf-8` NO es cosmetico. Cualquier archivo guardado
-    con Excel, Bloc de notas o PowerShell en Windows lleva BOM, y con `utf-8`
-    la primera linea falla con "Unexpected UTF-8 BOM" -- el script muere antes
-    de la primera consulta y la sec. 1.4 excluye lo que no se puede
-    reproducir. `utf-8-sig` se come el BOM si esta y no molesta si no.
+    La cadena de codecs NO es cosmetica, y cubre dos fallos distintos que
+    matarian el script antes de la primera consulta -- la sec. 1.4 excluye lo
+    que no se puede reproducir. El archivo lo entrega ADL y no controlamos con
+    que lo guarden:
+
+    - `utf-8-sig` se come el BOM que ponen Excel, Bloc de notas y PowerShell,
+      y no molesta si no esta. Con `utf-8` a secas la primera linea falla con
+      "Unexpected UTF-8 BOM".
+    - `cp1252` cubre el guardado ANSI. `Set-Content` de Windows PowerShell 5.1
+      escribe cp1252 por defecto y las 50 consultas van en espanol con
+      acentos, asi que el primer acento revienta con UnicodeDecodeError.
+    - `latin-1` cierra la cadena porque **no puede fallar**: decodifica
+      cualquier byte. Si el archivo no era ninguno de los tres, el texto sale
+      raro pero el script corre y los errores de JSON salen con su mensaje.
+
+    El orden importa: los tres primeros son estrictos y solo aceptan lo suyo,
+    asi que un archivo UTF-8 valido siempre lo decodifica `utf-8-sig` y el
+    resultado no cambia (verificado sobre las 50 consultas oficiales).
 
     Los errores salen como mensaje, no como traceback: quien reciba solo esta
     carpeta necesita saber QUE arreglar, y un volcado de pila parece un script
@@ -1361,34 +1484,41 @@ def load_consultas(path: Path) -> list[dict]:
     if not path.is_file():
         raise SystemExit(f"error: no existe el archivo de consultas: {path}")
 
+    crudo = path.read_bytes()
+    for codec in ("utf-8-sig", "cp1252", "latin-1"):
+        try:
+            texto = crudo.decode(codec)
+            break
+        except UnicodeDecodeError:
+            continue
+
     consultas = []
-    with path.open(encoding="utf-8-sig") as f:
-        for line_number, line in enumerate(f, start=1):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError as exc:
-                raise SystemExit(
-                    f"error: {path}:{line_number} no es JSON valido ({exc.msg}).\n"
-                    f"  Se espera JSON Lines: un objeto por linea, sin comas entre lineas.\n"
-                    f"  Linea: {line[:120]}"
-                ) from exc
-            if not isinstance(obj, dict):
-                raise SystemExit(
-                    f"error: {path}:{line_number}: se esperaba un objeto JSON, "
-                    f"no {type(obj).__name__}"
-                )
-            query_id = obj.get("query_id") or obj.get("id")
-            text = obj.get("text") or obj.get("query") or obj.get("consulta")
-            if query_id is None or text is None:
-                raise SystemExit(
-                    f"error: {path}:{line_number}: se esperaban los campos "
-                    f"'query_id'/'id' y 'text'/'query'/'consulta'; campos "
-                    f"encontrados: {sorted(obj)}"
-                )
-            consultas.append({"query_id": str(query_id), "text": str(text)})
+    for line_number, line in enumerate(texto.splitlines(), start=1):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(
+                f"error: {path}:{line_number} no es JSON valido ({exc.msg}).\n"
+                f"  Se espera JSON Lines: un objeto por linea, sin comas entre lineas.\n"
+                f"  Linea: {line[:120]}"
+            ) from exc
+        if not isinstance(obj, dict):
+            raise SystemExit(
+                f"error: {path}:{line_number}: se esperaba un objeto JSON, "
+                f"no {type(obj).__name__}"
+            )
+        query_id = obj.get("query_id") or obj.get("id")
+        text = obj.get("text") or obj.get("query") or obj.get("consulta")
+        if query_id is None or text is None:
+            raise SystemExit(
+                f"error: {path}:{line_number}: se esperaban los campos "
+                f"'query_id'/'id' y 'text'/'query'/'consulta'; campos "
+                f"encontrados: {sorted(obj)}"
+            )
+        consultas.append({"query_id": str(query_id), "text": str(text)})
 
     if not consultas:
         raise SystemExit(
@@ -1418,7 +1548,32 @@ def build_result_object(
     # no se pudo validar contra el indice cuando se escribio. Ver
     # `aplicar_prior_recencia`.
     prior_recencia: float = 0.0,
+    # E23: texto de la consulta YA EXPANDIDA por el glosario. Es opcional a
+    # proposito -- sin el, el criterio de cobertura queda inerte y los
+    # barridos historicos siguen midiendo lo que median.
+    texto_consulta: str | None = None,
 ) -> dict:
+    toks_consulta = frozenset(tokens_de(texto_consulta)) if texto_consulta else None
+    # E32: post-filtrado por fenomeno (sec. 8.7), solo cuando el pool es
+    # CLARAMENTE de un fenomeno. El umbral 0.8 no es el argmax de la grilla
+    # -- 0.7 da mejor F1(50) -- sino el unico valor que no dispara el veto
+    # pre-registrado: por debajo de 0.8 las consultas con F1@3 = 0 suben de 11
+    # a 12, y por debajo de 0.6 q025 se queda sin 3 documentos distintos y
+    # ROMPE la sec. 9.2. O sea que se elige por regla, no por numero.
+    #
+    # Medido sobre las 50: F1@3 0.440 -> 0.455 y, lo que importa, en las 10
+    # consultas independientes 0.400 -> 0.433 (NDCG 0.436 -> 0.474). Es el
+    # unico cambio del proyecto, junto con E22/E23, que pasa el criterio en
+    # las NUEVE lecturas, y las 4 consultas que toca son todas de anotacion
+    # humana: la objecion de E31 (que la ganancia venga de las 9 etiquetadas
+    # por agentes) no aplica aqui.
+    #
+    # Lo que hay que decir junto al numero: solo cambia 8 de 150 documentos, y
+    # q027 no queda ARREGLADA sino ESQUIVADA -- a 0.8 el filtro se abstiene de
+    # tocarla. Cuando el filtro actua de verdad (umbrales bajos), el resultado
+    # se cae. Y q019 pierde en TODOS los umbrales porque tiene documentos
+    # relevantes en dos fenomenos a la vez: es imposible de salvar filtrando.
+    hits = filtrar_por_fenomeno_dominante(hits, umbral=UMBRAL_FENOMENO)
     doc_hits = aggregate_documents(hits, top_n=top_docs, strategy=agg_strategy)
     if prior_recencia > 0:
         doc_hits = aplicar_prior_recencia(
@@ -1442,6 +1597,7 @@ def build_result_object(
                 [h for h in hits if h.doc_id in set(top_ids)],
                 doc_ids_prioritarios=top_ids,
                 priorizar_idioma=priorizar_idioma,
+                tokens_consulta=toks_consulta,
             ),
             max_fragments=cupo_alineado,
             max_words=max_words,
@@ -1452,6 +1608,7 @@ def build_result_object(
                 [h for h in hits if h.chunk_id not in vistos],
                 doc_ids_prioritarios=None,
                 priorizar_idioma=priorizar_idioma,
+                tokens_consulta=toks_consulta,
             ),
             max_fragments=max_fragments - len(del_top),
             max_words=max_words,
@@ -1461,7 +1618,10 @@ def build_result_object(
             frag["rank"] = i
     else:
         hits_ordenados = ordenar_para_fragmentos(
-            hits, doc_ids_prioritarios=top_ids, priorizar_idioma=priorizar_idioma
+            hits,
+            doc_ids_prioritarios=top_ids,
+            priorizar_idioma=priorizar_idioma,
+            tokens_consulta=toks_consulta,
         )
         fragments = enforce_word_limit(
             hits_ordenados, max_fragments=max_fragments, max_words=max_words
@@ -1500,7 +1660,12 @@ def build_result_object(
     }
 
 
-def main() -> None:
+def build_arg_parser() -> argparse.ArgumentParser:
+    """La CLI, aparte de `main` para poder afirmar sus defaults en un test.
+
+    Los defaults SON la configuracion entregada: correr el script sin ningun
+    flag salvo `--consultas` tiene que reproducir `resultados.jsonl`.
+    """
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -1621,12 +1786,34 @@ def main() -> None:
         "consultas y no se pudo validar contra el indice. Probar con 0.05 y decidir "
         "con eval_mini.py --comparar-con.",
     )
+    # El grafo va ACTIVO por defecto: la sec. 7 solo concede el bonus si esta
+    # INTEGRADO a la recuperacion, y construirlo sin usarlo no cuenta. Entra
+    # como desempate no desplazante (ver desempatar_con_grafo), no por fusion
+    # RRF -- la fusion esta medida y pierde 11-0.
+    #
+    # Medido sobre las 50 oficiales: activarlo cambia 0 de 50 lineas y deja
+    # F1@3 0.455 / NDCG@10 0.516 / penalizado 0.499 intactos. Es integracion
+    # real del artefacto en el camino online, no una mejora de metrica: no
+    # venderlo como tal.
+    parser.add_argument(
+        "--sin-grafo",
+        dest="use_graph",
+        action="store_false",
+        default=True,
+        help="Apaga el desempate por grafo de conocimiento (bonus, sec. 8.5).",
+    )
     parser.add_argument(
         "--use-graph",
+        dest="use_graph",
         action="store_true",
-        help="Fusiona la recuperacion vectorial con el grafo de conocimiento (bonus, sec. 8.5) via RRF.",
+        help="Compatibilidad: el grafo ya entra por defecto. No hace falta pasarlo.",
     )
     parser.add_argument("--graph-path", type=Path, default=GRAFO_PATH)
+    return parser
+
+
+def main() -> None:
+    parser = build_arg_parser()
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -1730,16 +1917,25 @@ def main() -> None:
     if args.use_graph:
         import networkx as nx
 
-        # --use-graph es opcional (bonus): si el grafo no esta, conviene decirlo
-        # en una linea y no con un traceback de networkx.
+        # El grafo es el BONUS de la sec. 7, no un requisito de la sec. 1.4:
+        # si el archivo no esta (p. ej. la base_vectorial sin rehidratar del
+        # todo), se avisa y se sigue. Abortar dejaria al evaluador sin
+        # resultados por un componente opcional. Como es inerte sobre las 50
+        # consultas oficiales, seguir sin el da la MISMA salida.
         if not args.graph_path.is_file():
-            parser.exit(2, f"error: no existe el grafo {args.graph_path}; correr sin --use-graph\n")
-        graph = nx.read_graphml(args.graph_path)
-        logger.info(
-            "grafo cargado: %d nodos, %d aristas",
-            graph.number_of_nodes(),
-            graph.number_of_edges(),
-        )
+            logger.warning(
+                "no existe el grafo %s: se continua sin el desempate por grafo "
+                "(bonus sec. 8.5). La salida no cambia sobre las 50 oficiales.",
+                args.graph_path,
+            )
+            args.use_graph = False
+        else:
+            graph = nx.read_graphml(args.graph_path)
+            logger.info(
+                "grafo cargado: %d nodos, %d aristas",
+                graph.number_of_nodes(),
+                graph.number_of_edges(),
+            )
 
     consultas = load_consultas(args.consultas)
     logger.info("consultas cargadas: %d", len(consultas))
@@ -1786,17 +1982,21 @@ def main() -> None:
                     for lista in ranked_lists
                 ]
 
-        # El grafo entra como una lista mas a fusionar (sec. 8.5: "RRF
-        # tratando el grafo como un indice adicional").
+        # El grafo NO se fusiona como una lista mas (medido sobre las 50
+        # oficiales: F1@3 0.455 -> 0.358, NDCG@10 0.516 -> 0.390, pierde
+        # 11-0; ver informe). Entra como desempate sobre los candidatos que
+        # el pool ya trae: reordena sin desplazar (sec. 8.5 integrado sin
+        # degradar la recuperacion vectorial). A proposito con la consulta
+        # SIN expandir: el grafo empareja entidades extraidas con NER, no
+        # vectores, y las siglas inglesas que agrega el glosario no son
+        # entidades del grafo.
+        graph_hits: list[GraphHit] = []
         if graph is not None:
             first = ranked_lists[0]
             query_lang = first[0].idioma if first else None
-            # A proposito con la consulta SIN expandir: el grafo empareja
-            # entidades extraidas con NER, no vectores, y las siglas inglesas
-            # que agrega el glosario no son entidades del grafo.
-            graph_hits = graph_search(consulta["text"], graph, lang=query_lang, k=args.k_pool)
-            if graph_hits:
-                ranked_lists.append(graph_hits)
+            graph_hits = graph_search(
+                consulta["text"], graph, lang=query_lang, k=args.k_pool
+            )
 
         if len(ranked_lists) == 1:
             hits = ranked_lists[0]
@@ -1810,6 +2010,9 @@ def main() -> None:
         # pool, que es un cambio distinto y no medido.
         hits = hits[: args.k_pool]
 
+        if graph_hits:
+            hits = desempatar_con_grafo(hits, graph_hits)
+
         resultados.append(
             build_result_object(
                 consulta["query_id"],
@@ -1818,6 +2021,7 @@ def main() -> None:
                 alinear_fragmentos=not args.sin_alinear_fragmentos,
                 priorizar_idioma=not args.sin_priorizar_idioma,
                 cupo_alineado=args.cupo_alineado,
+                texto_consulta=texto_busqueda,
                 # Solo donde la consulta pide material reciente. Aplicarlo a
                 # todas castigaria documentos viejos que son la respuesta
                 # correcta -- un tratado de 1967 sigue siendo el tratado.

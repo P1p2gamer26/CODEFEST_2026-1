@@ -1,4 +1,4 @@
-"""Precision de las marcas del panel segun cuantos agentes votaron.
+"""Precision de las marcas segun cuantas rondas votaron.
 
 La pregunta que responde: el acuerdo entre agentes, senala acierto? Si la
 unanimidad fuera confiable, 4/4 tendria precision alta aunque 1/4 no.
@@ -37,4 +37,4 @@ union = {q: set().union(*[p.get(q, set()) for p in P]) for q in calib}
 invisibles = sum(len(H[q] - union[q]) for q in calib)
 total_h = sum(len(H[q]) for q in calib)
 print(f"\ndocumentos que el humano marco y NINGUN agente vio: {invisibles} de {total_h}")
-print("(techo de recall del panel: no puede acertar lo que nunca marca)")
+print("(techo de recall del metodo: no puede acertar lo que nunca marca)")

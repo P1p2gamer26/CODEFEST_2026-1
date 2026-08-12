@@ -1,6 +1,8 @@
 """Verifica el invariante critico de la seccion 5.3: metadata.jsonl debe
 tener exactamente una linea por vector del indice FAISS, en el mismo orden."""
 
+import json
+
 import faiss
 
 from src.embedding.build_index import build_and_persist, load_index
@@ -74,6 +76,62 @@ def test_persist_raises_on_length_mismatch(tmp_path):
     try:
         persist_index(index, records[:-1], encoder.name, out_dir=tmp_path / "encoder_bad")
         assert False, "se esperaba ValueError por desalineacion"
+    except ValueError:
+        pass
+
+
+def test_load_index_admite_filas_metadata_only_al_final(tmp_path):
+    """Documentos sin texto (imagenes del manifest) se conservan con una fila
+    `en_indice: false` al final. La alineacion se verifica contra las filas con
+    vector, y estas tienen que ser las primeras `ntotal`."""
+    encoder = HashingFakeEncoder(name="test-encoder")
+    records = _make_records()
+    out_dir = build_and_persist(records, encoder, out_dir=tmp_path / "encoder_test")
+
+    with (out_dir / "metadata.jsonl").open("a", encoding="utf-8") as f:
+        f.write(
+            json.dumps(
+                {
+                    "doc_id": "img01", "chunk_id": "img01-c0000",
+                    "fuente": "foto.jpg", "formato": "jpg", "fenomeno": 2,
+                    "posicion": 0, "num_tokens": 0, "texto": "", "en_indice": False,
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+
+    index, metadata = load_index(encoder.name, index_dir=out_dir)
+    assert index.ntotal == len(records)
+    assert len(metadata) == len(records) + 1
+    assert metadata[-1]["chunk_id"] == "img01-c0000"
+
+
+def test_load_index_rechaza_filas_metadata_only_intercaladas(tmp_path):
+    """Una fila sin vector antes de una con vector rompe el mapeo id->metadata
+    y tiene que abortar, no arriesgar la cascada."""
+    encoder = HashingFakeEncoder(name="test-encoder")
+    records = _make_records()
+    out_dir = build_and_persist(records, encoder, out_dir=tmp_path / "encoder_test")
+
+    lineas = (out_dir / "metadata.jsonl").read_text(encoding="utf-8").splitlines()
+    fila_extra = json.dumps(
+        {
+            "doc_id": "img01", "chunk_id": "img01-c0000",
+            "fuente": "foto.jpg", "formato": "jpg", "fenomeno": 2,
+            "posicion": 0, "num_tokens": 0, "texto": "", "en_indice": False,
+        },
+        ensure_ascii=False,
+    )
+    # Intercalada en el medio, no al final.
+    lineas.insert(2, fila_extra)
+    (out_dir / "metadata.jsonl").write_text(
+        "\n".join(lineas) + "\n", encoding="utf-8", newline="\n"
+    )
+
+    try:
+        load_index(encoder.name, index_dir=out_dir)
+        assert False, "se esperaba ValueError por fila sin vector intercalada"
     except ValueError:
         pass
 

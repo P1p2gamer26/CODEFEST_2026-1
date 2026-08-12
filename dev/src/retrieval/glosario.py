@@ -26,7 +26,7 @@ los 128.526 chunks del indice entregado:
 ausentes. Eso es una propiedad del corpus, medible sin ground truth y sin
 mirar que documentos son relevantes.
 
-Ojo con una nota vieja del proyecto: `las notas del proyecto` daba por descartada la
+Ojo con una nota vieja del proyecto: `dev/docs/PLAN_MAESTRO.md` daba por descartada la
 hipotesis "el recuperador ignora los terminos discriminantes" porque las
 SIGLAS de las consultas si estan en el corpus (GDO, GAOR, GAO, RPO, GEO).
 Eso sigue siendo cierto y no lo contradice: lo que faltaba revisar no eran

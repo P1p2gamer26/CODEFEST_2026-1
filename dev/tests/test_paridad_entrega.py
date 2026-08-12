@@ -168,3 +168,61 @@ def test_los_defaults_de_recuperacion_son_los_que_se_midieron():
     NO son equivalentes (a 60 si lo eran)."""
     entrega = _cargar_generador()
     assert entrega.DEFAULT_K_POOL == 100
+
+
+def test_el_desempate_con_grafo_se_comporta_igual_en_las_dos_copias():
+    """El grafo no se fusiona como lista (pierde 11-0 medido): entra como
+    desempate por evidencia sobre el pool ya recuperado. La copia aplanada y
+    `dev/src/` tienen que reordenar identico o la entrega se desfasa."""
+    from src.graph.graph_retrieval import GraphHit, desempatar_con_grafo as en_dev
+
+    entrega = _cargar_generador()
+
+    def hit(chunk_id, score):
+        return entrega.Hit(rank=1, score=score, chunk_id=chunk_id,
+                           doc_id=chunk_id.split("-c")[0], fuente="f.pdf",
+                           texto="x", formato="pdf", fenomeno=1, idioma="es")
+
+    casos = [
+        (  # scores distintos: el grafo no puede desplazar
+            [hit("d1-c0", 0.9), hit("d2-c0", 0.8), hit("d3-c0", 0.7)],
+            [GraphHit(rank=1, score=3.0, chunk_id="d3-c0", doc_id="d3")],
+        ),
+        (  # empate exacto: decide la evidencia
+            [hit("d1-c0", 0.5), hit("d2-c0", 0.5)],
+            [GraphHit(rank=1, score=5.0, chunk_id="d2-c0", doc_id="d2")],
+        ),
+        (  # sin evidencia: inerte
+            [hit("d1-c0", 0.5), hit("d2-c0", 0.5)],
+            [],
+        ),
+    ]
+    for hits, graph_hits in casos:
+        dev = en_dev(list(hits), graph_hits)
+        plano = entrega.desempatar_con_grafo(list(hits), graph_hits)
+        assert [h.chunk_id for h in dev] == [h.chunk_id for h in plano], (
+            f"desempate con grafo distinto: dev={[h.chunk_id for h in dev]} "
+            f"entrega={[h.chunk_id for h in plano]}"
+        )
+
+
+def test_grafo_activo_por_defecto():
+    """El grafo entra en la corrida oficial, no solo con un flag opcional.
+
+    La sec. 7 concede el bonus si el grafo esta INTEGRADO a la recuperacion;
+    construirlo y no usarlo no cuenta. Entra como desempate no desplazante
+    (`desempatar_con_grafo`), NO por fusion RRF -- la fusion esta medida y
+    pierde 11-0.
+
+    Medido el 12 ago 2026 sobre las 50 oficiales: activarlo cambia 0 de 50
+    lineas de `resultados.jsonl` y deja F1@3 0.455 / NDCG@10 0.516 /
+    penalizado 0.499 intactos. Es integracion del artefacto, no una mejora
+    de metrica.
+    """
+    entrega = _cargar_generador()
+    parser = entrega.build_arg_parser()
+
+    assert parser.parse_args(["--consultas", "x.jsonl"]).use_graph is True
+    assert parser.parse_args(["--consultas", "x.jsonl", "--sin-grafo"]).use_graph is False
+    # `--use-graph` sigue aceptandose para no romper los scripts que lo pasan.
+    assert parser.parse_args(["--consultas", "x.jsonl", "--use-graph"]).use_graph is True

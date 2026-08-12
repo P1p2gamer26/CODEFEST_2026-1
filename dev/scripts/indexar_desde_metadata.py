@@ -130,7 +130,7 @@ def main():
     print("construyendo el indice FAISS", flush=True)
     # IndexFlatIP con vectores normalizados = coseno exacto, igual que los
     # otros dos indices. Nada de indices aproximados: lo que se evalua es
-    # justamente el recall (ver punto 2 de "Pendientes" en las notas del proyecto).
+    # justamente el recall (ver punto 2 de "Pendientes" en dev/docs/PLAN_MAESTRO.md).
     vectores = np.asarray(emb, dtype="float32")
     normas = np.linalg.norm(vectores, axis=1, keepdims=True)
     if not np.allclose(normas, 1.0, atol=1e-3):

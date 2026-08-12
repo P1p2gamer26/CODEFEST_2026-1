@@ -53,7 +53,7 @@ def main() -> None:
     )
     parser.add_argument("--encoder-name", default=ENCODER_PRIMARY_NAME)
     parser.add_argument("--index-dir", type=Path, default=None)
-    parser.add_argument("--k-pool", type=int, default=60)  # el de la entrega, ver las notas del proyecto
+    parser.add_argument("--k-pool", type=int, default=60)  # el de la entrega, ver dev/docs/PLAN_MAESTRO.md
     parser.add_argument(
         "--sin-pooling",
         action="store_true",
@@ -64,7 +64,7 @@ def main() -> None:
     parser.add_argument(
         "--solo-humanas",
         action="store_true",
-        help="Excluye las 9 consultas etiquetadas por el panel de anotadores-agente "
+        help="Excluye las 9 consultas etiquetadas por el las rondas de anotacion asistida "
         "(F1 0.23 contra el humano). Obligatorio para comparar con lo medido antes "
         "del 2 ago 2026.",
     )

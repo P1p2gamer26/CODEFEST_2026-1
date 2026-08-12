@@ -1,6 +1,6 @@
-"""Mide al panel de agentes contra las etiquetas humanas.
+"""Mide al la anotacion asistida contra las etiquetas humanas.
 
-Uso: python calibrar_panel.py voto_minimo panel_*.jsonl
+Uso: python calibrar_rondas.py voto_minimo ronda_*.jsonl
 
 Las 6 consultas de CALIBRACION estan anotadas a mano y son INDEPENDIENTES
 (sus candidatos no los propuso el recuperador), asi que sirven de patron.
@@ -9,12 +9,12 @@ Las 9 restantes no tienen etiqueta y solo se reportan.
 El criterio de aceptacion se fija ANTES de ver el resultado, como manda
 docs/lecciones_metodologia.md:
 
-  el consenso del panel se adopta como ground truth SOLO si su F1 contra el
+  el consenso del consenso se adopta como ground truth SOLO si su F1 contra el
   humano supera 0.50 en las 6 de calibracion.
 
 0.50 no es arbitrario: el recuperador que se quiere evaluar saca 0.344. Un
 anotador que acierta menos que eso mide parecido a otro modelo, no acierto.
-El anotador-agente unico ya medido dio 0.28 y por eso se descarto.
+El primera ronda asistida ya medido dio 0.28 y por eso se descarto.
 """
 
 import json
@@ -81,7 +81,7 @@ def main():
     for q in calib:
         pred, votos = consenso[q]
         print(f"  {q}  humano={sorted(humano[q])}")
-        print(f"       panel ={sorted(pred)}  votos={dict(votos.most_common(6))}")
+        print(f"       consenso={sorted(pred)}  votos={dict(votos.most_common(6))}")
 
     f1 = fs / n
     print(f"\n{'=' * 60}")

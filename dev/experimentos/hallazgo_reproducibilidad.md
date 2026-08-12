@@ -1,6 +1,6 @@
 # La entrega ya no reproduce byte a byte entre maquinas (7 ago 2026, noche)
 
-`las notas del proyecto` afirma que `Entrega/resultados.jsonl` "reproduce byte a byte" en
+`dev/docs/PLAN_MAESTRO.md` afirma que `Entrega/resultados.jsonl` "reproduce byte a byte" en
 corrida en frio. **Esa afirmacion envejecio y hay que acotarla** (leccion 5):
 se verificaba en la MISMA maquina donde se habia generado el archivo, y desde
 E06 el archivo lo genera la VM.
@@ -59,7 +59,7 @@ sistema con aritmetica de punto flotante. Lo que el evaluador va a obtener es
 **el mismo sistema con las mismas metricas** y 48 de 50 lineas identicas.
 El riesgo real seria que las metricas se movieran, y no se mueven.
 
-**Lo que si hay que corregir es el texto de `las notas del proyecto`**, que promete mas de
+**Lo que si hay que corregir es el texto de `dev/docs/PLAN_MAESTRO.md`**, que promete mas de
 lo que se puede cumplir. La propiedad correcta es: "determinista por maquina;
 entre maquinas difiere en los casi-empates, sin mover las metricas".
 

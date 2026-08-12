@@ -23,7 +23,7 @@ RIESGO DECLARADO, con las mitigaciones fijadas ANTES de medir:
     perdida de 0,02 en las DOS muestras (50 y 10 independientes), y **ante
     empate se conserva la entregada**, que ya esta construida y validada.
   - El corolario de E08: cualquier ganancia que caiga sobre las 9 consultas
-    con etiqueta de agente NO cuenta como evidencia. Por eso se reportan las
+    con etiqueta asistida NO cuenta como evidencia. Por eso se reportan las
     41 humanas y las 10 independientes por separado, y un resultado que gane
     en las 50 pero no en las humanas se lee como sesgo de pooling, igual que
     `doc_rrf` y gte-primario.

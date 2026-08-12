@@ -1,12 +1,12 @@
-"""Dossier de candidatos para el panel de agentes anotadores.
+"""Dossier de candidatos para el las rondas de anotacion asistida.
 
 A diferencia de candidatos.md (extracto de 300 chars del mejor chunk), aca
-cada documento va con varios chunks: el panel juzga documentos y con 300
+cada documento va con varios chunks: cada ronda juzga documentos y con 300
 chars se marca de menos (limitacion ya documentada en dev/eval/README.md).
 
 Mezcla consultas SIN anotar con consultas YA anotadas a mano, sin decir
-cuales son cuales. Sin eso el panel no se puede calibrar y sus etiquetas no
-valen como ground truth (ver las notas del proyecto: el anotador-agente unico dio F1 0.28
+cuales son cuales. Sin eso el metodo no se puede calibrar y sus etiquetas no
+valen como ground truth (ver dev/docs/PLAN_MAESTRO.md: la primera ronda asistida dio F1 0.28
 contra el humano).
 """
 
@@ -33,7 +33,7 @@ CHUNKS_POR_DOC = 3
 CHARS_POR_CHUNK = 700
 
 # Terminos para el rescate lexico. REEMPLAZAN la consulta (medido: una
-# consulta larga en espanol ahoga el termino raro, ver las notas del proyecto).
+# consulta larga en espanol ahoga el termino raro, ver dev/docs/PLAN_MAESTRO.md).
 TERMINOS = {
     "q001": "CBRN chemical biological radiological nuclear",
     "q028": "on-orbit servicing rendezvous proximity operations Shijian",
@@ -67,7 +67,7 @@ def main():
         por_doc.setdefault(m["doc_id"], []).append(m)
 
     qids = SIN_ANOTAR + CALIBRACION
-    random.Random(20260802).shuffle(qids)  # el panel no debe saber cual es cual
+    random.Random(20260802).shuffle(qids)  # quien anota no debe saber cual es cual
 
     lineas = [
         "# Dossier de anotacion",
