@@ -2191,3 +2191,53 @@ solo la medicion y su registro; llevar `agregar_normalizado` a
 `conteos_del_corpus` en la fase online) queda como decision posterior, sin
 tocar ningun encoder ni indice. Detalle completo en
 `dev/experimentos/E42_normalizacion_tamano.md`.
+
+## E13 — deduplicar fragmentos casi identicos, cerrado (12 ago 2026)
+
+**Hipotesis (de cola.jsonl, deuda desde el 1 ago):** entre los 10 fragmentos
+entregados hay pares de texto casi identico, y reemplazarlos por el
+siguiente candidato del pool mejora el NDCG@10 real; ademas es un defecto
+del dato, no una mejora de metrica.
+
+**Justificacion mecanica:** el chunker solapa oraciones entre chunks
+consecutivos por diseno, y la alineacion de fragmentos (E22/E23) concentra
+el 98% de los fragmentos en 3 documentos, lo que hace mas probable que dos
+chunks consecutivos del mismo documento caigan los dos en el top-10.
+
+**Arnes reusado, no reescrito:** `dev/scripts/barrido_dedup_e13.py` y
+`dev/tests/test_dedup_fragmentos.py` ya existian (commit `07ce1ef` de otra
+sesion). Auditados sin encontrar bugs (a diferencia del `break` de E42).
+Puerta de fidelidad **50 de 50** en documentos Y en fragmentos contra
+`Entrega/resultados.jsonl` -- mas estricta que la de E42, que solo
+comparaba documentos. 6/6 tests pasan.
+
+**Efecto estructural, contado antes de mirar metricas:** de 2.250 pares
+posibles (45 por consulta x 50), solo **17 superan solapamiento 0.5**, **9
+superan 0.7** y **0 superan 0.9** (el mayor es 0.888, q019). De esos 17
+pares, **13 son entre documentos DISTINTOS** -- boilerplate compartido
+entre ediciones anuales del atlas SWF y entre informes MAPPOEA, no el
+mecanismo de "chunks consecutivos del mismo documento" que motivo la
+hipotesis. Confirma el riesgo 3 pre-registrado.
+
+| celda | F1(50) | ND(50) | NDp(50) | ceros | frags movidos | IC ND(50) vs base | IC ND(ind) vs base |
+|---|---|---|---|---|---|---|---|
+| base | 0.4547 | 0.5162 | 0.4992 | 11 | 0 | — | — |
+| u0.5 | 0.4547 | 0.5107 | 0.4937 | 11 | 18 | -0.0054 [-0.0118,+0.0009] | -0.0085 [-0.0255,+0.0000] |
+| u0.7 | 0.4547 | 0.5167 | 0.4997 | 11 | 11 | +0.0006 [-0.0048,+0.0064] | -0.0085 [-0.0255,+0.0000] |
+| u0.9 | 0.4547 | 0.5162 | 0.4992 | 11 | 0 | +0.0000 [+0.0000,+0.0000] | +0.0000 [+0.0000,+0.0000] |
+
+F1@3 sale +0.000 exacto en las tres, como predecia el riesgo 1
+(`aggregate_documents` no se toca). Fragmentos fuera del top-3 declarado:
+20/500 en la base, 21/500 en u0.5/u0.7 -- el reemplazo casi no deshace la
+alineacion de E22.
+
+**Veredicto: CERRADO, NEGATIVO.** Ninguna celda pasa el criterio (veto de
+ceros, luego IC al 90% de NDCG excluyendo -0.02 en las dos muestras): u0.5 y
+u0.7 fallan en las 10 independientes por una sola consulta (q026, humana en
+la muestra independiente, -0.085 sin compensacion) y u0.9 pasa el IC porque
+es un no-op exacto (0 fragmentos movidos, el par de mayor solapamiento del
+corpus queda bajo ese umbral). No hay ninguna celda que mueva fragmentos Y
+pase el criterio a la vez. **Cierra por escasez del defecto** que se
+buscaba corregir (0.76% de los pares superan 0.5, y la mayoria ni siquiera
+es el mecanismo previsto), no por fallo del proxy ni de la implementacion.
+Detalle completo en `dev/experimentos/E13_dedup_fragmentos.md`.
