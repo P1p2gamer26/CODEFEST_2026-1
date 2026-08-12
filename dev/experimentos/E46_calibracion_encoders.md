@@ -47,8 +47,11 @@ Configuracion: min-max por encoder y consulta, GTE 0.50, E5 1.00,
 | NDCG@10, 50 | 0.516 | **0.558** | +0.042 |
 | NDCG penalizado, 50 | 0.499 | **0.539** | +0.040 |
 | F1@3, 41 humanas | 0.486 | **0.518** | +0.032 |
+| NDCG@10, 41 humanas | 0.537 | **0.573** | +0.036 |
+| NDCG penalizado, 41 humanas | 0.520 | **0.554** | +0.034 |
 | F1@3, 10 independientes | 0.433 | **0.433** | 0.000 |
 | NDCG, 10 independientes | 0.474 | **0.477** | +0.003 |
+| NDCG penalizado, 10 independientes | 0.467 | **0.470** | +0.003 |
 | consultas con F1 cero | 11 | **8** | -3 |
 
 Intervalos pareados al 90% contra la entrega anterior: F1
@@ -83,3 +86,7 @@ $env:TRANSFORMERS_OFFLINE='1'
 .\.venv\Scripts\python.exe dev\scripts\eval_mini.py `
   --resultados Entrega\resultados.jsonl
 ```
+
+Verificacion local del 12 de agosto de 2026: `157 passed, 1 skipped`. Las
+cifras de la tabla se reprodujeron desde `Entrega/resultados.jsonl`; son
+metricas contra el ground truth local y no una calificacion oficial de ADL.
