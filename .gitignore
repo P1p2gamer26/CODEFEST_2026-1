@@ -1,6 +1,6 @@
-# Notas de trabajo locales del equipo, fuera de la entrega.
-NOTAS.md
-.notas/
+# Las notas de trabajo y la configuracion local de cada quien no van al repo;
+# como son distintas en cada maquina, sus patrones viven en .git/info/exclude
+# y no aca.
 __pycache__/
 *.pyc
 .venv/
