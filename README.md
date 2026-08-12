@@ -19,6 +19,42 @@ detalle de por qué cada encoder está donde está:
 > sec. 8.3 de la especificación). Todo el sistema es recuperación pura sobre
 > vectores, FAISS y metadata.
 
+## ⚠️ Primero: rehidratar `Entrega/base_vectorial/`
+
+**Los índices no se versionan en el repositorio.** Los tres `index.faiss`,
+sus `metadata.jsonl` y el grafo suman **1,6 GB**, muy por encima de lo que
+admite Git (y de la cuota de 1 GB de Git LFS), así que se publican como
+**GitHub Release**. La estructura de carpetas que exige la sec. 1.4 ya está
+creada en `Entrega/base_vectorial/`; sólo hay que depositar los archivos.
+
+```bash
+gh release download indices-v2 -D /tmp/idx     # o descargar los assets a mano
+gunzip /tmp/idx/*.gz
+
+cd Entrega/base_vectorial
+cp /tmp/idx/minilm-index.faiss encoder_paraphrase-multilingual-MiniLM-L12-v2/index.faiss
+cp /tmp/idx/e5-index.faiss     encoder_multilingual-e5-base/index.faiss
+cp /tmp/idx/gte-index.faiss    encoder_gte-multilingual-base/index.faiss
+cp /tmp/idx/metadata.jsonl     encoder_paraphrase-multilingual-MiniLM-L12-v2/metadata.jsonl
+cp /tmp/idx/metadata.jsonl     encoder_multilingual-e5-base/metadata.jsonl
+cp /tmp/idx/metadata.jsonl     encoder_gte-multilingual-base/metadata.jsonl
+cp /tmp/idx/grafo.graphml      grafo/grafo.graphml
+```
+
+Sin `gh`, los assets están en
+`https://github.com/P1p2gamer26/CODEFEST_2026-1/releases/tag/indices-v2` y se
+bajan con `curl -sL -o <destino> <url del asset>`.
+
+Los tres `metadata.jsonl` son **byte-idénticos por diseño**: el chunking se
+hace una sola vez y los tres índices comparten el orden de filas (es el
+invariante que hace válida la cascada). Por eso el Release publica uno solo.
+
+Verificación después de rehidratar:
+
+```bash
+python dev/scripts/validar_entrega.py --esperar-50
+```
+
 ## Índice
 
 0. [Estado y resultados](#0-estado-y-resultados)
@@ -38,7 +74,7 @@ detalle de por qué cada encoder está donde está:
 
 | verificación | estado |
 |---|---|
-| `pytest dev/tests` | 155 passed |
+| `pytest dev/tests` | 184 passed |
 | `python dev/scripts/validar_entrega.py` | en verde |
 | `python dev/scripts/pruebas_robustez.py` | todas pasan |
 | **corrida en frío** desde fuera del repo | **reproduce byte a byte** |
@@ -79,8 +115,9 @@ relevante topa en 0,50. Citar siempre el 0,455 con el techo al lado.
 Están todas medidas, con sus números, en la sección "Medido y descartado" de
 `dev/docs/PLAN_MAESTRO.md`. Las principales: híbrido BM25 + denso (pierde 15-4), fusión RRF
 simétrica de encoders (0,268 vs 0,306), invertir la cascada (0,250),
-deduplicar documentos, concatenar chunks vecinos, fusionar el grafo en la
-recuperación (pierde 11-0), re-chunkear a 128 tokens (0,294 vs 0,375),
+deduplicar documentos, concatenar chunks vecinos, **fusionar** el grafo en la
+recuperación vía RRF (pierde 11-0 — el grafo sí entra, pero como desempate
+no desplazante), re-chunkear a 128 tokens (0,294 vs 0,375),
 `bge-m3` como cuarto encoder, y cribar el ground truth con rondas de anotacion asistida
 (F1 0,23 contra el humano).
 
@@ -92,9 +129,11 @@ de fenómeno (E36).
 **Lo que queda abierto es la construcción del pool.** El fallo documentado es
 entre idiomas: consulta en español, documento en inglés (NBQR/CBRN,
 "reabastecimiento en órbita"/*on-orbit servicing*); el glosario bilingüe lo
-mitiga parcialmente. En curso: **E38**, la rejilla de chunking
-(280/384/512 tokens × 2 solapes), el único eje estructural que las mediciones
-anteriores tocaron solo hacia abajo.
+mitiga parcialmente. El eje del chunking quedó **cerrado por E38**: la
+rejilla completa (280/384/512 tokens × 2 solapes) pierde contra el 280 con
+solape de una oración que ya se entrega, y pierde monótonamente al agrandar
+el chunk. Con E21 (128 tokens) medido hacia abajo, el tamaño de chunk tiene
+evidencia a ambos lados.
 
 ### Documentación
 
@@ -343,7 +382,7 @@ normal a internet (PyPI); no funciona en entornos con proxy restringido.
 pytest dev/tests -v
 ```
 
-Debería dar **`155 passed`**. Estos tests usan un encoder falso y determinista
+Debería dar **`184 passed`**. Estos tests usan un encoder falso y determinista
 (`HashingFakeEncoder`) solo para validar la mecánica del pipeline sin
 depender de red ni de calidad semántica real — es normal y esperado que
 corran sin conexión.
