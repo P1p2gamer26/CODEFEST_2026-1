@@ -88,6 +88,65 @@ def reconstruir_oraciones(chunks_del_doc, con_contabilidad=False):
     return (secciones, cuenta) if con_contabilidad else secciones
 
 
+def _largo_mayor_sufijo_prefijo(anterior: str, actual: str) -> int:
+    """Longitud del mayor sufijo de ``anterior`` que es prefijo de ``actual``."""
+    limite = min(len(anterior), len(actual))
+    if limite == 0:
+        return 0
+    patron = actual[:limite]
+    texto = anterior[-limite:]
+    combinado = patron + "\x00" + texto
+    prefijos = [0] * len(combinado)
+    for i in range(1, len(combinado)):
+        j = prefijos[i - 1]
+        while j and combinado[i] != combinado[j]:
+            j = prefijos[j - 1]
+        if combinado[i] == combinado[j]:
+            j += 1
+        prefijos[i] = j
+    return min(prefijos[-1], limite)
+
+
+def reconstruir_texto_rapido(chunks_del_doc):
+    """Reconstruye secciones deduplicando el solape textual exacto.
+
+    Los chunks se crearon con ``" ".join(oraciones)``; por eso la oracion de
+    solape viaja byte a byte como sufijo/prefijo. El caso ambiguo usa el
+    segmentador anterior para conservar correccion antes que velocidad.
+    """
+    secciones = []
+    for ch in sorted(chunks_del_doc, key=lambda c: c["posicion"]):
+        texto = ch["texto"].strip()
+        if not texto:
+            continue
+        heading = ch.get("titulo_seccion")
+        if not secciones or secciones[-1][0] != heading:
+            secciones.append([heading, texto])
+            continue
+
+        anterior = secciones[-1][1]
+        largo = _largo_mayor_sufijo_prefijo(anterior, texto)
+        inicio_ok = largo == len(anterior) or anterior[-largo - 1].isspace()
+        fin_ok = largo == len(texto) or texto[largo].isspace()
+        termina_oracion = largo > 1 and texto[:largo].rstrip().endswith(
+            (".", "!", "?", ";", ":", ")", "]", '"', "'")
+        )
+        if inicio_ok and fin_ok and termina_oracion:
+            resto = texto[largo:].lstrip()
+        else:
+            previas = split_sentences(anterior, ch.get("idioma"))
+            actuales = split_sentences(texto, ch.get("idioma"))
+            solape = 0
+            for n in range(min(len(previas), len(actuales)), 0, -1):
+                if previas[-n:] == actuales[:n]:
+                    solape = n
+                    break
+            resto = " ".join(actuales[solape:])
+        if resto:
+            secciones[-1][1] = anterior + " " + resto
+    return [(heading, texto) for heading, texto in secciones]
+
+
 def reempaquetar(chunks_del_doc, token_budget, overlap_sentences, count_tokens):
     """Re-empaqueta los chunks de UN documento al presupuesto pedido.
 
@@ -125,6 +184,62 @@ def reempaquetar(chunks_del_doc, token_budget, overlap_sentences, count_tokens):
                 "url": plantilla.get("url", ""),
             })
         posicion += len(nuevos)
+    return salida
+
+
+def reempaquetar_rapido_sin_solape(
+    chunks_del_doc, token_budget, count_tokens_many
+):
+    """Variante que segmenta cada seccion reconstruida una sola vez.
+
+    Es una alternativa de chunking deliberada, no una optimizacion invisible:
+    dar al segmentador el contexto completo puede cambiar limites de oracion
+    frente a segmentar cada chunk viejo. Luego conserva el empaquetado voraz,
+    cuenta las oraciones por lotes y calcula exactamente ``num_tokens`` para
+    cada chunk final.
+    """
+    from src.chunking.chunker import Chunk
+
+    ordenados = sorted(chunks_del_doc, key=lambda c: c["posicion"])
+    plantilla = ordenados[0]
+    if plantilla["formato"] in FORMATOS_TABULARES:
+        return [dict(c) for c in ordenados]
+
+    chunks_nuevos = []
+    posicion = 0
+    for heading, texto_seccion in reconstruir_texto_rapido(ordenados):
+        oraciones = split_sentences(texto_seccion, plantilla.get("idioma"))
+        conteos = count_tokens_many(oraciones)
+        current = []
+        current_tokens = 0
+        for oracion, n_tokens in zip(oraciones, conteos):
+            if current and current_tokens + n_tokens > token_budget:
+                chunks_nuevos.append(Chunk(" ".join(current), posicion, 0, heading))
+                posicion += 1
+                current = []
+                current_tokens = 0
+            current.append(oracion)
+            current_tokens += n_tokens
+        if current:
+            chunks_nuevos.append(Chunk(" ".join(current), posicion, 0, heading))
+            posicion += 1
+
+    conteos_finales = count_tokens_many([ch.texto for ch in chunks_nuevos])
+    salida = []
+    for ch, n_tokens in zip(chunks_nuevos, conteos_finales):
+        salida.append({
+            "doc_id": plantilla["doc_id"],
+            "chunk_id": f"{plantilla['doc_id']}::{ch.posicion}",
+            "fuente": plantilla["fuente"],
+            "formato": plantilla["formato"],
+            "fenomeno": plantilla["fenomeno"],
+            "posicion": ch.posicion,
+            "num_tokens": n_tokens,
+            "texto": ch.texto,
+            "idioma": plantilla.get("idioma"),
+            "titulo_seccion": ch.titulo_seccion,
+            "url": plantilla.get("url", ""),
+        })
     return salida
 
 
@@ -236,6 +351,12 @@ def main():
     ap.add_argument("--presupuesto", type=int)
     ap.add_argument("--solape", type=int)
     ap.add_argument("--salida", type=Path)
+    ap.add_argument(
+        "--segmentacion-global",
+        action="store_true",
+        help="Segmenta una vez por seccion reconstruida y tokeniza por lotes. "
+        "Solo admite --solape 0; es una variante experimental de chunking.",
+    )
     ap.add_argument("--encoder-name",
                     default="paraphrase-multilingual-MiniLM-L12-v2",
                     help="Solo para recontar num_tokens con su tokenizer.")
@@ -251,17 +372,31 @@ def main():
     if args.generar:
         if args.presupuesto is None or args.solape is None or args.salida is None:
             ap.error("--generar necesita --presupuesto, --solape y --salida")
+        if args.segmentacion_global and args.solape != 0:
+            ap.error("--segmentacion-global solo admite --solape 0")
         from src.embedding.encoders import get_encoder
 
         encoder = get_encoder(args.encoder_name)
         por_doc = cargar_por_documento(args.chunks)
         total = 0
         with open(args.salida, "w", encoding="utf-8") as fh:
-            for chunks in por_doc.values():
-                for reg in reempaquetar(chunks, args.presupuesto, args.solape,
-                                        encoder.count_tokens):
+            for numero, chunks in enumerate(por_doc.values(), start=1):
+                if args.segmentacion_global:
+                    registros = reempaquetar_rapido_sin_solape(
+                        chunks, args.presupuesto, encoder.count_tokens_many
+                    )
+                else:
+                    registros = reempaquetar(
+                        chunks, args.presupuesto, args.solape, encoder.count_tokens
+                    )
+                for reg in registros:
                     fh.write(json.dumps(reg, ensure_ascii=False) + "\n")
                     total += 1
+                if numero % 100 == 0:
+                    print(
+                        f"  {numero}/{len(por_doc)} documentos, {total} chunks",
+                        flush=True,
+                    )
         print(f"celda {args.presupuesto}/{args.solape}: {total} chunks "
               f"de {len(por_doc)} documentos -> {args.salida}")
         return 0

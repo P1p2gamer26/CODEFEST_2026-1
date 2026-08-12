@@ -10,7 +10,13 @@ falle a la vista. De ahi que estos casos sean la puerta de entrada del
 experimento y no un detalle de implementacion.
 """
 
-from scripts.rechunkear_e38 import reconstruir_oraciones, reempaquetar
+from scripts.rechunkear_e38 import (
+    reconstruir_oraciones,
+    reconstruir_texto_rapido,
+    reempaquetar,
+    reempaquetar_rapido_sin_solape,
+)
+from src.chunking.sentence_split import split_sentences
 
 
 def test_quita_la_oracion_de_solape_entre_chunks_contiguos():
@@ -71,6 +77,33 @@ def _doc(texto, formato="pdf"):
         "formato": formato, "fuente": "a.pdf", "fenomeno": 1, "url": "",
         "texto": texto,
     }]
+
+
+def test_segmentacion_global_conserva_el_resultado_en_caso_simple():
+    chunks = _doc("Uno dos tres. Cuatro cinco seis. Siete ocho nueve.")
+    contar = lambda texto: len(texto.split())
+
+    original = reempaquetar(chunks, 5, 0, contar)
+    rapido = reempaquetar_rapido_sin_solape(
+        chunks, 5, lambda textos: [contar(texto) for texto in textos]
+    )
+
+    assert rapido == original
+
+
+def test_reconstruccion_textual_rapida_equivale_a_oraciones():
+    chunks = [
+        {"posicion": 0, "titulo_seccion": "S", "idioma": "es",
+         "texto": "Alfa uno. Beta dos. Gamma tres."},
+        {"posicion": 1, "titulo_seccion": "S", "idioma": "es",
+         "texto": "Gamma tres. Delta cuatro."},
+    ]
+    lenta = reconstruir_oraciones(chunks)
+    rapida = [
+        (heading, split_sentences(texto, "es"))
+        for heading, texto in reconstruir_texto_rapido(chunks)
+    ]
+    assert rapida == lenta
 
 
 def test_reempaquetar_conserva_la_identidad_del_documento():

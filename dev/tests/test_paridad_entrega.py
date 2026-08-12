@@ -163,8 +163,13 @@ def test_el_glosario_expande_igual_en_las_dos_copias():
 
 
 def test_los_defaults_de_recuperacion_son_los_que_se_midieron():
-    """k_pool 100 y top5 salieron de scripts/barrido_pool.py. Volverlos a 60 o
-    a `sum` cambia la entrega en silencio: con pool 100 las dos estrategias YA
-    NO son equivalentes (a 60 si lo eran)."""
+    """E39 adopto pool 200, top6 y calibracion por encoder."""
     entrega = _cargar_generador()
-    assert entrega.DEFAULT_K_POOL == 100
+    assert entrega.DEFAULT_K_POOL == 200
+    assert entrega.DEFAULT_RERANK_WEIGHTS == [0.50, 1.00]
+    assert entrega.DEFAULT_RERANK_NORMALIZATION == "minmax"
+
+    import inspect
+
+    firma = inspect.signature(entrega.build_result_object)
+    assert firma.parameters["agg_strategy"].default == "top6"

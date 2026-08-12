@@ -6,7 +6,11 @@ import faiss
 import numpy as np
 import pytest
 
-from src.retrieval.rerank import rerank_por_segundo_encoder, verificar_alineacion
+from src.retrieval.rerank import (
+    rerank_por_encoders_calibrados,
+    rerank_por_segundo_encoder,
+    verificar_alineacion,
+)
 from src.retrieval.search import Hit
 
 
@@ -58,6 +62,20 @@ def test_un_peso_pequeno_no_alcanza_para_remontar():
     salida = rerank_por_segundo_encoder(hits, index, np.array([1.0, 0.0]), peso=0.1)
 
     assert salida[0].chunk_id == "c1"
+
+
+def test_calibracion_minmax_evita_que_el_rango_decida_la_autoridad():
+    hits = [_hit("c1", "A", 0.90, 0), _hit("c2", "B", 0.89, 1)]
+    index = _indice([[0, 1], [1, 0]])
+
+    salida = rerank_por_encoders_calibrados(
+        hits,
+        [(index, np.array([1.0, 0.0]), 1.0)],
+        normalizacion="minmax",
+    )
+
+    assert salida[0].chunk_id == "c1"  # empate estable: una senal para cada uno
+    assert salida[0].score == pytest.approx(salida[1].score)
 
 
 def test_los_hits_sin_fila_se_conservan_sin_repuntuar():

@@ -8,10 +8,12 @@ a partir de consultas en lenguaje natural. Especificación completa en
 
 **Cómo recupera:** la consulta se expande con un glosario bilingüe ES→EN,
 MiniLM trae 200 candidatos y los re-puntúan `gte-multilingual-base` y
-`multilingual-e5-base` (peso 0,60 cada uno); el pool se agrega a documento
-con `top5` sobre `k_pool=100` y se post-filtra por fenómeno dominante
+`multilingual-e5-base`; sus cosenos se calibran min-max por consulta y se
+combinan con pesos 0,50 y 1,00. El pool se agrega a documento con `top6`
+sobre `k_pool=200` y se post-filtra por fenómeno dominante
 (umbral 0,8); los 10 fragmentos se ordenan hacia los 3 documentos
-entregados. F1@3 **0,455** y NDCG@10 **0,516** sobre las 50 consultas. El
+entregados. F1@3 **0,499**, NDCG@10 **0,558** y NDCG penalizado **0,539**
+sobre las 50 consultas. El
 detalle de por qué cada encoder está donde está:
 `dev/docs/arquitectura_encoders.md`.
 
@@ -476,9 +478,10 @@ correr `generador.py` sin flags reproduce `resultados.jsonl`.
 consulta
    ├─ glosario bilingüe ES→EN ──────► consulta expandida
    ├─ MiniLM la vectoriza ──► FAISS ──► 200 candidatos      [RECALL]
-   ├─ gte re-puntúa  ────────────────┤ +0,60 × similitud    [PRECISIÓN]
-   ├─ e5 re-puntúa   ────────────────┤ +0,60 × similitud    [PRECISIÓN]
-   ├─ recorte a k_pool=100 ──────────► agregación top5
+   ├─ calibración min-max por encoder y consulta
+   ├─ gte re-puntúa  ────────────────┤ +0,50 × señal        [PRECISIÓN]
+   ├─ e5 re-puntúa   ────────────────┤ +1,00 × señal        [PRECISIÓN]
+   ├─ recorte a k_pool=200 ──────────► agregación top6
    ├─ post-filtro por fenómeno ──────► 3 documentos
    └─ fragmentos hacia esos 3 docs ──► 10 fragmentos ≤250 palabras
 ```
@@ -536,14 +539,17 @@ encontró es otro trabajo.
 (Esa tabla es la medición **histórica** que eligió la cascada, con un solo
 re-puntuador y peso 0,25.)
 
-**El peso hoy es 0,60, no 0,25.** El 0,25 se había fijado con `k_pool=60`,
+**E39 reemplaza el peso único 0,60.** El 0,25 se había fijado con `k_pool=60`,
 agregación `sum` y sin glosario — las tres cosas cambiaron después. La grilla
 0,10/0,25/0,40/0,60/0,75/0,90 (`dev/scripts/barrido_peso.py`) muestra una
 **meseta, no una tendencia**, y 0,60 es el único valor que pasa el criterio de
-adopción en las seis lecturas. La grilla queda cerrada: que 0,60 gane **no**
-se escala a "el re-puntuador debería ser el primario", que es otra hipótesis.
+adopción histórico bajo suma cruda. E39 midió que los rangos medianos de los
+cosenos eran 0,120 (MiniLM), 0,276 (GTE) y 0,103 (E5): el mismo peso daba a
+GTE mucha más autoridad efectiva. La configuración actual calibra cada señal
+a [0,1] dentro del pool y usa 0,50 para GTE y 1,00 para E5. El detalle y los
+controles están en `dev/experimentos/E39_calibracion_faiss.md`.
 Reproducible con `dev/scripts/barrido_dos_encoders.py` y
-`dev/scripts/barrido_combinado.py`.
+`dev/scripts/barrido_thomas.py`.
 
 **Detalle importante:** el chunking se hace **una sola vez** (con el tokenizer
 del primer encoder) y esos mismos fragmentos se indexan con todos. Si cada

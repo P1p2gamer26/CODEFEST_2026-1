@@ -449,6 +449,58 @@ def search(
 # ---------------------------------------------------------------------------
 
 
+def _normalizar_scores(valores: np.ndarray, modo: str) -> np.ndarray:
+    if modo == "raw":
+        return valores
+    if modo == "minmax":
+        minimo = float(valores.min())
+        maximo = float(valores.max())
+        rango = maximo - minimo
+        return (valores - minimo) / rango if rango > 1e-12 else np.zeros_like(valores)
+    raise ValueError(f"normalizacion desconocida: {modo}")
+
+
+def rerank_por_encoders_calibrados(
+    hits: list[Hit],
+    secundarios: list[tuple[faiss.Index, np.ndarray, float]],
+    normalizacion: str = "minmax",
+) -> list[Hit]:
+    """Combina varios espacios vectoriales calibrando su rango por consulta."""
+    if not hits:
+        return []
+
+    primario = np.array([hit.score for hit in hits], dtype="float64")
+    total = _normalizar_scores(primario, normalizacion).copy()
+    for index, vector_consulta, peso in secundarios:
+        consulta = np.asarray(vector_consulta, dtype="float32").reshape(-1)
+        scores = np.array(
+            [
+                float(np.dot(consulta, index.reconstruct(hit.fila)))
+                if hit.fila >= 0 else 0.0
+                for hit in hits
+            ],
+            dtype="float64",
+        )
+        total += peso * _normalizar_scores(scores, normalizacion)
+
+    orden = np.argsort(-total, kind="stable")
+    return [
+        Hit(
+            rank=rank,
+            score=float(total[i]),
+            chunk_id=hits[i].chunk_id,
+            doc_id=hits[i].doc_id,
+            fuente=hits[i].fuente,
+            texto=hits[i].texto,
+            formato=hits[i].formato,
+            fenomeno=hits[i].fenomeno,
+            idioma=hits[i].idioma,
+            fila=hits[i].fila,
+        )
+        for rank, i in enumerate(orden, start=1)
+    ]
+
+
 def rerank_por_segundo_encoder(
     hits: list[Hit],
     index_secundario: faiss.Index,
@@ -1355,7 +1407,7 @@ def graph_search(query: str, graph, lang: str | None = None, k: int = 10) -> lis
 # CLI
 # ---------------------------------------------------------------------------
 
-DEFAULT_K_POOL = 100  # candidatos usados para agregar a nivel documento (sec. 8.6);
+DEFAULT_K_POOL = 200  # E39: candidatos usados para agregar a nivel documento;
 # mayor que los 10 fragmentos que se devuelven, para que la relevancia de un
 # documento no dependa solo de si su mejor chunk entro en el top-10 mostrado.
 #
@@ -1383,7 +1435,8 @@ DEFAULT_K_POOL = 100  # candidatos usados para agregar a nivel documento (sec. 8
 # seis lecturas; 0,75 y 0,90 fallan sobre las 50. Por eso la grilla quedo
 # cerrada y NO se escala a "el re-puntuador deberia ser el primario", que es
 # otra hipotesis y necesita su propio experimento.
-DEFAULT_RERANK_WEIGHT = 0.60
+DEFAULT_RERANK_WEIGHTS = [0.50, 1.00]  # GTE, E5; E39, calibrados por consulta
+DEFAULT_RERANK_NORMALIZATION = "minmax"
 DEFAULT_RERANK_DEPTH = 200
 
 # La cascada viene ACTIVADA por defecto porque es la configuracion con la que
@@ -1506,7 +1559,7 @@ def build_result_object(
     # default distinto la GUI muestra documentos que no son los de
     # resultados.jsonl. Ya paso una vez (cuando el default era "max"). El CLI
     # siempre la pasa explicita, por eso el desfase no se ve en la entrega.
-    agg_strategy: str = "top5",
+    agg_strategy: str = "top6",
     alinear_fragmentos: bool = True,
     priorizar_idioma: bool = True,
     cupo_alineado: int = N_FRAGMENTS_PER_QUERY,
@@ -1675,8 +1728,16 @@ def main() -> None:
     parser.add_argument(
         "--rerank-weight",
         type=float,
-        default=DEFAULT_RERANK_WEIGHT,
-        help="Autoridad del segundo encoder en la mezcla de scores.",
+        nargs="+",
+        default=list(DEFAULT_RERANK_WEIGHTS),
+        help="Pesos de los re-puntuadores en el mismo orden de --rerank-encoder. "
+        "Un solo valor se aplica a todos.",
+    )
+    parser.add_argument(
+        "--rerank-normalization",
+        choices=["raw", "minmax"],
+        default=DEFAULT_RERANK_NORMALIZATION,
+        help="Calibracion de scores por consulta antes de mezclar encoders.",
     )
     parser.add_argument(
         "--rerank-depth",
@@ -1704,8 +1765,8 @@ def main() -> None:
         # chunks mediocres desplaza al bueno -- medido, con pool 200 `sum` cae
         # a 0,298 de F1@3 mientras `top5` sube a 0,406. `top5` acota ese modo
         # de fallo sin cambiar nada de lo que ya funcionaba.
-        default="top5",
-        choices=["max", "sum", "mean", "top2", "top3", "top5", "top10"],
+        default="top6",
+        choices=["max", "sum", "mean", "top2", "top3", "top4", "top5", "top6", "top10"],
     )
     # Las dos banderas siguientes APAGAN comportamientos activos por defecto.
     # Existen para poder medir cada uno por separado contra la entrega
@@ -1794,7 +1855,14 @@ def main() -> None:
     if args.use_fake_encoder:
         # El encoder falso no tiene un indice secundario real que re-puntuar.
         nombres_rerank = []
-    for nombre_r in nombres_rerank:
+    pesos_rerank = list(args.rerank_weight)
+    if not nombres_rerank:
+        pesos_rerank = []
+    if len(pesos_rerank) == 1 and nombres_rerank:
+        pesos_rerank *= len(nombres_rerank)
+    if len(pesos_rerank) != len(nombres_rerank):
+        parser.error("--rerank-weight requiere uno o tantos valores como --rerank-encoder")
+    for nombre_r, peso_r in zip(nombres_rerank, pesos_rerank):
         try:
             enc_r = get_encoder(name=nombre_r, use_fake=args.use_fake_encoder)
         except Exception as exc:  # noqa: BLE001
@@ -1830,13 +1898,13 @@ def main() -> None:
             verificar_alineacion(metadata, meta_r)
         except ValueError as exc:
             parser.exit(2, f"error: {exc}\n")
-        reranks.append((enc_r, idx_r))
+        reranks.append((enc_r, idx_r, peso_r))
         logger.info(
             "cascada: %s re-puntua los %d candidatos de %s (peso %.2f)",
             enc_r.name,
             args.rerank_depth,
             encoders_indices[0][0].name,
-            args.rerank_weight,
+            peso_r,
         )
 
     # Los indices deben compartir exactamente los mismos chunks: RRF fusiona
@@ -1899,18 +1967,20 @@ def main() -> None:
             for enc, idx, meta in encoders_indices
         ]
 
-        # Cada re-puntuador suma su similitud sobre la MISMA lista, uno tras
-        # otro. El recorte a rerank_depth se hace una sola vez, antes del
-        # primero: repetirlo por cada re-puntuador iria descartando candidatos
-        # entre pasadas y el resultado dependeria del orden de los encoders.
+        # Los tres espacios se calibran sobre el MISMO pool antes de sumar.
+        # Compartir el rango teorico del coseno no implica compartir dispersion.
         if reranks:
             ranked_lists = [lista[: args.rerank_depth] for lista in ranked_lists]
-            for enc_r, idx_r in reranks:
-                qv = enc_r.encode_query(texto_busqueda)
-                ranked_lists = [
-                    rerank_por_segundo_encoder(lista, idx_r, qv, peso=args.rerank_weight)
-                    for lista in ranked_lists
-                ]
+            secundarios = [
+                (idx_r, enc_r.encode_query(texto_busqueda), peso_r)
+                for enc_r, idx_r, peso_r in reranks
+            ]
+            ranked_lists = [
+                rerank_por_encoders_calibrados(
+                    lista, secundarios, normalizacion=args.rerank_normalization
+                )
+                for lista in ranked_lists
+            ]
 
         # El grafo entra como una lista mas a fusionar (sec. 8.5: "RRF
         # tratando el grafo como un indice adicional").
