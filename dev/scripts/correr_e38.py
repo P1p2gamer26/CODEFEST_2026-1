@@ -9,7 +9,7 @@ con todas las lecturas al final.
 En serie a proposito: la GTX 1650 tiene 4 GB y dos builds concurrentes se
 quedan sin VRAM.
 
-Lanzarlo SIEMPRE desacoplado de la sesion (ver las notas del proyecto, "Corridas largas"):
+Lanzarlo SIEMPRE desacoplado de la sesion (ver dev/docs/PLAN_MAESTRO.md, "Corridas largas"):
 
     $repo = "C:\\Users\\Julian\\Downloads\\CODEFEST_2026-1"
     Start-Process -FilePath "$repo\\.venv\\Scripts\\python.exe" `
@@ -21,8 +21,7 @@ Lanzarlo SIEMPRE desacoplado de la sesion (ver las notas del proyecto, "Corridas
 Es REANUDABLE: cada paso comprueba si su salida ya existe y la saltea. Si la
 corrida muere a mitad, relanzarla retoma donde iba.
 
-Spec: dev/docs/planes/specs/2026-08-09-rejilla-chunking-design.md
-Plan: dev/docs/planes/plans/2026-08-09-e38-rejilla-chunking.md
+Pre-registro y resultados: dev/experimentos/E38_rejilla_chunking.md
 """
 
 from __future__ import annotations

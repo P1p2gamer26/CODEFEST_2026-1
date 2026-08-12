@@ -25,7 +25,7 @@ lanzó**. Si estás leyendo esto y no sabés qué está pasando, empezá acá.
 > 0.333 · 0.362 sobre las 10 independientes.
 >
 > Este documento queda como registro de cómo se construyó y verificó el
-> índice. El estado vigente está en `las notas del proyecto`, sección "Adoptado:
+> índice. El estado vigente está en `dev/docs/PLAN_MAESTRO.md`, sección "Adoptado:
 > gte-multilingual-base como re-puntuador".
 >
 > Cómo reproducir las mediciones sin reconstruir nada (segundos, CPU):
@@ -130,13 +130,13 @@ Pasos para adoptarlo:
 1. Copiar el índice a `Entrega/base_vectorial/encoder_gte-multilingual-base/`.
 2. Cambiar el default de `--rerank-encoder` en `Entrega/generador.py`.
 3. **Re-aplanar** cualquier cambio del camino online en `generador.py`
-   (punto 14 de `las notas del proyecto`: es autocontenido).
+   (punto 14 de las notas del proyecto: es autocontenido).
 4. Regenerar `Entrega/resultados.jsonl` y correr:
    `pytest dev/tests -v` · `python dev/scripts/validar_entrega.py` ·
    **corrida en frío** desde fuera del repo con `PYTHONPATH` vacío,
    verificando que reproduce byte a byte.
 5. Publicar el índice por **GitHub Release**, no por LFS (punto 16 de
-   `las notas del proyecto`: la cuota de LFS está casi agotada y no se puede liberar).
+   `dev/docs/PLAN_MAESTRO.md`: la cuota de LFS está casi agotada y no se puede liberar).
 
 ---
 
@@ -195,9 +195,9 @@ verificados.
 - **Fallo de exclusión corregido**: `Entrega/generador.py` usaba sintaxis de
   Python 3.10+ y ADL evalúa con **≥3.9.5**. Sin `from __future__ import
   annotations` el script moría al importar. Ver la sección "Cumplimiento" de
-  `las notas del proyecto`.
+  `dev/docs/PLAN_MAESTRO.md`.
 - **Fragmentos alineados con los documentos** (`ordenar_para_fragmentos`):
-  NDCG@10 de **0.206 → 0.338**, F1@3 intacto. Ver "Adoptado" en `las notas del proyecto`.
+  NDCG@10 de **0.206 → 0.338**, F1@3 intacto. Ver "Adoptado" en `dev/docs/PLAN_MAESTRO.md`.
 - **Ground truth en 50/50**, con las 9 últimas etiquetadas por panel de
   agentes y **marcadas como tales** (`anotador: "panel-agentes"`). Usar
   `eval_mini.py --solo-humanas` para comparar contra cualquier medición

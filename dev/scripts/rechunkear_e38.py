@@ -7,8 +7,7 @@ que re-chunkear a un presupuesto MAYOR obliga a reconstruir la secuencia
 original de oraciones quitando el solape que el chunker introdujo, y volver a
 empaquetar con `_pack_sentences`.
 
-Spec: dev/docs/planes/specs/2026-08-09-rejilla-chunking-design.md
-Plan: dev/docs/planes/plans/2026-08-09-e38-rejilla-chunking.md
+Pre-registro y resultados: dev/experimentos/E38_rejilla_chunking.md
 
 Uso:
     # puerta de entrada: la reconstruccion no puede perder texto

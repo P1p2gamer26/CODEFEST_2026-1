@@ -4,8 +4,8 @@
 ver una sola celda. Las tablas de resultados van al final; si la sección de
 veredicto está vacía, la corrida no había terminado.
 
-Spec: `dev/docs/planes/specs/2026-08-09-rejilla-chunking-design.md`
-Plan: `dev/docs/planes/plans/2026-08-09-e38-rejilla-chunking.md`
+Pre-registro: este mismo documento (hipótesis, justificación mecánica y
+criterio de adopción se fijaron antes de medir; ver `dev/experimentos/cola.jsonl`).
 Arnés: `dev/scripts/correr_e38.py` (driver en serie, reanudable) y
 `dev/scripts/rechunkear_e38.py` (reconstrucción y re-empaquetado).
 

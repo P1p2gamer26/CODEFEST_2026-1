@@ -50,7 +50,7 @@ cd ~/CODEFEST_2026-1
 ```
 
 - Repo clonado con `GIT_LFS_SKIP_SMUDGE=1` desde HTTPS: **no consume la cuota
-  de LFS** (punto 12 de `las notas del proyecto`) y no necesita credenciales.
+  de LFS** (punto 12 de las notas del proyecto) y no necesita credenciales.
 - **`torch` es la build `+cpu`.** La instalación por defecto arrastra 3,4 GB de
   CUDA inútiles en una máquina sin GPU; se reemplazó a mano y el venv bajó de
   5,2 G a 1,5 G. **Si alguna vez hay que reinstalar, usar
@@ -67,7 +67,7 @@ Lo que se transfirió desde la máquina local (no está en git):
 | los tres `index.faiss` | MiniLM 197 MB, e5 395 MB, gte 395 MB |
 | un solo `metadata.jsonl` | los tres son byte-idénticos (chunking único, punto 8); los otros dos son symlinks |
 
-**`las notas del proyecto` también se copió a mano y esa es una trampa permanente:** está
+**`dev/docs/PLAN_MAESTRO.md` también se copió a mano y esa es una trampa permanente:** está
 gitignoreado (para que nunca lleve atribución de IA), así que **no viaja por
 git en ninguna dirección**. Cada vez que se edite de un lado hay que copiarlo
 al otro con `scp`, o las dos máquinas empiezan a trabajar con reglas distintas.
@@ -86,12 +86,12 @@ cd ~/CODEFEST_2026-1
 
 Tiene que dar **136 passed** y **F1@3 0.402 / NDCG@10 0.457**. Verificado el
 6 ago 2026. Si esos números no salen, el entorno remoto dejó de ser equivalente
-al local y **ninguna medición hecha acá es comparable** con lo de `las notas del proyecto`.
+al local y **ninguna medición hecha acá es comparable** con lo de `dev/docs/PLAN_MAESTRO.md`.
 
 ## SUSPENDIDO: no correr agentes en la VM (8 ago 2026)
 
 Decisión del usuario. La VM sigue siendo válida como banco de cómputo para
-correr scripts a mano, pero **no se lanzan tareas desatendidas ahí**. Todo
+correr scripts a mano, pero **no se despliegan sesiones de trabajo ahí**. Todo
 lo de abajo describe cómo estuvo montado el loop remoto y se conserva como
 referencia histórica, no como instrucción vigente.
 
@@ -111,7 +111,7 @@ Reglas, todas heredadas de `docs/lecciones_metodologia.md`:
 4. Adoptar solo si el IC al 90% del delta pareado excluye una pérdida de 0.02.
    Cuando el cambio toca fragmentos, decidir con **NDCG@10**.
 5. **Registrar también lo que falla.** La mitad del valor del proyecto está en
-   la lista de "medido y descartado" de `las notas del proyecto`.
+   la lista de "medido y descartado" de `dev/docs/PLAN_MAESTRO.md`.
 6. **No se toca `Entrega/`.** Todo va a `dev/intermedios/`. Regenerar la
    entrega es decisión con humano: el punto 14 (autocontención de
    `generador.py`) y el punto 12 (cuota de LFS) hacen que deshacerlo sea caro.
@@ -127,7 +127,7 @@ Reglas, todas heredadas de `docs/lecciones_metodologia.md`:
    humano), no parar: generar experimentos nuevos con el mismo formato
    (id, hipótesis, justificación mecánica, comando, riesgo, **escritos antes
    de medir**) a partir de lo identificado como no probado en
-   `docs/plan_encoders.md` y en el estado de `las notas del proyecto`. Mismo criterio de
+   `docs/plan_encoders.md` y en el estado de `dev/docs/PLAN_MAESTRO.md`. Mismo criterio de
    adopción, mismas reglas 1-8. El trabajo es de mejora continua, no una
    lista fija.
 10. **Cierre de ronda: un draft de Gmail consolidado antes de generar la
@@ -143,7 +143,7 @@ Reglas, todas heredadas de `docs/lecciones_metodologia.md`:
     JSON crudo). Es el punto donde el usuario mira las métricas acumuladas y
     decide si deja seguir la siguiente ronda o interviene — el loop asume
     que sigue si no hay nadie que lo pare, pero el draft tiene que dejarlo
-    fácil de frenar (mencionar explícitamente `detener la tarea por su id` como opción).
+    fácil de frenar (mencionar explícitamente detener la corrida como opción).
 
 ## Corridas largas
 
