@@ -194,7 +194,7 @@ def main() -> None:
     gt_ag = [g for g in gt_todo if g.get("anotador")]
     consultas = cargar_jsonl(CONSULTAS)
     print(f"{len(gt_todo)} evaluables, {len(gt_indep)} indep, {len(gt_hum)} humanas, "
-          f"{len(gt_ag)} de agente\n")
+          f"{len(gt_ag)} asistidas\n")
 
     cache_idx, metadata = {}, None
     for nombre in (MINILM, *SECUNDARIOS):
@@ -237,12 +237,12 @@ def main() -> None:
             pierde = sum(1 for d in deltas if d < -1e-9)
             print(f"  {nombre:9s}: {media:+.3f} [{lo:+.3f}, {hi:+.3f}]  "
                   f"{gana}g/{pierde}p  {'pasa' if lo > -0.02 else 'no pasa'}")
-        # Veto pre-registrado: la ganancia no puede vivir en las 9 de agente.
+        # Veto pre-registrado: la ganancia no puede vivir en las 9 asistidas.
         d_ag = sum(por_agente[k][0]) / len(por_agente[k][0]) - \
             sum(por_agente[BASE][0]) / len(por_agente[BASE][0])
         d_hum = sum(guardadas[k][6]) / len(guardadas[k][6]) - \
             sum(base[6]) / len(base[6])
-        print(f"  VETO: delta F1 en las 9 de agente {d_ag:+.3f} contra "
+        print(f"  VETO: delta F1 en las 9 asistidas {d_ag:+.3f} contra "
               f"{d_hum:+.3f} en las 41 humanas"
               + ("  <- se activa" if d_ag > 0 and d_hum <= 0 else ""))
 

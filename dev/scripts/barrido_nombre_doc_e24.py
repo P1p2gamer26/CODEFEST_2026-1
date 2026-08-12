@@ -20,7 +20,7 @@ cos(consulta, nombre). Nada mas se mueve. El peso continuo va como CONTROL y
 NO es adoptable por ser el argmax de una grilla (leccion 2).
 
 VETOS pre-registrados:
-  - Si la ganancia se concentra en las 9 consultas de etiqueta de agente, se
+  - Si la ganancia se concentra en las 9 consultas de etiqueta asistida, se
     rechaza (misma firma que doc_rrf y gte-primario).
   - Si el efecto NO aparece en las 11 consultas con F1@3=0, la justificacion
     mecanica era falsa y hay que decirlo aunque el promedio suba.
@@ -224,7 +224,7 @@ def main() -> None:
     gt_ceros = [g for g in gt_todo if g["query_id"] in CEROS]
     consultas = cargar_jsonl(CONSULTAS)
     print(f"{len(gt_todo)} evaluables, {len(gt_indep)} indep, {len(gt_hum)} humanas, "
-          f"{len(gt_ag)} de agente, {len(gt_ceros)} con F1=0\n")
+          f"{len(gt_ag)} asistidas, {len(gt_ceros)} con F1=0\n")
 
     cache_idx, metadata = {}, None
     for nombre in (MINILM, *SECUNDARIOS):

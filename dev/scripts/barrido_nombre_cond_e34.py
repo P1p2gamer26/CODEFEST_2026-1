@@ -162,7 +162,7 @@ def main() -> None:
     gt_hum = [g for g in gt_todo if not g.get("anotador")]
     gt_ag = [g for g in gt_todo if g.get("anotador")]
     print(f"{len(gt_todo)} evaluables, {len(gt_indep)} indep, {len(gt_hum)} humanas, "
-          f"{len(gt_ag)} de agente\n")
+          f"{len(gt_ag)} asistidas\n")
 
     # --- nombres: solo los documentos que aparecen en algun pool ---
     fuente_de = {}

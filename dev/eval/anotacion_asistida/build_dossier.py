@@ -1,11 +1,11 @@
-"""Dossier de candidatos para el panel de agentes anotadores.
+"""Dossier de candidatos para el las rondas de anotacion asistida.
 
 A diferencia de candidatos.md (extracto de 300 chars del mejor chunk), aca
-cada documento va con varios chunks: el panel juzga documentos y con 300
+cada documento va con varios chunks: cada ronda juzga documentos y con 300
 chars se marca de menos (limitacion ya documentada en dev/eval/README.md).
 
 Mezcla consultas SIN anotar con consultas YA anotadas a mano, sin decir
-cuales son cuales. Sin eso el panel no se puede calibrar y sus etiquetas no
+cuales son cuales. Sin eso el metodo no se puede calibrar y sus etiquetas no
 valen como ground truth (ver dev/docs/PLAN_MAESTRO.md: la primera ronda asistida dio F1 0.28
 contra el humano).
 """
@@ -67,7 +67,7 @@ def main():
         por_doc.setdefault(m["doc_id"], []).append(m)
 
     qids = SIN_ANOTAR + CALIBRACION
-    random.Random(20260802).shuffle(qids)  # el panel no debe saber cual es cual
+    random.Random(20260802).shuffle(qids)  # quien anota no debe saber cual es cual
 
     lineas = [
         "# Dossier de anotacion",

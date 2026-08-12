@@ -199,11 +199,11 @@ verificados.
 - **Fragmentos alineados con los documentos** (`ordenar_para_fragmentos`):
   NDCG@10 de **0.206 → 0.338**, F1@3 intacto. Ver "Adoptado" en `dev/docs/PLAN_MAESTRO.md`.
 - **Ground truth en 50/50**, con las 9 últimas etiquetadas por panel de
-  agentes y **marcadas como tales** (`anotador: "panel-agentes"`). Usar
+  agentes y **marcadas como tales** (`anotador: "anotacion-asistida"`). Usar
   `eval_mini.py --solo-humanas` para comparar contra cualquier medición
   anterior al 2 ago 2026.
 - **Panel de agentes: medido y descartado** como fuente de ground truth
-  (F1 0.23 contra el humano). Ver `dev/eval/panel_agentes/README.md`.
+  (F1 0.23 contra el humano). Ver `dev/eval/anotacion_asistida/README.md`.
 - **Rescate léxico**: sirve para ANOTAR, no para producción (pierde 15-2).
 - `.venv-cuda` es un entorno **aparte**; `.venv` sigue siendo el que produce
   la entrega y no hay que tocarlo.

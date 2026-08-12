@@ -109,7 +109,7 @@ cuya explicacion escrita se acaba de medir y no se cumple.
 
 **No adoptable.** `Entrega/` no se toca. La formulacion sin parametro pierde en
 las nueve lecturas; los controles con peso no son adoptables por diseno y su
-ganancia es una consulta sin respaldo mecanico. El veto por consultas de agente
+ganancia es una consulta sin respaldo mecanico. El veto por consultas de anotacion asistida
 no llego a activarse (todas las diferencias del control estan en consultas
 humanas).
 

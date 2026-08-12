@@ -157,7 +157,7 @@ class MetricsPanel(ttk.LabelFrame):
 
     Dos avisos que van en pantalla y no solo aca: el NDCG@10 hereda la
     relevancia del documento (aproximacion, no estima la nota de ADL), y las 9
-    consultas etiquetadas por el panel de agentes se cuentan APARTE porque no
+    consultas etiquetadas por el la anotacion asistida se cuentan APARTE porque no
     son comparables con las humanas."""
 
     def __init__(self, master):
@@ -168,7 +168,7 @@ class MetricsPanel(ttk.LabelFrame):
                 # docs_relevantes vacio = se miro y no habia nada relevante en
                 # el pool; eval_mini la excluye del promedio y aqui igual.
                 if fila["docs_relevantes"]:
-                    origen = "agente" if fila.get("anotador") else "humano"
+                    origen = "asistido" if fila.get("anotador") else "humano"
                     self.gt[fila["query_id"]] = (set(fila["docs_relevantes"]), origen)
 
         self.acumulado: dict[str, list[tuple[float, float]]] = {}
@@ -177,8 +177,8 @@ class MetricsPanel(ttk.LabelFrame):
         self.lbl_ultima.pack(anchor="w")
         self.lbl_humano = ttk.Label(self, text="humanas: --", font=("TkDefaultFont", 10, "bold"))
         self.lbl_humano.pack(anchor="w", pady=(6, 0))
-        self.lbl_agente = ttk.Label(self, text="agente: --")
-        self.lbl_agente.pack(anchor="w")
+        self.lbl_asistido = ttk.Label(self, text="asistido: --")
+        self.lbl_asistido.pack(anchor="w")
         ttk.Label(
             self,
             text="NDCG@10 aproximado: la relevancia del fragmento se hereda de su\n"
@@ -212,7 +212,7 @@ class MetricsPanel(ttk.LabelFrame):
         self._refrescar()
 
     def _refrescar(self) -> None:
-        for origen, label in (("humano", self.lbl_humano), ("agente", self.lbl_agente)):
+        for origen, label in (("humano", self.lbl_humano), ("asistido", self.lbl_asistido)):
             vs = self.acumulado.get(origen, [])
             if not vs:
                 label.configure(text=f"{origen}: --")

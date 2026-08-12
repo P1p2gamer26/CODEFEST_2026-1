@@ -157,7 +157,7 @@ def main():
     gt = [g for g in cargar_jsonl(GT) if g["docs_relevantes"]]
     # Criterio real de "independiente" (no una conjetura): sin campo 'pool' Y
     # sin campo 'anotador'. Es exactamente lo que usa --sin-pooling de
-    # eval_mini.py combinado con excluir panel-agentes, y lo que ya usa
+    # eval_mini.py combinado con excluir anotacion-asistida, y lo que ya usa
     # barrido_orden_e22_e23.py::gt_indep.
     indep = {g["query_id"] for g in gt if not g.get("pool") and not g.get("anotador")}
     conteos = conteos_del_corpus()
