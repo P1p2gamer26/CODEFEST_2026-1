@@ -47,7 +47,7 @@ E21 — no contra la cascada de tres encoders.
 |---|---|---|---|
 | **MiniLM solo, corpus entregado, 50 consultas** | **0.369** | **0.464** | **0.440** |
 
-Desglose: 41 humanas 0.391, 9 de panel 0.267. Techo alcanzable 0.906.
+Desglose: 41 humanas 0.391, 9 asistidas 0.267. Techo alcanzable 0.906.
 La cascada completa entregada está en 0.455 / 0.516 / 0.499.
 
 ## Criterio de adopción y vetos, fijados de antemano
@@ -56,7 +56,7 @@ La cascada completa entregada está en 0.455 / 0.516 / 0.499.
 - **Confirmación en las 41 humanas**, no solo en las 50.
 - **Veto 1:** las consultas con F1@3 = 0 no pueden pasar de 11.
 - **Veto 2:** los fragmentos ilegibles no pueden pasar de 0.
-- **Veto 3:** si la ganancia se concentra en las 9 consultas de panel y se
+- **Veto 3:** si la ganancia se concentra en las 9 consultas asistidas y se
   evapora en las 41 humanas, se descarta — la firma que ya mató a `doc_rrf`,
   a gte-primario, a E25 y a E31.
 

@@ -13,7 +13,7 @@ INFERIOR. Coste de codificacion cero: los tres indices existen.
 
 RIESGO, de la cola: (1) declarar el sesgo y NO concluir "gte no aporta" ante
 empate; (2) dilucion -- por eso va la celda de profundidad igualada; (3) si
-gana SOLO en las 9 de etiqueta de agente, se rechaza; (4) E18 acota el techo a
+gana SOLO en las 9 de etiqueta asistida, se rechaza; (4) E18 acota el techo a
 8 pares de 207 (3.9%) con reparto simetrico (8 solo-gte contra 8 solo-MiniLM),
 asi que la expectativa esta corregida a la baja ANTES de correr.
 
@@ -232,7 +232,7 @@ def main() -> None:
             pierde = sum(1 for d in deltas if d < -1e-9)
             print(f"  {nombre:9s}: {media:+.3f} [{lo:+.3f}, {hi:+.3f}]  "
                   f"{gana}g/{pierde}p  {'pasa' if lo > -0.02 else 'no pasa'}")
-        # veto pre-registrado nº 3: victorias concentradas en etiqueta de agente
+        # veto pre-registrado nº 3: victorias concentradas en etiqueta asistida
         dq = {g["query_id"]: (f1([d["doc_id"] for d in
                                  guardadas[k + '__res'][g["query_id"]]["documents"][:3]],
                                 set(g["docs_relevantes"]))[2]

@@ -14,7 +14,7 @@ glosario.py, contado sobre los 128.526 chunks del indice entregado).
 REGLA DE DECISION FIJADA ANTES DE MEDIR: se adopta si el IC al 90% del delta
 pareado excluye una perdida de 0,02, decidiendo por F1@3 (el cambio mueve el
 ranking de documentos) y mirando el NDCG@10 como segunda lectura. Se reporta
-por separado sobre las 41 humanas, porque las 9 de agente reproducen al humano
+por separado sobre las 41 humanas, porque las 9 asistidas reproducen al humano
 con F1 0.23 y dos de las consultas que el glosario toca estan entre ellas.
 
 Uso:

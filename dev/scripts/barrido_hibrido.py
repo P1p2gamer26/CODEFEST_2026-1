@@ -64,7 +64,7 @@ def main() -> None:
     parser.add_argument(
         "--solo-humanas",
         action="store_true",
-        help="Excluye las 9 consultas etiquetadas por el panel de anotadores-agente "
+        help="Excluye las 9 consultas etiquetadas por el las rondas de anotacion asistida "
         "(F1 0.23 contra el humano). Obligatorio para comparar con lo medido antes "
         "del 2 ago 2026.",
     )

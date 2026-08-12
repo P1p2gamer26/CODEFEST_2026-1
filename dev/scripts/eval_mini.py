@@ -253,9 +253,9 @@ def main() -> None:
     parser.add_argument(
         "--solo-humanas",
         action="store_true",
-        help="Excluye las consultas etiquetadas por el panel de anotadores-agente. "
+        help="Excluye las consultas etiquetadas por el las rondas de anotacion asistida. "
         "Necesario para comparar contra cualquier medicion anterior al 2 ago 2026: "
-        "el panel reproduce al humano con F1 0.23, asi que sus etiquetas miden "
+        "la anotacion asistida reproduce al humano con F1 0.23, asi que sus etiquetas miden "
         "parecido entre modelos, no acierto.",
     )
     parser.add_argument(
@@ -299,8 +299,8 @@ def main() -> None:
     suma = 0.0
     suma_ndcg = 0.0
     suma_ndcg_pen = 0.0
-    # Las etiquetas del panel de agentes reproducen al humano con F1 0.23
-    # (dev/eval/panel_agentes/README.md). El promedio de decision es sobre
+    # Las etiquetas del la anotacion asistida reproducen al humano con F1 0.23
+    # (dev/eval/anotacion_asistida/README.md). El promedio de decision es sobre
     # TODAS las consultas -- es la forma de las ecs. (10) y (14) del PDF --
     # pero se sigue mostrando el desglose para no perder de vista que esa
     # fraccion del numero descansa en etiquetas debiles.
@@ -324,7 +324,7 @@ def main() -> None:
         suma += valor
         suma_ndcg += n
         suma_ndcg_pen += n_pen
-        origen = "agente" if fila.get("anotador") else "humano"
+        origen = "asistido" if fila.get("anotador") else "humano"
         por_origen.setdefault(origen, []).append(valor)
         print(
             f"{qid:10s} {p:6.2f} {r:6.2f} {valor:6.2f} {n:6.2f} {n_pen:6.2f} {origen:>6s}  "
@@ -381,8 +381,8 @@ def main() -> None:
             print(f"  {origen:7s} {len(vs):2d} consultas  F1@{args.k} {sum(vs) / len(vs):.3f}")
         print(
             "  el desglose es diagnostico, no un segundo titular: la metrica de\n"
-            "  decision es la media sobre todas. Pero el panel reproduce al humano\n"
-            "  con F1 0.23 (dev/eval/panel_agentes/README.md), asi que esas etiquetas\n"
+            "  decision es la media sobre todas. Pero la anotacion asistida reproduce al humano\n"
+            "  con F1 0.23 (dev/eval/anotacion_asistida/README.md), asi que esas etiquetas\n"
             "  son el eslabon debil del promedio -- re-anotarlas a mano es la tarea de\n"
             "  anotacion de mayor prioridad. Para comparar contra mediciones anteriores\n"
             "  al 2 ago 2026 sigue estando --solo-humanas."

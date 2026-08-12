@@ -59,7 +59,7 @@ entrega. 10.000 pares puntuados en GPU (~24 min).
 - **En las 10 independientes (la unica muestra sin sesgo de pooling) pierde
   todo**: F1 -0.067 [-0.133, 0.000] y NDCG -0.043 [-0.103, +0.011]. Las
   derrotas son q017 y q033, dos de las independientes.
-- **Sus 6 victorias incluyen q011 y q012 (etiqueta panel-agentes).** En las 41
+- **Sus 6 victorias incluyen q011 y q012 (etiqueta anotacion-asistida).** En las 41
   humanas el reparto es **4-3 y el F1 queda plano** (-0.004). Es la firma
   exacta de E04, E25, E31, gte-primario, `doc_rrf` y 200:top5: la ganancia
   vive en las consultas con sesgo de pooling y se evapora en las humanas.

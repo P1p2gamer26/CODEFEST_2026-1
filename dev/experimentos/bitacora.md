@@ -1012,7 +1012,7 @@ victorias y cero derrotas en F1@3. Y gana 4 en las 50 pero solo 2 en las 41
 
 humanas, o sea que **la mitad de la ganancia cae sobre las 9 consultas con
 
-etiqueta de agente**, justo donde el instrumento acierta 0.23. Es la misma
+etiqueta asistida**, justo donde el instrumento acierta 0.23. Es la misma
 
 firma por la que se descartaron `doc_rrf` y gte-primario. Ademas falla el
 
@@ -1028,7 +1028,7 @@ criterio pre-registrado en `NDCG@10` y `NDp` de las independientes.
 
 entregar `k_pool=100` y no 200: ahi 200 ganaba 6 consultas, **3 de ellas de
 
-etiqueta de agente**, y entre las 41 humanas quedaba **3-3**. Hoy el peso, el
+etiqueta asistida**, y entre las 41 humanas quedaba **3-3**. Hoy el peso, el
 
 glosario y la agregacion son otros, y **el patron se reprodujo intacto**. No
 
@@ -1038,7 +1038,7 @@ era ruido de una corrida: es una propiedad estable del ground truth.
 
 **Corolario operativo, que redirige la cola:** mientras esas 9 consultas sigan
 
-con etiqueta de agente, **cualquier palanca que ensanche el pool va a parecer
+con etiqueta asistida, **cualquier palanca que ensanche el pool va a parecer
 
 ganadora en las 50 sin serlo**, y va a consumir un experimento cada vez para
 
@@ -1392,7 +1392,7 @@ la metrica con la que la regla 4 manda decidir cuando el cambio toca
 
 fragmentos. Ademas gana 5 sobre las 50 y solo 3 sobre las 41 humanas: **2 de
 
-las 5 victorias caen sobre consultas de etiqueta de agente**. Es la firma del
+las 5 victorias caen sobre consultas de etiqueta asistida**. Es la firma del
 
 sesgo de pooling otra vez, mas suave que en E08 pero la misma.
 
@@ -1996,7 +1996,7 @@ de TODO el proyecto sobre las 50 (0.465, ND 0.521) y aun asi NO se adopta:
 
 en las 10 independientes pierde F1 -0.067 [-0.133, 0.000] y ND -0.043; sus 6
 
-victorias incluyen q011 y q012 (panel-agentes) y en las 41 humanas el F1
+victorias incluyen q011 y q012 (anotacion-asistida) y en las 41 humanas el F1
 
 queda plano (4-3). Las celdas de SUMA suben los ceros de 11 a 12 (veto).
 
@@ -2180,10 +2180,10 @@ esta variante -- no confirma ganancia ahi, pero tampoco pierde nada.
 **Consultas que cambian de F1@3, por procedencia:** ganan q003 (humana,
 0.00->0.50), q032 (humana, 0.67->1.00), q037 (humana, 0.00->0.40, el caso
 citado en la justificacion mecanica), q047 (humana, 0.00->0.40, el otro caso
-citado). Pierden q028 (panel-agentes, 0.67->0.33) y q029 (humana,
-0.33->0.00). **4 ganancias humanas contra 1 perdida de panel-agentes y 1
+citado). Pierden q028 (anotacion-asistida, 0.67->0.33) y q029 (humana,
+0.33->0.00). **4 ganancias humanas contra 1 perdida de anotacion-asistida y 1
 perdida humana -- es la firma CONTRARIA a la de E31/E37/E39**, donde la
-ganancia se concentraba en las consultas de etiqueta de agente.
+ganancia se concentraba en las consultas de etiqueta asistida.
 
 **No aplicado a `Entrega/`.** La tarea que origino este experimento pedia
 solo la medicion y su registro; llevar `agregar_normalizado` a

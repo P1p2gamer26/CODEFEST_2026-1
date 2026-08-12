@@ -120,15 +120,15 @@ cambia en 6:
   cupo, el otro caso citado (margen -0.0108).
 
 **Pierden:**
-- **q028** (panel-agentes): F1 0.67 -> 0.33. Pierde `F2-SWF-124`, gana
+- **q028** (anotacion-asistida): F1 0.67 -> 0.33. Pierde `F2-SWF-124`, gana
   `F2-CSIS-208` (no relevante).
 - **q029** (humana): F1 0.33 -> 0.00. Pierde `F2-SWF-081`, gana
   `F2-CSIS-035` (no relevante).
 
 **Lectura:** 4 ganancias son consultas **humanas** y solo 1 perdida es de
-**panel-agentes** (la otra perdida tambien es humana). Es la firma
+**anotacion-asistida** (la otra perdida tambien es humana). Es la firma
 **contraria** a la de E31/E37/E39 (donde la ganancia se concentraba en
-consultas de agente) — aca la ganancia neta se sostiene mayormente sobre
+consultas de anotacion asistida) — aca la ganancia neta se sostiene mayormente sobre
 etiquetas confiables. Las 6 consultas **independientes** que cambian de
 orden (q005, q014, q017, q020, q026, q044) no cambian su F1@3 ni su NDCG@10:
 son reordenamientos internos del top-3 que no alteran el conjunto de

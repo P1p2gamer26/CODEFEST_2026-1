@@ -40,7 +40,7 @@ RIESGO DECLARADO, fijado antes de medir:
     Se adopta solo si el IC al 90% del delta pareado excluye una perdida de
     0,02 en las DOS muestras, y **ante empate se conserva la entregada**.
   - Corolario de E08: una ganancia que caiga sobre las 9 consultas con
-    etiqueta de agente NO cuenta como evidencia. Por eso van aparte las 41
+    etiqueta asistida NO cuenta como evidencia. Por eso van aparte las 41
     humanas y las 10 independientes.
   - La celda de tres le da a los secundarios 1,8 de autoridad contra 1,0 del
     primario. Si gana, hay que descartar que sea solo efecto del peso total
@@ -195,7 +195,7 @@ def fase2(consultas):
     # `pool`. Es la unica muestra sin sesgo de pooling y la que manda cuando
     # discrepa de las 50 (por eso cayeron doc_rrf y gte-primario).
     indep = [g for g in gt if not g.get("pool")]
-    humanas = [g for g in gt if g.get("anotador") != "panel-agentes"]
+    humanas = [g for g in gt if g.get("anotador") != "anotacion-asistida"]
     print(f"ground truth: {len(gt)} con relevantes, {len(indep)} independientes, {len(humanas)} humanas")
 
     cache_idx = {MINILM: load_index(MINILM)}

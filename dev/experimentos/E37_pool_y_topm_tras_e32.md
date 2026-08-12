@@ -77,7 +77,7 @@ Las dos celdas son casi la misma (20 y 22 lineas cambian, mismas 4 victorias y
 | ND(hum) | −0.000 [−0.033, +0.027] | 6g/4p | **NO pasa** |
 
 **El desglose lo mata.** Las 4 victorias de F1 son `q011, q012, q043, q047` y
-**`q011` y `q012` son de `panel-agentes`**; las 2 derrotas (`q027`, `q030`) son
+**`q011` y `q012` son de `anotacion-asistida`**; las 2 derrotas (`q027`, `q030`) son
 humanas. En las 41 humanas el reparto es **2-2 y el F1 baja a 0.482**: toda la
 ganancia de las 50 vive en 2 de las 9 consultas peor etiquetadas. Es exactamente
 la firma que E31 midio y por la que ya se descartaron `doc_rrf`, gte-primario y
@@ -93,7 +93,7 @@ antemano, se conserva lo entregado.** Nada que aplicar a `Entrega/`.
 
 1. **El eje `k_pool` queda cerrado por tercera vez** (4 ago con `sum`/`top5`,
    E27 con el recorte intermedio, ahora bajo E32). Ampliar el pool solo mueve
-   consultas de etiqueta de agente.
+   consultas de etiqueta asistida.
 2. **E32 y el ancho del pool son ortogonales**, medido: el filtro se lleva 2,6%
    del pool en promedio. No hay que re-barrer nada mas "porque E32 cambio el
    regimen" — cambio el ranking, no el tamano efectivo.

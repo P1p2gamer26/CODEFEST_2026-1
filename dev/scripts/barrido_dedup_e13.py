@@ -16,7 +16,7 @@ gastado en texto ya entregado vale cero en NDCG@10.
 RIESGO, de la cola: (1) el umbral es un parametro continuo -- por eso solo
 tres valores gruesos y ante empate gana el que menos fragmentos mueve; (2) el
 reemplazo puede venir de fuera del top-3 y deshacer E22, hay que reportarlo;
-(3) si gana solo en las 9 de etiqueta de agente, se rechaza.
+(3) si gana solo en las 9 de etiqueta asistida, se rechaza.
 
 Es un REORDENAMIENTO del pool ya re-puntuado: no toca vectores ni FAISS.
 
@@ -160,7 +160,7 @@ def main():
     consultas = {c["query_id"]: c["text"] for c in cargar_jsonl(CONSULTAS)}
     gt = [g for g in cargar_jsonl(GT) if g["docs_relevantes"]]
     # Las 10 independientes: sin campo "pool" (no anotadas por pooling) y sin
-    # etiqueta de agente. Mismo criterio que barrido_orden_e22_e23.py.
+    # etiqueta asistida. Mismo criterio que barrido_orden_e22_e23.py.
     gt_ind = [g for g in gt if not g.get("pool") and not g.get("anotador")]
 
     todo = {}

@@ -81,7 +81,7 @@ Están todas medidas, con sus números, en la sección "Medido y descartado" de
 simétrica de encoders (0,268 vs 0,306), invertir la cascada (0,250),
 deduplicar documentos, concatenar chunks vecinos, fusionar el grafo en la
 recuperación (pierde 11-0), re-chunkear a 128 tokens (0,294 vs 0,375),
-`bge-m3` como cuarto encoder, y cribar el ground truth con anotadores-agente
+`bge-m3` como cuarto encoder, y cribar el ground truth con rondas de anotacion asistida
 (F1 0,23 contra el humano).
 
 **Ejes cerrados por medición, no reabrir sin datos nuevos:** otro encoder
@@ -417,8 +417,8 @@ que sirve en CI.
 
 ADL no publica su ground truth, así que para no elegir configuraciones a ojo
 hay uno propio en `dev/eval/` que cubre las 50 consultas: **41 anotadas a
-mano y 9 por un panel de anotadores-agente** (marcadas con
-`anotador: "panel-agentes"`, no equivalentes a las humanas). Su `README.md`
+mano y 9 por un las rondas de anotacion asistida** (marcadas con
+`anotador: "anotacion-asistida"`, no equivalentes a las humanas). Su `README.md`
 explica las limitaciones, que conviene leer antes de creerle a los números.
 
 ```bash
@@ -658,11 +658,11 @@ del reto). Para reiniciarlo, simplemente borrar ese archivo.
 
 - `dev/eval/ground_truth_mini.jsonl`: **ground truth propio**, no el de ADL,
   que no se publica. Cubre las 50 consultas: 41 anotadas a mano y **9 por un
-  panel de anotadores-agente**, marcadas con `anotador: "panel-agentes"`.
-  Esas 9 **no son equivalentes** a las humanas —el panel reproduce al humano
+  las rondas de anotacion asistida**, marcadas con `anotador: "anotacion-asistida"`.
+  Esas 9 **no son equivalentes** a las humanas —la anotacion asistida reproduce al humano
   con F1 0,23— así que para comparar contra cualquier medición anterior hay
   que usar `eval_mini.py --solo-humanas`. Detalle en
-  `dev/eval/panel_agentes/README.md`.
+  `dev/eval/anotacion_asistida/README.md`.
 - `dev/consultas_prueba/consultas_50.jsonl`: las inventadas p001–p050 del
   período previo. Sirven solo para probar multilingüe y tolerancia a typos;
   **no son las del reto**.

@@ -126,7 +126,7 @@ no contenía la respuesta**. El desacuerdo entre anotadores es una señal de
 diagnóstico, no un problema a promediar.
 
 Cautela obligatoria: son etiquetas hechas por modelos. Viven en
-`dev/eval/ground_truth_agentes.jsonl`, **separadas** del anotado a mano, y no
+`dev/eval/ground_truth_asistido.jsonl`, **separadas** del anotado a mano, y no
 se funden. Medir contra etiquetas de modelo premia parecerse a un modelo.
 
 ---

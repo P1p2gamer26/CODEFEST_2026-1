@@ -62,7 +62,7 @@ entregar exactamente 3 documentos, así que una consulta con un solo relevante
 topa en 0,50.
 
 **Advertencia que hay que repetir siempre:** 9 de las 50 llevan etiqueta de
-panel de agentes y dan F1@3 **0,311** contra **0,468** de las 41 humanas. Ese
+la anotacion asistida y dan F1@3 **0,311** contra **0,468** de las 41 humanas. Ese
 es el eslabón podrido del promedio, y re-anotarlas a mano sigue siendo la tarea
 de mayor impacto del proyecto.
 
@@ -222,7 +222,7 @@ mejora*.
   cambios que tocan fragmentos**. Para cambios de agregación a documento el
   Δ de NDCG es **exactamente 0,000**, porque la lista de fragmentos no depende
   de la estrategia de agregación.
-- **Cribar con anotadores-agente: medido y descartado.** El acuerdo
+- **Cribar con rondas de anotacion asistida: medido y descartado.** El acuerdo
   agente-vs-humano sobre 12 consultas ya anotadas es **F1 = 0,28** (precisión
   0,30, recall 0,26). De cada 10 documentos que marca el agente, el humano
   marcó 3. Es casi el mismo nivel que el recuperador que queríamos evaluar:
@@ -356,7 +356,7 @@ tercio menos. Ese es el patrón de lo que funciona en este proyecto — **arregl
 defectos del dato, no calibrar parámetros.**
 
 Si solo hubiera tiempo para una cosa: **anotar más y más profundo, a mano.**
-Sigue siendo cierto, y ahora con número: las 9 consultas de etiqueta de agente
+Sigue siendo cierto, y ahora con número: las 9 consultas de etiqueta asistida
 dan **0,311** contra **0,468** de las humanas. Mientras eso siga así, ninguna
 medición nuestra —ni el 0,506 ni el 0,460 de bge-m3— dice de verdad dónde
 estamos frente al ground truth de ADL.

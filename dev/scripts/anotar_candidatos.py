@@ -80,7 +80,7 @@ def generar(args: argparse.Namespace) -> None:
     if args.solo:
         # Nombrar una consulta explicitamente con --solo la genera AUNQUE ya
         # este anotada: es la unica forma de rehacer a mano las 9 que quedaron
-        # con etiquetas del panel de agentes (F1 0.23 contra el humano). Al
+        # con etiquetas del la anotacion asistida (F1 0.23 contra el humano). Al
         # recolectar, el registro se reemplaza entero, asi que el campo
         # `anotador` desaparece solo y eval_mini deja de contarlas como
         # debiles.

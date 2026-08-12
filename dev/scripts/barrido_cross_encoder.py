@@ -30,7 +30,7 @@ RIESGOS DECLARADOS, fijados antes de medir:
   - Criterio de adopcion: IC al 90% del delta pareado excluye perdida de 0.02
     en las DOS muestras (50 y 10 independientes), ante empate se conserva la
     entregada, y las 11 consultas con F1@3 = 0 no pueden subir. Las 9 con
-    etiqueta de agente van aparte.
+    etiqueta asistida van aparte.
 
 E39b (variante de ventana completa): el 512 de MAX_LEN trunca los chunks que
 superan esa longitud (~0.2% de los candidatos, p99 de tokens por chunk = 466).
@@ -279,7 +279,7 @@ def fase2(consultas, max_length) -> None:
     gt_todo = cargar_jsonl(GT)
     gt = [g for g in gt_todo if g.get("docs_relevantes")]
     indep = [g for g in gt if not g.get("pool")]
-    humanas = [g for g in gt if g.get("anotador") != "panel-agentes"]
+    humanas = [g for g in gt if g.get("anotador") != "anotacion-asistida"]
     print(f"ground truth: {len(gt)} con relevantes, {len(indep)} independientes, {len(humanas)} humanas")
 
     res_base = {}

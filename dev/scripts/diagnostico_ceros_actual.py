@@ -8,7 +8,7 @@ arnes de E19, y clasifica cada consulta en:
 
   (a) fallo de pool        ningun chunk del documento relevante entra a d200
   (b) fallo de agregacion  esta en el pool pero el ranking agregado lo hunde
-  (c) ground truth dudoso  la consulta tiene etiqueta panel-agentes
+  (c) ground truth dudoso  la consulta tiene etiqueta anotacion-asistida
 
 Diagnostico puro: no toca Entrega/ ni propone nada.
 
