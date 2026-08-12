@@ -88,7 +88,7 @@ def _firma(path: Path) -> list:
     archivo cambia de tamano o de fecha, y eso basta para invalidar el
     cache sin tener que hashear 150 MB (el mismo problema que obligo a
     poner el hash del texto en el checkpoint de codificacion, ver
-    las notas del proyecto punto de "corridas largas": un cache que no valida su
+    Punto de "corridas largas" de las notas del proyecto: un cache que no valida su
     fuente sirve numeros viejos en silencio)."""
     st = path.stat()
     return [st.st_size, st.st_mtime]
