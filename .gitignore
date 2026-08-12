@@ -1,3 +1,4 @@
+# Notas de trabajo locales del equipo, fuera de la entrega.
 NOTAS.md
 .notas/
 __pycache__/
@@ -38,3 +39,8 @@ Entrega/__pycache__/
 
 # Overrides locales del editor, no compartidos con el equipo.
 la configuracion local del editor
+
+# Notas de trabajo y temporales, fuera de la entrega
+**/planes/
+*.patch
+dev/scripts/_tmp_*.py
