@@ -157,6 +157,7 @@ def _answer_one(
     unica senal disponible para distinguir una respuesta bien fundamentada de
     una donde no habia nada realmente parecido."""
     tokens = encoder.count_tokens(query_text)
+    query_text_original = query_text
     # Mismo glosario bilingue que usa la entrega, y aplicado en el MISMO punto:
     # antes de vectorizar y para todos los encoders. Se hace aca, en el unico
     # sitio por el que pasan tanto el lote como el chat, para que la GUI no
@@ -187,11 +188,23 @@ def _answer_one(
         from ..graph.graph_retrieval import desempatar_con_grafo, graph_search
 
         query_lang = hits[0].idioma if hits else None
-        graph_hits = graph_search(query_text, graph, lang=query_lang, k=k_pool)
+        # El grafo empareja entidades extraidas por NER. Las equivalencias que
+        # agrega el glosario son para los encoders y no deben inventar
+        # entidades nuevas en esta rama, igual que en Entrega/generador.py.
+        graph_hits = graph_search(query_text_original, graph, lang=query_lang, k=k_pool)
         if graph_hits:
             hits = desempatar_con_grafo(hits, graph_hits)
 
-    return generador.build_result_object(query_id, hits), tokens, best_score
+    # `texto_consulta` es la consulta YA EXPANDIDA por el glosario, igual que
+    # `texto_busqueda` en generador.py: sin el, el criterio de cobertura lexica
+    # de E23 queda inerte y la GUI ordena los fragmentos distinto que la
+    # entrega. El recorte a k_pool ya se hizo arriba, antes del desempate por
+    # grafo, en el mismo orden que generador.py.
+    return (
+        generador.build_result_object(query_id, hits, texto_consulta=query_text),
+        tokens,
+        best_score,
+    )
 
 
 def run_online(

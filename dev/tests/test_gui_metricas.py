@@ -11,6 +11,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 tk = pytest.importorskip("tkinter")
 
 
+def test_gui_arranca_con_la_configuracion_evaluada_sin_grafo():
+    import gui_app
+
+    assert gui_app.GUI_USE_GRAPH is False
+
+
 def _resultado(query_id, doc_ids):
     return {
         "query_id": query_id,
@@ -41,8 +47,11 @@ def test_panel_separa_humanas_de_asistidas():
         assert len(panel.acumulado["asistido"]) == 1
         assert panel.acumulado["humano"][0][0] == pytest.approx(0.8)  # P=2/3, R=1
         assert panel.acumulado["asistido"][0][0] == 0.0
+        assert "2 consultas" in panel.lbl_total.cget("text")
+        assert "F1@3 0.400" in panel.lbl_total.cget("text")
 
         panel.reiniciar()
         assert panel.acumulado == {}
+        assert panel.lbl_total.cget("text") == "total: --"
     finally:
         root.destroy()

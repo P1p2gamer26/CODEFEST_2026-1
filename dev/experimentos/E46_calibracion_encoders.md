@@ -87,6 +87,15 @@ $env:TRANSFORMERS_OFFLINE='1'
   --resultados Entrega\resultados.jsonl
 ```
 
-Verificacion local del 12 de agosto de 2026: `157 passed, 1 skipped`. Las
+Verificacion local del 12 de agosto de 2026: `159 passed, 1 skipped`. Las
 cifras de la tabla se reprodujeron desde `Entrega/resultados.jsonl`; son
 metricas contra el ground truth local y no una calificacion oficial de ADL.
+
+## Paridad de la GUI
+
+La GUI llego a mostrar F1@3 0.361 sobre las 41 etiquetas humanas porque
+activaba el grafo automaticamente al encontrar `grafo.graphml`. Esa no era la
+configuracion E39: la entrega corre sin `--use-graph`, ya que la fusion RRF del
+grafo fue medida como perjudicial. Se corrigio el arranque para usar E39 sin
+grafo, pasar la consulta expandida al ordenamiento de fragmentos y mostrar el
+promedio total de las 50 junto a los desgloses humano/agente.
