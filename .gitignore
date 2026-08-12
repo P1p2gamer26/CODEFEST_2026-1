@@ -37,10 +37,7 @@ Entrega/base_vectorial/**/*.gz
 # exacta de Entrega/ y validar_entrega.py falla si aparece.
 Entrega/__pycache__/
 
-# Overrides locales del editor, no compartidos con el equipo.
-.claude/settings.local.json
-
-# Notas de trabajo y temporales, fuera de la entrega
-**/superpowers/
+# Notas de trabajo y temporales, fuera de la entrega. Los overrides locales
+# del editor ya los cubre el patron de la linea 3.
 *.patch
 dev/scripts/_tmp_*.py
