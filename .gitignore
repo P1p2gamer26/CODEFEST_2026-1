@@ -41,3 +41,9 @@ Entrega/__pycache__/
 # del editor ya los cubre el patron de la linea 3.
 *.patch
 dev/scripts/_tmp_*.py
+
+# Informes y renders locales generados durante analisis/validacion.
+/output/
+
+# Configuracion local del editor, no compartida con el equipo.
+settings.local.json
