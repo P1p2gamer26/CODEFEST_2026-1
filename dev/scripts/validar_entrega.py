@@ -35,6 +35,16 @@ ENTREGA = ROOT / "Entrega"
 CAMPOS_METADATA_OBLIGATORIOS = {
     "doc_id", "chunk_id", "fuente", "formato", "fenomeno", "posicion", "num_tokens", "texto",
 }
+TIPOS_TABLA_1 = {
+    "doc_id": str, "chunk_id": str, "fuente": str, "formato": str,
+    "fenomeno": int, "posicion": int, "num_tokens": int, "texto": str,
+}
+# Cierres validos de oracion, incluidos los de cita y parentesis.
+FIN_DE_ORACION = (".", "?", "!", '"', "'", ")", "]", "»", "…", ":")
+# Cierre de oracion + numero de nota al pie, que el extractor de PDF pega al
+# final del parrafo. Es texto completo, no un corte a media oracion.
+_LLAMADA_DE_NOTA = re.compile(r"[.?!\"»)\]]\s*\d{1,3}$")
+MANIFEST = ROOT / "dev" / "intermedios" / "doc_id_manifest.csv"
 MAX_PALABRAS = 250
 N_DOCS = 3
 N_FRAGS = 10
@@ -201,6 +211,128 @@ def validar_metadata(encoder_dir: Path, filas: list[dict]) -> None:
         aviso("faiss no instalado: no se pudo verificar la alineacion indice/metadata")
 
 
+def validar_tipos_metadata(filas: list[dict]) -> list[str]:
+    """Tipos de la Tabla 1 (sec. 3.4).
+
+    `validar_metadata` solo mira que los campos ESTEN. Un `fenomeno` que
+    viaje como cadena, o un `posicion` como texto, cumple la presencia y
+    rompe cualquier consumidor que espere el tipo declarado en la tabla.
+    """
+    errores: list[str] = []
+    for n, fila in enumerate(filas, start=1):
+        for campo, tipo in TIPOS_TABLA_1.items():
+            valor = fila.get(campo)
+            # bool es subclase de int en Python: hay que excluirlo a mano.
+            if not isinstance(valor, tipo) or isinstance(valor, bool):
+                errores.append(
+                    f"linea {n}: {campo} es {type(valor).__name__}, "
+                    f"se esperaba {tipo.__name__}"
+                )
+        if fila.get("fenomeno") not in (1, 2, 3):
+            errores.append(f"linea {n}: fenomeno fuera de {{1, 2, 3}}")
+        if len(errores) > 20:  # no volcar 128.526 lineas
+            errores.append("... (mas errores, truncado)")
+            return errores
+    return errores
+
+
+def validar_completitud_linguistica(objetos: list[dict]) -> list[str]:
+    """Sec. 3.3: ningun fragmento con oraciones cortadas.
+
+    Es AVISO y no fallo a proposito: el texto de OCR llega sin puntuacion y
+    `truncate.py` corta por palabras como ultimo recurso, asi que un final
+    sin punto no siempre es un corte a media oracion.
+    """
+    avisos_: list[str] = []
+    for obj in objetos:
+        for frag in obj.get("fragments", []):
+            texto = (frag.get("text") or "").rstrip()
+            if not texto or texto.endswith(FIN_DE_ORACION):
+                continue
+            # "...del tratado.65" es una oracion COMPLETA con la llamada a una
+            # nota al pie pegada por el extractor de PDF, no un corte.
+            if _LLAMADA_DE_NOTA.search(texto):
+                continue
+            avisos_.append(
+                f"{obj.get('query_id')} frag#{frag.get('rank')}: "
+                f"termina en '...{texto[-30:]}'"
+            )
+    return avisos_
+
+
+def validar_python39(ruta_generador: Path) -> list[str]:
+    """Q&A final: ADL evalua con Python >= 3.9.5.
+
+    Una anotacion `X | None` sin `from __future__ import annotations` se
+    evalua al definir la funcion y revienta en el import, antes de leer una
+    consulta; la sec. 1.4 excluye de la evaluacion lo que no se reproduce.
+    El venv local corre 3.13 y no lo detectaria nunca.
+    """
+    import ast
+
+    if not ruta_generador.is_file():
+        return []
+    fuente = ruta_generador.read_text(encoding="utf-8")
+    try:
+        arbol = ast.parse(fuente, feature_version=(3, 9))
+    except SyntaxError as exc:
+        return [f"{ruta_generador.name}: sintaxis posterior a Python 3.9 ({exc})"]
+
+    # `X | None` es gramatica valida en 3.9 -- ast.parse no lo rechaza. Lo que
+    # falla es EVALUARLO, y las anotaciones se evaluan al definir la funcion
+    # salvo que el modulo traiga `from __future__ import annotations`.
+    pospuestas = any(
+        isinstance(n, ast.ImportFrom) and n.module == "__future__"
+        and any(a.name == "annotations" for a in n.names)
+        for n in arbol.body
+    )
+    if pospuestas:
+        return []
+
+    anotaciones = [
+        n.annotation
+        for n in ast.walk(arbol)
+        if isinstance(n, (ast.arg, ast.AnnAssign)) and n.annotation is not None
+    ] + [
+        n.returns for n in ast.walk(arbol)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.returns
+    ]
+    uniones = [
+        a for a in anotaciones
+        for sub in ast.walk(a)
+        if isinstance(sub, ast.BinOp) and isinstance(sub.op, ast.BitOr)
+    ]
+    if uniones:
+        return [
+            f"{ruta_generador.name}: {len(uniones)} anotacion(es) usan `X | Y` "
+            f"(PEP 604, 3.10+) sin `from __future__ import annotations`; en "
+            f"Python 3.9 revientan en el import (linea {uniones[0].lineno})"
+        ]
+    return []
+
+
+def validar_cobertura_corpus(doc_ids: set[str], ruta_manifest: Path) -> list[str]:
+    """Cuantos doc_id del manifest de ADL quedaron fuera del indice.
+
+    Aviso, no fallo: hay documentos del manifest sin texto extraible
+    (imagenes de SWF, un JSON vacio, dos "PDF" que son HTML de error).
+    """
+    if not ruta_manifest.is_file():
+        return []
+    import csv
+
+    with ruta_manifest.open(encoding="utf-8", newline="") as f:
+        del_manifest = {fila["doc_id"] for fila in csv.DictReader(f) if fila.get("doc_id")}
+    faltan = sorted(del_manifest - doc_ids)
+    if faltan:
+        return [
+            f"{len(faltan)} de {len(del_manifest)} doc_id del manifest no estan "
+            f"indexados: {', '.join(faltan[:10])}"
+            + (" ..." if len(faltan) > 10 else "")
+        ]
+    return []
+
+
 def validar_resultados(chunk_ids: set[str], doc_ids: set[str], esperar_50: bool) -> None:
     """Sec. 9.3: esquema estricto + trazabilidad contra la metadata."""
     path = ENTREGA / "resultados.jsonl"
@@ -318,6 +450,8 @@ def main() -> None:
     for d in encoder_dirs:
         filas = cargar_metadata(d)
         validar_metadata(d, filas)
+        for e in validar_tipos_metadata(filas):
+            fallo(f"{d.name}/metadata.jsonl: {e}")
         if not chunk_ids:  # trazabilidad contra el primer encoder
             chunk_ids = {f.get("chunk_id") for f in filas}
             doc_ids = {f.get("doc_id") for f in filas}
@@ -325,6 +459,25 @@ def main() -> None:
     validar_resultados(chunk_ids, doc_ids, args.esperar_50)
     validar_grafo(doc_ids)
     validar_informe()
+
+    # Compatibilidad con el interprete del evaluador (Q&A: Python >= 3.9.5).
+    for p_ in validar_python39(ENTREGA / "generador.py"):
+        fallo(p_)
+
+    # Los dos ultimos son AVISO: hay documentos del manifest sin texto
+    # extraible, y el OCR entrega fragmentos sin puntuacion final.
+    for a in validar_cobertura_corpus(doc_ids, MANIFEST):
+        aviso(a)
+    ruta_resultados = ENTREGA / "resultados.jsonl"
+    if ruta_resultados.is_file():
+        objetos = [json.loads(l) for l in ruta_resultados.open(encoding="utf-8") if l.strip()]
+        cortados = validar_completitud_linguistica(objetos)
+        if cortados:
+            aviso(
+                f"{len(cortados)} de {sum(len(o.get('fragments', [])) for o in objetos)} "
+                f"fragmentos no terminan en cierre de oracion (sec. 3.3); "
+                f"p. ej. {cortados[0]}"
+            )
 
     print()
     for a in avisos:
