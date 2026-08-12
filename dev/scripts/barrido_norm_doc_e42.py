@@ -83,21 +83,36 @@ def agregar_normalizado(hits, top_n=3, m=M, alpha=0.0, denominador="n_pool",
             for i, (d, s) in enumerate(ranked, start=1)]
 
 
+def _firma(path: Path) -> list:
+    """(tamano, mtime) de metadata.jsonl. Si el indice se reconstruye, el
+    archivo cambia de tamano o de fecha, y eso basta para invalidar el
+    cache sin tener que hashear 150 MB (el mismo problema que obligo a
+    poner el hash del texto en el checkpoint de codificacion, ver
+    las notas del proyecto punto de "corridas largas": un cache que no valida su
+    fuente sirve numeros viejos en silencio)."""
+    st = path.stat()
+    return [st.st_size, st.st_mtime]
+
+
 def conteos_del_corpus(path=METADATA, cache=CACHE_CONTEOS):
     """Cuantos chunks tiene cada documento en TODO el corpus (no en el pool).
 
-    Una pasada por metadata.jsonl (150 MB) y se cachea: el archivo no cambia
-    mientras no se reconstruya el indice.
+    Una pasada por metadata.jsonl (150 MB) y se cachea, pero el cache se
+    invalida si metadata.jsonl cambio de tamano o de mtime desde que se
+    genero (ver _firma).
     """
+    firma = _firma(path)
     if cache.exists():
-        return json.loads(cache.read_text(encoding="utf-8"))
+        d = json.loads(cache.read_text(encoding="utf-8"))
+        if d.get("firma") == firma:
+            return d["conteos"]
     c = Counter()
     with open(path, encoding="utf-8") as fh:
         for linea in fh:
             if linea.strip():
                 c[json.loads(linea)["doc_id"]] += 1
     cache.parent.mkdir(parents=True, exist_ok=True)
-    cache.write_text(json.dumps(c), encoding="utf-8")
+    cache.write_text(json.dumps({"firma": firma, "conteos": c}), encoding="utf-8")
     return dict(c)
 
 
