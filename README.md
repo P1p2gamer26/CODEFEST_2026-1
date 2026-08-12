@@ -40,7 +40,7 @@ detalle de por qué cada encoder está donde está:
 
 | verificación | estado |
 |---|---|
-| `pytest dev/tests` | 157 passed, 1 skipped |
+| `pytest dev/tests` | 159 passed, 1 skipped |
 | `python dev/scripts/validar_entrega.py` | en verde |
 | `python dev/scripts/pruebas_robustez.py` | todas pasan |
 | **corrida en frío** desde fuera del repo | **reproduce byte a byte** |
@@ -604,10 +604,11 @@ python Entrega/generador.py --consultas dev/consultas_prueba/consultas_prueba.js
 ## 5. Interfaz gráfica (GUI)
 
 Alternativa a los comandos de arriba para quien prefiera no usar la
-terminal. Es una capa opcional sobre el mismo pipeline: llama exactamente a
-las mismas funciones de `dev/src/` que usan `dev/scripts/build_corpus_index.py` y
-`Entrega/generador.py` (ver `dev/src/gui/runner.py`) — los comandos de CLI
-documentados arriba siguen funcionando igual, uno no reemplaza al otro.
+terminal. Es una capa opcional sobre el mismo pipeline E39: llama a las
+funciones de `dev/src/` equivalentes a `Entrega/generador.py` (ver
+`dev/src/gui/runner.py`). Arranca **sin fusionar el grafo**, igual que
+`Entrega/resultados.jsonl`: el grafo se conserva como artefacto bonus, pero su
+fusión RRF se midió y empeora la recuperación.
 
 Requiere el venv activado (secciones 3.2–3.3). Sin dependencias nuevas: usa
 `tkinter`, que viene incluido con la instalación estándar de Python en
@@ -630,8 +631,8 @@ Es una interfaz tipo chat, no un panel de botones con ventanas emergentes:
 escribes cualquier consulta y el sistema responde con los 3 documentos + 10
 fragmentos más relevantes, formateados como una burbuja de respuesta. No hay
 ningún modelo generativo detrás (prohibido por la sec. 8.3): lo que
-"responde" es la recuperación vectorial + FAISS + grafo de siempre, solo que
-presentada de forma legible.
+"responde" es la recuperación vectorial con los tres encoders y FAISS, solo
+que presentada de forma legible.
 
 Al abrir la ventana, carga el índice y el encoder una sola vez en segundo
 plano (la caja de texto queda deshabilitada mientras tanto) y después cada
@@ -640,8 +641,9 @@ consulta que escribas es casi instantánea, porque ya no recarga el modelo.
 La ventana está dividida en dos partes:
 
 - **Chat (izquierda)**: caja de texto + botones "Enviar" y "Correr las 50
-  consultas de prueba" (usa `dev/consultas_prueba/consultas_50.jsonl`, cada una
-  aparece en el chat como si fuera una conversación). Cada respuesta muestra
+  consultas de prueba" (usa
+  `dev/consultas_prueba/consultas_50_oficiales.jsonl`; cada una aparece en el
+  chat como si fuera una conversación). Cada respuesta muestra
   cuántos tokens procesó el encoder para esa consulta y cuánto tardó (no es
   costo de API/LLM — es el conteo de tokens de entrada del encoder,
   `Encoder.count_tokens()` en `dev/src/embedding/encoders.py`).
@@ -649,6 +651,12 @@ La ventana está dividida en dos partes:
   hay que abrir), que muestra en vivo qué está pasando: carga del modelo,
   cada consulta respondida, y el progreso documento por documento cuando se
   reconstruye el índice.
+
+El panel de métricas muestra primero el promedio **total** sobre las consultas
+procesadas y luego los desgloses `humano` (41) y `agente` (9). Al terminar las
+50 oficiales con E39 debe reproducir aproximadamente **F1@3 0,499** y
+**NDCG@10 0,558**. Son métricas contra el ground truth local, no la nota de
+ADL.
 
 Arriba también hay un botón **"Reconstruir índice (offline)"** (recorre el
 corpus, reconstruye `index.faiss`/`metadata.jsonl`/el grafo, y recarga la

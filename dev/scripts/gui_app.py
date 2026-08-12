@@ -53,6 +53,11 @@ DEV_DIR = Path(__file__).resolve().parent.parent
 CONSULTAS_50_PATH = DEV_DIR / "consultas_prueba" / "consultas_50_oficiales.jsonl"
 GROUND_TRUTH_PATH = DEV_DIR / "eval" / "ground_truth_mini.jsonl"
 
+# La configuracion E39 evaluada y Entrega/resultados.jsonl no fusionan el
+# grafo: sus pruebas mostraron que esa senal experimental baja las metricas.
+# Tener grafo.graphml en disco no debe cambiar silenciosamente el pipeline.
+GUI_USE_GRAPH = False
+
 MIN_SCORE_CONFIABLE = 0.35  # similitud coseno; por debajo de esto, la consulta probablemente
 # no tiene relacion con el corpus -- umbral elegido a ojo con paraphrase-multilingual-MiniLM,
 # no es un valor oficial del reto (el reto no exige umbral de confianza, sec. 8.7 lo permite
@@ -175,8 +180,10 @@ class MetricsPanel(ttk.LabelFrame):
 
         self.lbl_ultima = ttk.Label(self, text="ultima consulta: --")
         self.lbl_ultima.pack(anchor="w")
+        self.lbl_total = ttk.Label(self, text="total: --", font=("TkDefaultFont", 10, "bold"))
+        self.lbl_total.pack(anchor="w", pady=(6, 0))
         self.lbl_humano = ttk.Label(self, text="humanas: --", font=("TkDefaultFont", 10, "bold"))
-        self.lbl_humano.pack(anchor="w", pady=(6, 0))
+        self.lbl_humano.pack(anchor="w")
         self.lbl_agente = ttk.Label(self, text="agente: --")
         self.lbl_agente.pack(anchor="w")
         ttk.Label(
@@ -212,6 +219,16 @@ class MetricsPanel(ttk.LabelFrame):
         self._refrescar()
 
     def _refrescar(self) -> None:
+        todas = [valor for valores in self.acumulado.values() for valor in valores]
+        if todas:
+            self.lbl_total.configure(
+                text=f"total: {len(todas):2d} consultas   "
+                f"F1@3 {sum(v[0] for v in todas) / len(todas):.3f}   "
+                f"NDCG@10 {sum(v[1] for v in todas) / len(todas):.3f}"
+            )
+        else:
+            self.lbl_total.configure(text="total: --")
+
         for origen, label in (("humano", self.lbl_humano), ("agente", self.lbl_agente)):
             vs = self.acumulado.get(origen, [])
             if not vs:
@@ -312,7 +329,7 @@ class App(tk.Tk):
 
         def worker():
             try:
-                usa_grafo = GRAFO_PATH.exists()
+                usa_grafo = GUI_USE_GRAPH and GRAFO_PATH.exists()
                 session = Session(
                     use_graph=usa_grafo,
                     progress_cb=lambda e: self.activity.push(_formatear_evento_offline(e)),
@@ -325,7 +342,7 @@ class App(tk.Tk):
 
     def _sesion_lista(self, session: Session, usa_grafo: bool):
         self.session = session
-        cascada = " -> ".join([session.encoder.name] + [e.name for e, _ in session.reranks])
+        cascada = " -> ".join([session.encoder.name] + [e.name for e, _, _ in session.reranks])
         self.activity.push(
             f"Listo. Indice con {session.index.ntotal} vectores, cascada {cascada}"
             + (", grafo cargado" if usa_grafo else " (sin grafo)"),

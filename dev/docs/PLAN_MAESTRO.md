@@ -23,7 +23,7 @@ Bogotá **18-19 de septiembre**.
 | Grafo (bonus) | 224.101 nodos, 754.876 aristas |
 | `informe_tecnico.pdf` | 8 de 8 páginas |
 | `validar_entrega.py` | ✅ en verde (ahora falla también ante archivos de más) |
-| `pytest dev/tests` | ✅ **157 passed, 1 skipped** |
+| `pytest dev/tests` | ✅ **159 passed, 1 skipped** |
 | `pruebas_robustez.py` | ✅ todas — el script corrido como lo correrá ADL |
 | **Corrida en frío** | ✅ **reproduce byte a byte** (sha256 `987293ac…`) |
 

@@ -157,6 +157,7 @@ def _answer_one(
     unica senal disponible para distinguir una respuesta bien fundamentada de
     una donde no habia nada realmente parecido."""
     tokens = encoder.count_tokens(query_text)
+    query_text_original = query_text
     # Mismo glosario bilingue que usa la entrega, y aplicado en el MISMO punto:
     # antes de vectorizar y para todos los encoders. Se hace aca, en el unico
     # sitio por el que pasan tanto el lote como el chat, para que la GUI no
@@ -181,7 +182,10 @@ def _answer_one(
         from ..graph.graph_retrieval import graph_search
 
         query_lang = hits[0].idioma if hits else None
-        graph_hits = graph_search(query_text, graph, lang=query_lang, k=k_pool)
+        # El grafo empareja entidades extraidas por NER. Las equivalencias que
+        # agrega el glosario son para los encoders y no deben inventar
+        # entidades nuevas en esta rama, igual que en Entrega/generador.py.
+        graph_hits = graph_search(query_text_original, graph, lang=query_lang, k=k_pool)
         if graph_hits:
             fused = reciprocal_rank_fusion([hits, graph_hits], key=lambda h: h.chunk_id)
             # Se reutiliza rebuild_hits_from_fusion en vez de rehacerlo aqui:
@@ -192,7 +196,11 @@ def _answer_one(
     # La agregacion a documento usa siempre k_pool: la profundidad extra de la
     # cascada sirve para REORDENAR, no para ampliar el pool.
     hits = hits[:k_pool]
-    return generador.build_result_object(query_id, hits), tokens, best_score
+    return (
+        generador.build_result_object(query_id, hits, texto_consulta=query_text),
+        tokens,
+        best_score,
+    )
 
 
 def run_online(
