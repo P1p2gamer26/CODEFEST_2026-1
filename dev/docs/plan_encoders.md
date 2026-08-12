@@ -50,7 +50,7 @@ experimentos baratos que atacan esto directamente (sección 3).
 
 Se confirma que funciona si, con el ground truth en 50 consultas, la cascada
 **no pierde consultas** contra MiniLM solo. La regla ya estaba fijada de
-antemano en `CLAUDE.md`: al llegar a 50 no se re-busca el peso óptimo, solo se
+antemano en `dev/docs/PLAN_MAESTRO.md`: al llegar a 50 no se re-busca el peso óptimo, solo se
 verifica que no haga daño.
 
 Qué hacer entonces, por orden de impacto:
@@ -216,12 +216,12 @@ dos consultas que cambiaron de lado por azar.
   prefijos**: la familia E5 exige `"query: "` / `"passage: "` y omitirlos
   degrada la calidad en silencio. GTE y MiniLM no llevan prefijo.
 - **El chunking se hace una sola vez** (invariante del punto 8 de
-  `CLAUDE.md`). Nunca re-fragmentar dentro del bucle de encoders: los
+  `dev/docs/PLAN_MAESTRO.md`). Nunca re-fragmentar dentro del bucle de encoders: los
   `chunk_id` colisionarían apuntando a textos distintos.
 - Índices nuevos siempre a `dev/intermedios/` con `--out-base`, jamás
   directo a `Entrega/base_vectorial/`.
 - Cada índice nuevo son cientos de MB: publicarlos por **GitHub Release**, no
-  por LFS (punto 16 de `CLAUDE.md`).
+  por LFS (punto 16 de las notas del proyecto).
 
 ---
 

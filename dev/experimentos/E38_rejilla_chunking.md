@@ -4,8 +4,8 @@
 ver una sola celda. Las tablas de resultados van al final; si la sección de
 veredicto está vacía, la corrida no había terminado.
 
-Spec: `dev/docs/superpowers/specs/2026-08-09-rejilla-chunking-design.md`
-Plan: `dev/docs/superpowers/plans/2026-08-09-e38-rejilla-chunking.md`
+Pre-registro: este mismo documento (hipótesis, justificación mecánica y
+criterio de adopción se fijaron antes de medir; ver `dev/experimentos/cola.jsonl`).
 Arnés: `dev/scripts/correr_e38.py` (driver en serie, reanudable) y
 `dev/scripts/rechunkear_e38.py` (reconstrucción y re-empaquetado).
 
@@ -74,7 +74,7 @@ La cascada completa entregada está en 0.455 / 0.516 / 0.499.
    E21 tuvo que corregir con una tercera fila.
 4. **Los `chunk_id` de una celda no son comparables con los de otra.** Son
    `doc_id` + posición; los tres encoders de una celda tienen que salir del
-   mismo archivo de chunks (punto 8 de CLAUDE.md).
+   mismo archivo de chunks (punto 8 de las notas del proyecto).
 
 ## El hallazgo de implementación, que vale aparte del resultado
 

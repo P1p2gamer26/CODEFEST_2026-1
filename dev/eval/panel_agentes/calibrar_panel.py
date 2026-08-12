@@ -14,7 +14,7 @@ docs/lecciones_metodologia.md:
 
 0.50 no es arbitrario: el recuperador que se quiere evaluar saca 0.344. Un
 anotador que acierta menos que eso mide parecido a otro modelo, no acierto.
-El anotador-agente unico ya medido dio 0.28 y por eso se descarto.
+El primera ronda asistida ya medido dio 0.28 y por eso se descarto.
 """
 
 import json

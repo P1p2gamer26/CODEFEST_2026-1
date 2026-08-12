@@ -3,7 +3,7 @@
 # Esta maquina tiene 7,6 GB y un modelo de 305 M mas el indice no caben
 # holgados. Si la RAM libre cae por debajo del umbral, libera memoria matando
 # procesos de una lista BLANCA explicita -- nunca algo del sistema, nunca el
-# worker de python, nunca la sesion de Claude.
+# worker de python, nunca la sesion interactiva.
 #
 # Uso:
 #   powershell -File dev/scripts/vigilante_ram.ps1 -UmbralMB 500
@@ -21,7 +21,7 @@ param(
 $Matables = @('brave', 'chrome', 'msedge', 'firefox', 'Teams', 'Spotify', 'Discord')
 
 # Nunca, bajo ninguna condicion.
-$Intocables = @('python', 'claude', 'System', 'Idle', 'csrss', 'wininit', 'services', 'lsass', 'smss', 'winlogon')
+$Intocables = @('python', 'System', 'Idle', 'csrss', 'wininit', 'services', 'lsass', 'smss', 'winlogon')
 
 function Escribir($msg) {
     $linea = "{0}  {1}" -f (Get-Date -Format 'HH:mm:ss'), $msg

@@ -39,7 +39,7 @@ el desempate por `chunk_id` elige el 135 y el ground truth marca el 136.
 
 O sea que **el -0.051 no mide calidad de recuperacion, mide cual copia de un
 documento duplicado nombra la anotacion**. Es exactamente el caso que
-`CLAUDE.md` ya tenia cerrado como indecidible: hay 27 grupos de documentos con
+`dev/docs/PLAN_MAESTRO.md` ya tenia cerrado como indecidible: hay 27 grupos de documentos con
 texto inicial identico, q020 y q032 gastan 2 de sus 3 cupos en un duplicado, y
 el ground truth marca **una sola** copia en q020 y **las dos** en q032 — no hay
 forma de saber que criterio uso ADL.

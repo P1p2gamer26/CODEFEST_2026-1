@@ -9,7 +9,7 @@ comparte familia con e5-base, que ya funciona como re-puntuador. El re-rank
 solo lee vectores con `reconstruct(fila)`: una vez existe el indice, probar
 todas las combinaciones cuesta una vectorizacion de consulta por encoder y
 cero codificacion de pasajes. El indice comparte el orden de filas con los
-otros tres (invariante del chunking unico, punto 8 de CLAUDE.md), asi que
+otros tres (invariante del chunking unico, punto 8 de las notas del proyecto), asi que
 `fila` significa el mismo chunk en los cuatro.
 
 QUE SE PRUEBA. e5-large entra como REEMPLAZO y como AGREGADO, porque son dos
@@ -69,7 +69,7 @@ E5 = "multilingual-e5-base"
 GTE = "gte-multilingual-base"
 E5L = "multilingual-e5-large"
 
-# e5-large no vive en Entrega/: su indice es de prueba (punto 13 de CLAUDE.md)
+# e5-large no vive en Entrega/: su indice es de prueba (punto 13 de las notas del proyecto)
 DIR_EXTRA = {E5L: DEV_DIR / "intermedios" / "e5large" / f"encoder_{E5L}"}
 
 PESO = 0.60      # E01

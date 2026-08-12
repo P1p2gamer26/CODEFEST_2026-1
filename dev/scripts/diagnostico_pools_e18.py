@@ -5,7 +5,7 @@ HIPOTESIS, escrita antes de medir: las consultas que fallan comparten una
 firma diagnosticable, y esa firma dice cual de las dos palancas de la ronda
 (E16 doble consulta, E17 union de encoders) puede servir.
 
-JUSTIFICACION MECANICA. CLAUDE.md declara agotado el eje "reordenar lo que el
+JUSTIFICACION MECANICA. dev/docs/PLAN_MAESTRO.md declara agotado el eje "reordenar lo que el
 pool ya trajo" y deja abierta la construccion del pool. Pero nunca se midio lo
 mas basico: **el techo del pool**. Si a profundidad 200 el pool ya contiene
 todos los documentos relevantes, entonces reordenar era efectivamente lo unico

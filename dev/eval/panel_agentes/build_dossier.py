@@ -6,7 +6,7 @@ chars se marca de menos (limitacion ya documentada en dev/eval/README.md).
 
 Mezcla consultas SIN anotar con consultas YA anotadas a mano, sin decir
 cuales son cuales. Sin eso el panel no se puede calibrar y sus etiquetas no
-valen como ground truth (ver CLAUDE.md: el anotador-agente unico dio F1 0.28
+valen como ground truth (ver dev/docs/PLAN_MAESTRO.md: la primera ronda asistida dio F1 0.28
 contra el humano).
 """
 
@@ -33,7 +33,7 @@ CHUNKS_POR_DOC = 3
 CHARS_POR_CHUNK = 700
 
 # Terminos para el rescate lexico. REEMPLAZAN la consulta (medido: una
-# consulta larga en espanol ahoga el termino raro, ver CLAUDE.md).
+# consulta larga en espanol ahoga el termino raro, ver dev/docs/PLAN_MAESTRO.md).
 TERMINOS = {
     "q001": "CBRN chemical biological radiological nuclear",
     "q028": "on-orbit servicing rendezvous proximity operations Shijian",

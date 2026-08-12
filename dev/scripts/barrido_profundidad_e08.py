@@ -6,7 +6,7 @@ HIPOTESIS, escrita antes de medir: al triplicar el peso del re-puntuador
 por tanto `rerank_depth` deja de ser inerte.
 
 POR QUE SE RE-ABRE ALGO YA MEDIDO. `rerank-depth` 400 y 600 dieron **51
-empates de 51** y la nota de CLAUDE.md explica por que con una razon
+empates de 51** y la nota de dev/docs/PLAN_MAESTRO.md explica por que con una razon
 mecanica explicita: "con peso 0.25 el re-puntuador solo reordena, y los
 candidatos de las posiciones 200-600 tienen scores demasiado bajos para
 subir al top-3". Esa razon **depende del peso**, y el peso ya no es 0.25.

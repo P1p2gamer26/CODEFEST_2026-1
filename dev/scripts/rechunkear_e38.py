@@ -7,8 +7,7 @@ que re-chunkear a un presupuesto MAYOR obliga a reconstruir la secuencia
 original de oraciones quitando el solape que el chunker introdujo, y volver a
 empaquetar con `_pack_sentences`.
 
-Spec: dev/docs/superpowers/specs/2026-08-09-rejilla-chunking-design.md
-Plan: dev/docs/superpowers/plans/2026-08-09-e38-rejilla-chunking.md
+Pre-registro y resultados: dev/experimentos/E38_rejilla_chunking.md
 
 Uso:
     # puerta de entrada: la reconstruccion no puede perder texto
@@ -91,7 +90,7 @@ def reconstruir_oraciones(chunks_del_doc, con_contabilidad=False):
 def reempaquetar(chunks_del_doc, token_budget, overlap_sentences, count_tokens):
     """Re-empaqueta los chunks de UN documento al presupuesto pedido.
 
-    OJO (punto 8 de CLAUDE.md): el chunk_id es doc_id + posicion, asi que los
+    OJO (punto 8 de las notas del proyecto): el chunk_id es doc_id + posicion, asi que los
     chunk_id de esta celda NO son comparables con los de otra celda ni con los
     de la entrega. Los tres encoders de una misma celda tienen que construirse
     sobre este mismo archivo.

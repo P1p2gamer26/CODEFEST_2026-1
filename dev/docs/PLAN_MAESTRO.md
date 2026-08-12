@@ -3,7 +3,7 @@
 Estado al **9 de agosto de 2026**. Este documento es el punto de entrada para
 cualquiera que retome el proyecto: qué hay, qué se probó, qué falló, qué queda
 y qué hace falta para competir. Los detalles de implementación están en
-`CLAUDE.md`; el método de decisión, en `lecciones_metodologia.md`.
+`dev/docs/PLAN_MAESTRO.md`; el método de decisión, en `lecciones_metodologia.md`.
 
 **Fechas:** informe a finalistas **20 de agosto**. Fase final presencial en
 Bogotá **18-19 de septiembre**.
@@ -100,7 +100,7 @@ encabezar los rankings de 2026: son decoder-only.
 
 Se midieron **ocho hipótesis más** (E13, E17, E21, E22, E23, E24, E25, y el
 diagnóstico de los ceros). **Dos adoptadas, seis negativas.** Detalle en
-`CLAUDE.md` y en `dev/experimentos/`.
+`dev/docs/PLAN_MAESTRO.md` y en `dev/experimentos/`.
 
 **Lo adoptado — E22 y E23, el orden de los fragmentos.** NDCG@10 de 0,490 a
 **0,506** (+0,016 [+0,004, +0,029], 11-4, IC entero sobre cero), fragmentos
@@ -138,7 +138,7 @@ versiones de las librerías. Los dos corregidos.
 ## 2. Lo que ya se probó y falló
 
 **Veintiséis hipótesis medidas, tres adoptadas.** Está todo en la sección
-"Medido y descartado" de `CLAUDE.md` con sus números. Resumen para no
+"Medido y descartado" de `dev/docs/PLAN_MAESTRO.md` con sus números. Resumen para no
 repetirlo:
 
 ### 2.1 Reordenar lo que el pool ya trajo — agotado

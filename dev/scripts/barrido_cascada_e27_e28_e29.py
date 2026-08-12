@@ -143,7 +143,7 @@ def metricas(res, gt):
 
 def dispersion(sims, n=12):
     """Rango del top-n del PRIMARIO. Plano y bajo = el termino discriminante
-    se perdio (CLAUDE.md). Los crudos vienen en orden del primario."""
+    se perdio (dev/docs/PLAN_MAESTRO.md). Los crudos vienen en orden del primario."""
     s = sims[MINILM][:n]
     return max(s) - min(s)
 

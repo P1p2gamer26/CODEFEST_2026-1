@@ -66,7 +66,7 @@ segunda corrida imprimio las 9 celdas.
 | n_corpus:a0.10 | 0.4193 | 0.4802 | 0.4609 | 0.3000 | 0.3530 | **12 (veto)** |
 | n_corpus:a0.20 | 0.3780 | 0.4406 | 0.4238 | 0.2667 | 0.3127 | **15 (veto)** |
 
-La base reproduce 0.455 / 0.516 / 0.499 de CLAUDE.md (redondeo).
+La base reproduce 0.455 / 0.516 / 0.499 de dev/docs/PLAN_MAESTRO.md (redondeo).
 
 ## IC al 90% del delta pareado contra la base
 

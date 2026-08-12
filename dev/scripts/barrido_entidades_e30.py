@@ -111,7 +111,7 @@ def ordenar_fragmentos(hits, top_ids, texto_consulta=None):
     documentos -- pero las lecturas de NDCG median un sistema que ya no existe.
 
     La logica ya esta duplicada a proposito entre `src/` y `Entrega/generador.py`
-    (punto 14 de CLAUDE.md) y hay un test que vigila ESE par. Una tercera copia
+    (punto 14 de las notas del proyecto) y hay un test que vigila ESE par. Una tercera copia
     dentro de un barrido no la vigila nadie: por eso aqui se llama, no se copia.
     """
     toks = frozenset(tokens_de(texto_consulta)) if texto_consulta else None

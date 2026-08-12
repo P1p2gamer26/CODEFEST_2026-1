@@ -167,7 +167,7 @@ def _answer_one(
     best_score = hits[0].score if hits else 0.0
 
     # Cascada triple, igual que generador.py: el recorte a RERANK_DEPTH se hace
-    # UNA sola vez, antes del primer re-puntuador (ver punto 0 de CLAUDE.md).
+    # UNA sola vez, antes del primer re-puntuador (ver punto 0 de las notas del proyecto).
     if reranks:
         hits = hits[:RERANK_DEPTH]
         for enc_r, idx_r in reranks:

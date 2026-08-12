@@ -77,7 +77,7 @@ relevante topa en 0,50. Citar siempre el 0,455 con el techo al lado.
 ### Qué se probó y no funcionó
 
 Están todas medidas, con sus números, en la sección "Medido y descartado" de
-`CLAUDE.md`. Las principales: híbrido BM25 + denso (pierde 15-4), fusión RRF
+`dev/docs/PLAN_MAESTRO.md`. Las principales: híbrido BM25 + denso (pierde 15-4), fusión RRF
 simétrica de encoders (0,268 vs 0,306), invertir la cascada (0,250),
 deduplicar documentos, concatenar chunks vecinos, fusionar el grafo en la
 recuperación (pierde 11-0), re-chunkear a 128 tokens (0,294 vs 0,375),
@@ -807,7 +807,7 @@ dev/                        todo el desarrollo (NO se entrega)
     reparar_guiones.py        arregla el guion de fin de linea (U+FFFE) sin re-extraer
     rechunkear_e38.py         re-empaqueta chunks a otro presupuesto, con puerta de conservacion
     correr_e38.py             corre la rejilla de chunking en serie, reanudable
-    barrido_*.py              un experimento medido por archivo (E01-E38, ver CLAUDE.md)
+    barrido_*.py              un experimento medido por archivo (E01-E38, ver dev/docs/PLAN_MAESTRO.md)
     gen_informe_tecnico.py    genera Entrega/informe_tecnico.pdf
     gui_app.py                lanza la interfaz grafica (Tkinter)
   tests/                    pytest (corren con HashingFakeEncoder, sin red)

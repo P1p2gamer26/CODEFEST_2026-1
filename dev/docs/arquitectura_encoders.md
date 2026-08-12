@@ -214,7 +214,7 @@ Ambos caminos están probados en `scripts/pruebas_robustez.py`, junto con
 
 ## 7. Lo que NO hay que volver a intentar
 
-Todo esto está medido y en la sección "Medido y descartado" de `CLAUDE.md`:
+Todo esto está medido y en la sección "Medido y descartado" de `dev/docs/PLAN_MAESTRO.md`:
 
 - **Fusión RRF simétrica** de dos encoders — 0,268 vs 0,306.
 - **e5 o gte como primario** — 0,250 y 0,200 en las independientes.

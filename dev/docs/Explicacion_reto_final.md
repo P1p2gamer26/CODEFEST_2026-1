@@ -332,7 +332,7 @@ para no perder consistencia.
 > **AVISO (2 ago 2026): las tablas y listas de esta sección se escribieron el
 > 28 de julio, ANTES de que ADL entregara el corpus, y varias afirmaciones ya
 > son falsas.** Se conservan como registro histórico; el estado real está en
-> `CLAUDE.md`. Lo que cambió:
+> `dev/docs/PLAN_MAESTRO.md`. Lo que cambió:
 >
 > | decía acá | realidad hoy |
 > |---|---|

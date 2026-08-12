@@ -21,7 +21,7 @@ tienen al menos un documento relevante entre sus 200 candidatos.
 
 ## Lo que esto da vuelta
 
-`CLAUDE.md` cierra la seccion del reordenamiento con: *"ninguna estrategia que
+`dev/docs/PLAN_MAESTRO.md` cierra la seccion del reordenamiento con: *"ninguna estrategia que
 reordene lo que el pool ya trajo va a mover la aguja. Lo que queda es la
 construccion del pool."* **Es exactamente al reves.**
 
@@ -76,7 +76,7 @@ cola, pero con la expectativa corregida a la baja y por escrito.**
 
 ## El detector de dispersion no tiene nada que detectar
 
-`CLAUDE.md` propone la dispersion del top-12 como senal barata de "la consulta
+`dev/docs/PLAN_MAESTRO.md` propone la dispersion del top-12 como senal barata de "la consulta
 se resolvio por su mitad generica". Medida sobre las 50: mediana 0.049, rango
 0.022-0.101, y **el grupo de consultas ciegas esta vacio** porque no hay
 ninguna. No se puede separar lo que no existe en dos grupos. El detector queda

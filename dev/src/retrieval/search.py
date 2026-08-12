@@ -25,7 +25,7 @@ class Hit:
     # Fila del chunk en el indice FAISS. La necesita src/retrieval/rerank.py
     # para leer el vector del MISMO chunk en el indice de otro encoder sin
     # volver a codificar el pasaje (los indices comparten el orden de filas,
-    # ver el invariante del chunking unico en CLAUDE.md). Opcional: los hits
+    # ver el invariante del chunking unico en dev/docs/PLAN_MAESTRO.md). Opcional: los hits
     # que no vienen de FAISS (grafo, fusion) no tienen fila.
     fila: int = -1
 
