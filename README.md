@@ -82,7 +82,7 @@ python dev/scripts/validar_entrega.py --esperar-50
 
 | verificación | estado |
 |---|---|
-| `pytest dev/tests` | 184 passed |
+| `pytest dev/tests` | 189 passed |
 | `python dev/scripts/validar_entrega.py` | en verde |
 | `python dev/scripts/pruebas_robustez.py` | todas pasan |
 | **corrida en frío** desde fuera del repo | **reproduce byte a byte** |
@@ -163,7 +163,7 @@ evidencia a ambos lados.
 |---|---|
 | `dev/docs/PLAN_MAESTRO.md` | **empezar por acá**: estado, todo lo probado, lo que queda |
 | `dev/docs/arquitectura_encoders.md` | cómo funcionan los tres encoders y por qué |
-| `dev/experimentos/E39_calibracion_faiss.md` | configuración actual y comparación pareada de métricas |
+| `dev/experimentos/E46_calibracion_encoders.md` | configuración actual y comparación pareada de métricas |
 | `dev/docs/lecciones_metodologia.md` | **cómo se decide si un cambio sirve** — leer antes de proponer mejoras |
 | `dev/docs/PROYECTO_EXPLICADO.md` | mapa módulo por módulo |
 | `dev/docs/Explicacion_reto_final.md` | Q&A con ADL y reglas |
@@ -405,7 +405,7 @@ normal a internet (PyPI); no funciona en entornos con proxy restringido.
 pytest dev/tests -v
 ```
 
-Debería dar **`184 passed`**. Estos tests usan un encoder falso y determinista
+Debería dar **`189 passed`**. Estos tests usan un encoder falso y determinista
 (`HashingFakeEncoder`) solo para validar la mecánica del pipeline sin
 depender de red ni de calidad semántica real — es normal y esperado que
 corran sin conexión.
@@ -599,15 +599,15 @@ encontró es otro trabajo.
 (Esa tabla es la medición **histórica** que eligió la cascada, con un solo
 re-puntuador y peso 0,25.)
 
-**E39 reemplaza el peso único 0,60.** El 0,25 se había fijado con `k_pool=60`,
+**E46 reemplaza el peso único 0,60.** El 0,25 se había fijado con `k_pool=60`,
 agregación `sum` y sin glosario — las tres cosas cambiaron después. La grilla
 0,10/0,25/0,40/0,60/0,75/0,90 (`dev/scripts/barrido_peso.py`) muestra una
 **meseta, no una tendencia**, y 0,60 es el único valor que pasa el criterio de
-adopción histórico bajo suma cruda. E39 midió que los rangos medianos de los
+adopción histórico bajo suma cruda. E46 midió que los rangos medianos de los
 cosenos eran 0,120 (MiniLM), 0,276 (GTE) y 0,103 (E5): el mismo peso daba a
 GTE mucha más autoridad efectiva. La configuración actual calibra cada señal
 a [0,1] dentro del pool y usa 0,50 para GTE y 1,00 para E5. El detalle y los
-controles están en `dev/experimentos/E39_calibracion_faiss.md`.
+controles están en `dev/experimentos/E46_calibracion_encoders.md`.
 Reproducible con `dev/scripts/barrido_dos_encoders.py` y
 `dev/scripts/barrido_thomas.py`.
 
@@ -656,7 +656,7 @@ python Entrega/generador.py --consultas dev/consultas_prueba/consultas_prueba.js
 ## 5. Interfaz gráfica (GUI)
 
 Alternativa a los comandos de arriba para quien prefiera no usar la
-terminal. Es una capa opcional sobre el mismo pipeline E39: llama a las
+terminal. Es una capa opcional sobre el mismo pipeline E46: llama a las
 funciones de `dev/src/` equivalentes a `Entrega/generador.py` (ver
 `dev/src/gui/runner.py`). Arranca **sin fusionar el grafo**, igual que
 `Entrega/resultados.jsonl`: el grafo se conserva como artefacto bonus, pero su
@@ -706,7 +706,7 @@ La ventana está dividida en dos partes:
 
 El panel de métricas muestra primero el promedio **total** sobre las consultas
 procesadas y luego los desgloses `humano` (41) y `agente` (9). Al terminar las
-50 oficiales con E39 debe reproducir aproximadamente **F1@3 0,499** y
+50 oficiales con E46 debe reproducir aproximadamente **F1@3 0,499** y
 **NDCG@10 0,558**. Son métricas contra el ground truth local, no la nota de
 ADL.
 

@@ -23,9 +23,9 @@ Bogotá **18-19 de septiembre**.
 | Grafo (bonus) | 224.101 nodos, 754.876 aristas |
 | `informe_tecnico.pdf` | 8 de 8 páginas |
 | `validar_entrega.py` | ✅ en verde (ahora falla también ante archivos de más) |
-| `pytest dev/tests` | ✅ **159 passed, 1 skipped** |
+| `pytest dev/tests` | ✅ **189 passed** |
 | `pruebas_robustez.py` | ✅ todas — el script corrido como lo correrá ADL |
-| **Corrida en frío** | ✅ **reproduce byte a byte** (sha256 `987293ac…`) |
+| **Corrida en frío** | ✅ **reproduce byte a byte** (sha256 `fcd5f423…`) |
 
 **Dos fallos que habrían excluido la entrega, encontrados y corregidos el
 2 ago 2026** — ninguno se veía corriendo el camino feliz:
@@ -50,10 +50,10 @@ verifica corriendo `generador.py` desde un directorio fuera del repo, con
 | 41 de anotación humana | 0,518 | 0,573 | 0,554 |
 | 10 sin sesgo de pooling | 0,433 | 0,477 | 0,470 |
 
-Actualizadas el 12 ago 2026 tras adoptar **E39** (calibración min-max de los
+Actualizadas el 12 ago 2026 tras adoptar **E46** (calibración min-max de los
 encoders y agregación `top6`). La configuración E32 anterior medía
 0,455 / 0,516 / 0,499. **Ocho consultas tienen F1@3 = 0**, tres menos que
-antes de E39. El F1@3 actual es el **55% del techo alcanzable de 0,906**.
+antes de E46. El F1@3 actual es el **55% del techo alcanzable de 0,906**.
 
 **La métrica de decisión es la media sobre las 50** (forma de las ecs. 10 y 14
 del PDF). Los desgloses son diagnóstico. Y el techo es **0,906, no 1**: hay que
@@ -122,10 +122,10 @@ F1@3 no se mueve, y es lo correcto: no tocan los documentos.
   peso limpio detrás — aporta +0,019 de F1 **por encima del efecto del peso**.
   No se adopta porque las independientes no confirman y exige 14 h de GPU.
 
-**El diagnóstico que más vale:** antes de E39, las **11 consultas con F1@3 = 0
+**El diagnóstico que más vale:** antes de E46, las **11 consultas con F1@3 = 0
 eran principalmente un fallo de agregación, no once problemas distintos**.
 No faltaban documentos relevantes en el pool: se perdían al combinar scores y
-evidencia por documento. E39 calibra los tres encoders y suma hasta seis chunks
+evidencia por documento. E46 calibra los tres encoders y suma hasta seis chunks
 coherentes; con ello rescata tres consultas y deja **8 de 50 con F1@3 = 0**.
 Las ocho restantes requieren análisis individual y mejor ground truth, no más
 profundidad de FAISS por defecto.
@@ -254,7 +254,7 @@ candidatos de los 20 documentos con CBRN; para q038, del subcorpus ALERTAS.
 
 ### 4.2 Prioridad 2 — Ground truth real para NDCG@10
 
-E22/E23 y E39 mejoraron el proxy de NDCG@10, pero todavía hace falta:
+E22/E23 y E46 mejoraron el proxy de NDCG@10, pero todavía hace falta:
 
 1. **Ground truth de fragmentos**, aunque sea de 10 consultas, para saber
    cuánto miente la aproximación actual.
@@ -267,7 +267,7 @@ E22/E23 y E39 mejoraron el proxy de NDCG@10, pero todavía hace falta:
 **Este eje está muerto y no hay que reabrirlo.** El dato que lo motivaba era
 que el pool de 60 alcanzaba solo el 52% de los documentos relevantes. Con la
 configuración evaluada en E18 (pool 100 sobre 200 candidatos re-puntuados),
-**el pool ya traía el 93,2%**. E39 conserva los 200 candidatos completos y
+**el pool ya traía el 93,2%**. E46 conserva los 200 candidatos completos y
 reduce de 11 a 8 las consultas con F1@3 = 0 mediante calibración y agregación
 `top6`, sin atribuir la ganancia a mayor recall de FAISS.
 

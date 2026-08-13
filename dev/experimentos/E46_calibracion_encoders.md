@@ -1,4 +1,4 @@
-# E39 - Calibracion de encoders y agregacion sobre FAISS
+# E46 - Calibracion de encoders y agregacion sobre FAISS
 
 Estado: **ADOPTADO** (12 de agosto de 2026). Rama `Thomas`.
 
@@ -41,7 +41,7 @@ una meseta, no un punto aislado, alrededor de min-max, GTE 0.45-0.50, E5
 Configuracion: min-max por encoder y consulta, GTE 0.50, E5 1.00,
 `rerank_depth=200`, `k_pool=200`, agregacion documental `top6`.
 
-| lectura | anterior | E39 | delta |
+| lectura | anterior | E46 | delta |
 |---|---:|---:|---:|
 | F1@3, 50 | 0.455 | **0.499** | +0.045 |
 | NDCG@10, 50 | 0.516 | **0.558** | +0.042 |
@@ -71,7 +71,7 @@ se descarto, sin construir indices ni atribuirle una mejora inexistente.
 
 Esto es importante: el chunking de produccion se conserva porque 128 tokens
 ya perdio con claridad en E21 y ninguna alternativa nueva supero la puerta de
-screening. E39 mejora como se explotan los chunks: amplifica evidencia
+screening. E46 mejora como se explotan los chunks: amplifica evidencia
 coherente hasta seis chunks por documento y deja que FAISS aporte sus 200
 candidatos completos.
 
@@ -94,8 +94,62 @@ metricas contra el ground truth local y no una calificacion oficial de ADL.
 ## Paridad de la GUI
 
 La GUI llego a mostrar F1@3 0.361 sobre las 41 etiquetas humanas porque
-activaba el grafo automaticamente al encontrar `grafo.graphml`. Esa no era la
-configuracion E39: la entrega corre sin `--use-graph`, ya que la fusion RRF del
-grafo fue medida como perjudicial. Se corrigio el arranque para usar E39 sin
-grafo, pasar la consulta expandida al ordenamiento de fragmentos y mostrar el
-promedio total de las 50 junto a los desgloses humano/agente.
+activaba el grafo automaticamente al encontrar `grafo.graphml` y lo fusionaba
+como una lista mas por RRF, que esta medido y pierde 11-0. Se corrigio el
+arranque, se le pasa la consulta ya expandida al ordenamiento de fragmentos
+—sin eso el criterio de cobertura lexica de E23 queda inerte y la GUI ordena
+distinto que la entrega— y se muestra el promedio total de las 50 junto a los
+desgloses por procedencia de la etiqueta.
+
+## Integracion en `main` y verificacion independiente (12 ago 2026)
+
+Este experimento se hizo en la rama `Thomas`, que salio de `66ced30`. El
+historial de `main` fue reescrito despues, asi que su base comun con `main` es
+el **primer commit del repo** y un `git merge` producia conflictos `add/add` en
+todo el arbol. **Se integro por `cherry-pick` de los tres commits**, que
+conserva su autoria y aplica exactamente el diff de 17 archivos.
+
+Dos cosas se resolvieron a favor de `main` al integrar:
+
+- **El grafo NO se apaga.** `main` lo habia convertido en **desempate no
+  desplazante activo por defecto** (bonus de la sec. 7), que es distinto de la
+  fusion RRF que este experimento apago con razon. Se conservo esa version y
+  se volvio a medir bajo los scores calibrados: **0 de 50 lineas cambian** al
+  pasar `--sin-grafo`. Sigue siendo integracion del artefacto, no una mejora.
+- **La etiqueta se llama `asistido`, no `agente`** (renombrada en `main`).
+
+**Verificado en la maquina local, sin dar por buena ninguna cifra ajena:**
+189 tests, `validar_entrega.py --esperar-50` limpio, `eval_mini.py` devuelve
+**0.499 / 0.558 / 0.539** con **8 consultas en cero**, y `resultados.jsonl`
+**reproduce byte a byte en dos corridas en frio consecutivas** desde fuera del
+repo, con `PYTHONPATH` vacio y sin mas flag que `--consultas`
+(sha256 `fcd5f423...`).
+
+## Por que esto no reabre dos ejes que estaban cerrados
+
+Hay dos precedentes que obligan a justificarlo, y los dos se sostienen:
+
+- **E09 ya midio min-max y lo rechazo** (0.476, falla 3 de 9 lecturas). Fallo
+  porque **perdia en la muestra independiente** (ND −0.004) con la firma del
+  sesgo de pooling. Esta variante —pesos separados por encoder, pool 200,
+  top6— **no pierde en ninguna de las tres lecturas independientes**.
+- **`k_pool=200` y `topM` estaban cerrados** (E33, E37), pero se cerraron
+  **bajo score crudo**. Cambiar la escala de los sumandos es el cambio de
+  regimen que E01 exige para volver a calibrar: es la misma regla por la que
+  fue legitimo mover el peso de 0.25 a 0.60.
+
+**Lo que hay que decir siempre junto al 0.499:** en las 10 independientes la
+ganancia es **plana** (F1 +0.000, ND +0.003) y la prueba de signos aislada da
+**p = 0.180**. Lo que sostiene la adopcion es el criterio vigente del proyecto
+—IC al 90% del delta pareado excluyendo −0.02 en las tres metricas de las 50—
+mas el veto de ceros, que **mejora de 11 a 8**. No es prueba definitiva fuera
+de esta muestra, y el propio experimento lo declara.
+
+## Efecto colateral: E42 muere con este cambio
+
+`E42` (normalizacion por tamano de documento) estaba **medido como adoptable y
+sin aplicar**, con `top5` y `k_pool=100`. Su justificacion mecanica era que el
+documento ganador **satura los cinco sumandos** de `top5`. Con `top6` sobre un
+pool del doble ese regimen desaparece, y re-medido encima de E46 **pierde en
+las tres metricas de las 50 con los IC enteramente bajo cero, y sube los ceros
+de 8 a 9**. Detalle en `E42_normalizacion_tamano.md`.

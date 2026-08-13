@@ -144,3 +144,56 @@ bitacora. Llevarlo a la entrega (aplanar `agregar_normalizado` en
 `agg_strategy="top5"`, medir el coste de leer `metadata.jsonl` completo para
 `conteos_del_corpus` en la fase online) es una decision posterior, fuera del
 alcance de esta tarea.
+
+---
+
+## CIERRE: REFUTADO bajo E46 (12 ago 2026)
+
+Todo lo de arriba se midio con `top5` y `k_pool=100`. **E46 cambio las dos
+cosas** (calibracion min-max de los encoders, `top6`, `k_pool=200`), y la
+justificacion mecanica de E42 dependia justamente de ellas: la premisa era que
+el documento ganador **satura los cinco sumandos** de `top5` y desplaza al
+relevante por margenes de 0.01. Con seis sumandos sobre un pool del doble, ese
+regimen no existe.
+
+Re-medido con el **generador real** (no con el arnes, ver la nota de abajo),
+alpha aplicado en `aggregate_documents` despues del `topM`:
+
+| celda | F1(50) | ND(50) | NDp(50) | F1(ind) | ND(ind) | ceros | lineas |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **BASE (alpha=0)** | **0.4993** | **0.5580** | **0.5387** | 0.4333 | 0.4766 | **8** | 0 |
+| alpha=0.02 | 0.4793 | 0.5346 | 0.5165 | 0.4333 | 0.4766 | 9 | 12 |
+| alpha=0.05 | 0.4660 | 0.5145 | 0.4978 | 0.4000 | 0.4488 | 9 | 25 |
+
+Deltas pareados con IC al 90% contra la base, para alpha=0.02: F1(50)
+**-0.0200 [-0.0400, -0.0067]**, ND(50) **-0.0234 [-0.0408, -0.0086]**, NDp(50)
+**-0.0222 [-0.0387, -0.0080]**. Los tres IC quedan **enteramente bajo cero**, y
+ademas **dispara el veto**: las consultas con F1@3 = 0 suben de 8 a 9. En las
+10 independientes es exactamente inerte (delta 0.0000, IC [0, 0]).
+
+**Pierde monotonamente con alpha**, igual que el borde superior de la grilla
+original. **No reabrir sin un cambio de regimen en la agregacion.**
+
+El control se corrio primero: con `alpha=0.0` el generador reproduce
+`Entrega/resultados.jsonl` **byte a byte** (sha256 `fcd5f423...`), asi que la
+rama nueva es inerte por construccion y la comparacion es limpia.
+
+**El codigo se revirtio.** Un parametro que solo puede empeorar es superficie
+de riesgo sin contrapartida; la medicion queda aca, que es donde sirve.
+
+### Advertencia sobre los arneses de E42 y E45
+
+`barrido_norm_doc_e42.py` **no tiene puerta de fidelidad**: nunca se comprobo
+que su celda base reprodujera `Entrega/resultados.jsonl`. El arnes hermano
+`barrido_grafo_e42_e45.py` **si la tiene y falla**: su celda base diverge de la
+entrega en los **fragmentos** de 7 consultas (q001, q008, q018, q019, q022,
+q025, q026) con los 150 documentos identicos. Se descarto que fuera el grafo
+(medido inerte: 0 de 50 lineas cambian al pasar `--sin-grafo`) y que fuera el
+volcado de pools (se regenero y da igual); los fragmentos entregados **si**
+estan todos en el pool volcado, o sea que la infidelidad esta en como el arnes
+reconstruye o desempata.
+
+Es la regla que E09 ya habia dejado escrita —*si la fila base del arnes no
+reproduce digito a digito lo que da `eval_mini.py` sobre `Entrega/`, el barrido
+no se lee*— y explica por que este cierre se hizo con el generador real, que
+ademas cuesta 4 minutos por celda.
