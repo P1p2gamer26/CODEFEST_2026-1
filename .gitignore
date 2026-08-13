@@ -44,6 +44,3 @@ dev/scripts/_tmp_*.py
 
 # Informes y renders locales generados durante analisis/validacion.
 /output/
-
-# Configuracion local del editor, no compartida con el equipo.
-settings.local.json
