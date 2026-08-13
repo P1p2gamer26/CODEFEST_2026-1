@@ -1,29 +1,43 @@
 # Cómo quedaron funcionando los encoders
 
-Estado al 2 de agosto de 2026. Este documento explica **qué hace cada encoder,
-por qué está donde está, y qué se probó antes de dejarlo así**. Si vas a tocar
-la arquitectura de recuperación, empezá acá.
+Estado al **12 de agosto de 2026**. Este documento explica **qué hace cada
+encoder, por qué está donde está, y qué se probó antes de dejarlo así**. Si vas
+a tocar la arquitectura de recuperación, empezá acá.
+
+> **Los pesos cambiaron dos veces desde la primera versión de este documento.**
+> Primero de 0,25 a 0,60, y después —al medir que los tres cosenos no comparten
+> escala— a una **calibración min-max por consulta** con pesos separados: gte
+> 0,50 y e5 1,00. Las secciones de abajo que citan 0,25 describen la
+> arquitectura *en el momento en que se midió cada experimento*; el peso
+> vigente es el de la sección 1.
 
 ---
 
 ## 1. El resumen en una frase
 
 **Un encoder busca y dos corrigen.** MiniLM recupera 200 candidatos, y
-`gte-multilingual-base` y `multilingual-e5-base` los re-puntúan sumando su
-similitud con peso 0,25 cada uno. Ninguno de los dos aporta candidatos
-propios.
+`gte-multilingual-base` y `multilingual-e5-base` los re-puntúan. Ninguno de
+los dos aporta candidatos propios.
+
+Los tres cosenos **se calibran antes de sumarse**, porque compartir el
+intervalo teórico [-1, 1] no implica compartir dispersión: dentro del pool sus
+rangos medianos son 0,120 (MiniLM), 0,276 (gte) y 0,103 (e5), o sea que con un
+peso uniforme **gte mandaba sobre el orden mucho más de lo que declaraba su
+parámetro**. Cada señal se normaliza **min-max sobre el mismo pool y por
+consulta**, y recién ahí se suman con pesos **0,50 (gte)** y **1,00 (e5)**.
 
 ```
 consulta
    │
    ├─ MiniLM la vectoriza  ──► FAISS ──► 200 candidatos          [RECALL]
    │                                          │
-   ├─ gte vectoriza la consulta ──────────────┤ +0,25 × similitud [PRECISIÓN]
-   ├─ e5 vectoriza la consulta ───────────────┤ +0,25 × similitud [PRECISIÓN]
+   ├─ gte vectoriza la consulta ──────────────┤ +0,50 × minmax(sim) [PRECISIÓN]
+   ├─ e5 vectoriza la consulta ───────────────┤ +1,00 × minmax(sim) [PRECISIÓN]
    │                                          ▼
-   │                                   reordenar, quedarse con 60
+   │                                  reordenar, quedarse con 200
    │                                          │
-   ├─ agregar a documento (suma de scores) ──► 3 documentos
+   ├─ filtrar por fenómeno dominante (≥0,8) ──┐
+   ├─ agregar a documento (suma del top6) ───►│ 3 documentos
    └─ ordenar fragmentos hacia esos 3 docs ──► 10 fragmentos ≤250 palabras
 ```
 
@@ -114,14 +128,30 @@ del proyecto (IC al 90% que excluya una pérdida de 0,02, ver
 NDCG en las 41 y −0,002 en las 10. Se adoptó porque cumple el criterio y
 cuesta una vectorización más, no porque sea un salto.
 
-### 3.4 Por qué peso 0,25
+### 3.4 El peso: de 0,25 a 0,60, y de ahí a la calibración
 
-Pesos mayores (0,5 y 1,0) promedian mejor sobre las 41 pero **empiezan a
-perder consultas en las 10 independientes**, que es la señal clásica de
-sobreajuste al pooling. Con 0,25 la cascada no empeora ninguna consulta de
-ninguna muestra. Se prefirió la variante que nunca hace daño sobre la que
-promedia mejor. **No re-buscar el peso óptimo**: sería sobreajustar a 41
-consultas cuyo efecto mínimo detectable es 0,059.
+**Al principio fue 0,25.** Pesos mayores (0,5 y 1,0) promediaban mejor sobre
+las 41 pero **empezaban a perder consultas en las 10 independientes**, que es
+la señal clásica de sobreajuste al pooling. Con 0,25 la cascada no empeoraba
+ninguna consulta de ninguna muestra, así que se prefirió la variante que nunca
+hace daño sobre la que promedia mejor.
+
+**Después subió a 0,60**, y la razón por la que fue legítimo re-abrirlo
+importa más que el número: el 0,25 se había fijado con `k_pool=60`, agregación
+`sum` y sin glosario, y **las tres cosas cambiaron**. Re-calibrar un parámetro
+cuando cambia el régimen no es sobreajustar; re-calibrarlo sin que cambie
+nada, sí.
+
+**Y finalmente dejó de ser un peso único.** Al medir la dispersión de cada
+encoder dentro del pool se vio que **el peso no estaba escalando relevancia
+sino rango**: gte dispersa 0,276 contra 0,103 de e5, así que con el mismo peso
+decidía el orden mucho más de lo declarado. Hoy cada señal se normaliza
+min-max por consulta y los pesos son **gte 0,50 / e5 1,00**, medidos ya sobre
+la escala corregida.
+
+**Lo que sigue vigente de la nota original:** no re-buscar el peso óptimo sin
+un cambio de régimen que lo justifique. La grilla está cerrada y el efecto
+mínimo detectable con esta muestra es grande.
 
 ---
 

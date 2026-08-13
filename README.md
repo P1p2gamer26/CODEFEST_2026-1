@@ -23,41 +23,101 @@ detalle de por qué cada encoder está donde está:
 
 ## ⚠️ Primero: rehidratar `Entrega/base_vectorial/`
 
-**Los índices no se versionan en el repositorio.** Los tres `index.faiss`,
-sus `metadata.jsonl` y el grafo suman **1,6 GB**, muy por encima de lo que
-admite Git (y de la cuota de 1 GB de Git LFS), así que se publican como
-**GitHub Release**. Git no versiona carpetas vacías, así que el clon no trae
-`Entrega/base_vectorial/`: hay que crearla y depositar los archivos. Estos
-comandos dejan la estructura **exacta** que exige la sec. 1.4.
+**Los índices no se versionan en el repositorio, y ese es el único paso
+manual de toda la entrega.** Los tres `index.faiss`, sus `metadata.jsonl` y
+el grafo suman **1,6 GB**: por encima del límite de 100 MB por archivo de
+GitHub y por encima de la cuota de 1 GB de Git LFS. Por eso se publican como
+**GitHub Release**, que admite 2 GiB por archivo sin cuota de almacenamiento
+ni de ancho de banda. Git tampoco versiona carpetas vacías, así que el clon
+**no trae** `Entrega/base_vectorial/`: hay que crearla y depositar los cinco
+archivos.
+
+**Los cinco assets del Release, y a qué archivo va cada uno:**
+
+| asset del Release | tamaño | destino dentro de `Entrega/base_vectorial/` |
+|---|---:|---|
+| `minilm-index.faiss` | 197 MB | `encoder_paraphrase-multilingual-MiniLM-L12-v2/index.faiss` |
+| `gte-index.faiss` | 395 MB | `encoder_gte-multilingual-base/index.faiss` |
+| `e5-index.faiss` | 395 MB | `encoder_multilingual-e5-base/index.faiss` |
+| `metadata.jsonl.gz` | 34 MB | descomprimir y **copiar a los tres** `encoder_*/metadata.jsonl` |
+| `grafo.graphml.gz` | 16 MB | descomprimir en `grafo/grafo.graphml` |
+
+Se publica **un solo** `metadata.jsonl` porque los tres son **byte-idénticos
+por diseño**: el chunking se hace una única vez y los tres índices comparten
+el orden de filas. Ese es justamente el invariante que hace válida la
+cascada, y `validar_entrega.py` lo comprueba.
+
+Los `.faiss` **no se comprimen** (son floats casi aleatorios y no bajan de
+tamaño); el texto sí, y por eso los otros dos van en `.gz`. **Los `.gz` hay
+que descomprimirlos y borrarlos**: la sec. 1.4 exige `metadata.jsonl` en
+JSON Lines crudo y un `index.faiss` cargable directamente con
+`faiss.read_index()`, así que la carpeta de entrega no puede contener nada
+comprimido.
+
+Descargar los assets, con [`gh`](https://cli.github.com/) o sin él:
 
 ```bash
-gh release download indices-v2 -D /tmp/idx     # o descargar los assets a mano
-gunzip /tmp/idx/*.gz
-
-cd Entrega/base_vectorial 2>/dev/null || { mkdir -p Entrega/base_vectorial && cd $_; }
-mkdir -p encoder_paraphrase-multilingual-MiniLM-L12-v2 \
-         encoder_multilingual-e5-base \
-         encoder_gte-multilingual-base \
-         grafo
-
-cp /tmp/idx/minilm-index.faiss encoder_paraphrase-multilingual-MiniLM-L12-v2/index.faiss
-cp /tmp/idx/e5-index.faiss     encoder_multilingual-e5-base/index.faiss
-cp /tmp/idx/gte-index.faiss    encoder_gte-multilingual-base/index.faiss
-cp /tmp/idx/metadata.jsonl     encoder_paraphrase-multilingual-MiniLM-L12-v2/metadata.jsonl
-cp /tmp/idx/metadata.jsonl     encoder_multilingual-e5-base/metadata.jsonl
-cp /tmp/idx/metadata.jsonl     encoder_gte-multilingual-base/metadata.jsonl
-cp /tmp/idx/grafo.graphml      grafo/grafo.graphml
+gh release download indices-v2 -D idx        # necesita gh autenticado
 ```
 
-Sin `gh`, los assets están en
-`https://github.com/P1p2gamer26/CODEFEST_2026-1/releases/tag/indices-v2` y se
-bajan con `curl -sL -o <destino> <url del asset>`.
+Sin `gh`, se bajan a mano desde
+<https://github.com/P1p2gamer26/CODEFEST_2026-1/releases/tag/indices-v2>
+a una carpeta `idx/`, o con `curl` sobre la URL de cada asset.
 
-Los tres `metadata.jsonl` son **byte-idénticos por diseño**: el chunking se
-hace una sola vez y los tres índices comparten el orden de filas (es el
-invariante que hace válida la cascada). Por eso el Release publica uno solo.
+<details open>
+<summary><b>Linux / macOS</b> (bash)</summary>
 
-Verificación después de rehidratar:
+```bash
+B=Entrega/base_vectorial
+MINILM=$B/encoder_paraphrase-multilingual-MiniLM-L12-v2
+GTE=$B/encoder_gte-multilingual-base
+E5=$B/encoder_multilingual-e5-base
+mkdir -p "$MINILM" "$GTE" "$E5" "$B/grafo"
+
+cp idx/minilm-index.faiss "$MINILM/index.faiss"
+cp idx/gte-index.faiss    "$GTE/index.faiss"
+cp idx/e5-index.faiss     "$E5/index.faiss"
+
+gunzip -c idx/metadata.jsonl.gz > "$MINILM/metadata.jsonl"
+cp "$MINILM/metadata.jsonl" "$GTE/metadata.jsonl"
+cp "$MINILM/metadata.jsonl" "$E5/metadata.jsonl"
+gunzip -c idx/grafo.graphml.gz  > "$B/grafo/grafo.graphml"
+```
+</details>
+
+<details>
+<summary><b>Windows</b> (PowerShell)</summary>
+
+```powershell
+$B      = "Entrega\base_vectorial"
+$MINILM = "$B\encoder_paraphrase-multilingual-MiniLM-L12-v2"
+$GTE    = "$B\encoder_gte-multilingual-base"
+$E5     = "$B\encoder_multilingual-e5-base"
+foreach ($d in @($MINILM, $GTE, $E5, "$B\grafo")) {
+    New-Item -ItemType Directory -Force -Path $d | Out-Null
+}
+
+Copy-Item idx\minilm-index.faiss "$MINILM\index.faiss"
+Copy-Item idx\gte-index.faiss    "$GTE\index.faiss"
+Copy-Item idx\e5-index.faiss     "$E5\index.faiss"
+
+# PowerShell no trae gunzip; se descomprime con .NET, que viene con Windows.
+function Expand-Gz($src, $dst) {
+    $in  = [IO.File]::OpenRead($src)
+    $out = [IO.File]::Create($dst)
+    $gz  = New-Object IO.Compression.GZipStream($in, [IO.Compression.CompressionMode]::Decompress)
+    $gz.CopyTo($out); $gz.Dispose(); $out.Dispose(); $in.Dispose()
+}
+Expand-Gz "idx\metadata.jsonl.gz" "$MINILM\metadata.jsonl"
+Copy-Item "$MINILM\metadata.jsonl" "$GTE\metadata.jsonl"
+Copy-Item "$MINILM\metadata.jsonl" "$E5\metadata.jsonl"
+Expand-Gz "idx\grafo.graphml.gz"  "$B\grafo\grafo.graphml"
+```
+</details>
+
+Verificación después de rehidratar — comprueba la estructura de la sec. 1.4,
+que los tres índices estén alineados con su metadata y que no sobre ningún
+archivo:
 
 ```bash
 python dev/scripts/validar_entrega.py --esperar-50
@@ -88,9 +148,17 @@ python dev/scripts/validar_entrega.py --esperar-50
 | **corrida en frío** desde fuera del repo | **reproduce byte a byte** |
 | `informe_tecnico.pdf` | 8 de 8 páginas |
 
-### Métricas
+### Métricas — **medición interna del equipo, no una calificación oficial**
 
-Última medición local reproducida el **12 de agosto de 2026** con
+> **Léase esto antes que los números.** ADL **no publica** las etiquetas de
+> relevancia de las 50 consultas oficiales, así que no hay forma de conocer la
+> nota real antes de la evaluación. Las cifras de abajo salen de un **ground
+> truth construido por nosotros** para poder decidir entre configuraciones con
+> evidencia en vez de intuición. **No son la calificación de ADL, no la
+> predicen, y su valor absoluto significa poco**: sirven para comparar dos
+> versiones de nuestro propio sistema entre sí.
+
+Última medición reproducida el **12 de agosto de 2026** con
 `Entrega/resultados.jsonl` y `dev/scripts/eval_mini.py`:
 
 | muestra | F1@3 | NDCG@10 | NDCG penalizado |
@@ -99,30 +167,59 @@ python dev/scripts/validar_entrega.py --esperar-50
 | 41 de anotación humana | 0,518 | 0,573 | 0,554 |
 | 10 sin sesgo de pooling | 0,433 | 0,477 | 0,470 |
 
-El F1@3 global equivale al **55% del techo alcanzable de 0,906**. Hay
-**8 de 50 consultas con F1@3 igual a cero**, frente a 11 en la configuración
-anterior. Estas métricas se calculan contra el ground truth local y no son una
-calificación oficial de ADL.
+El F1@3 global equivale al **55% del techo alcanzable de 0,906**, y quedan
+**8 de 50 consultas con F1@3 igual a cero** (eran 11 en la configuración
+anterior).
 
-**El techo del F1@3 es 0,906 y no 1**: la sec. 10.2.2 fija P@3 = aciertos/3 con
-los tres cupos siempre llenos, así que una consulta con un solo documento
-relevante topa en 0,50. Citar siempre el 0,499 con el techo al lado.
+**El techo es 0,906 y no 1**: la sec. 10.2.2 fija P@3 = aciertos/3 con los
+tres cupos siempre llenos, así que una consulta con un solo documento
+relevante topa en 0,50 por construcción. Cualquier F1@3 hay que leerlo contra
+ese techo.
 
-**Cómo leer esto, sin autoengaños:**
+#### Cómo se construyó el ground truth
 
-- El ground truth es **propio y parcial** — ADL no lo publica. Un documento
-  no anotado cuenta como irrelevante aunque quizá no lo sea, así que el F1@3
-  real será **mayor o igual**. Los valores absolutos no significan gran cosa;
-  lo que importa es el orden entre configuraciones.
-- El **NDCG@10 es un proxy**: la relevancia de un fragmento se hereda de su
-  documento. Un fragmento de bibliografía de un documento relevante puntúa 1
-  acá y casi seguro 0 con ADL. Sirve para comparar dos configuraciones entre
-  sí, **no para estimar la nota**.
-- Las **10 consultas sin sesgo de pooling** son las que valen para comparar
-  encoders: sus candidatos no los propuso el recuperador, así que no le
-  juegan a favor.
-- El puntaje del concurso es **Conteo de Borda** entre NDCG@10 y F1@3:
-  posición relativa contra otros equipos, no un absoluto.
+Es **pooling manual**, la técnica estándar de TREC cuando no hay juicios
+publicados. Con 1.826 documentos y 50 consultas, anotar todo es imposible
+(91.300 pares), así que se anota solo lo que el sistema propone:
+
+1. **Se vuelca el pool de candidatos** de cada consulta a un archivo con
+   casillas para marcar (`dev/scripts/anotar_candidatos.py --generar`).
+2. **Una persona marca a mano** cuáles documentos responden realmente la
+   consulta, leyendo el fragmento. De ahí salen las **41 consultas de
+   anotación humana**.
+3. **Nueve consultas quedaron con cero marcas**: ninguno de los candidatos
+   propuestos era relevante, o sea que el fallo estaba en la construcción del
+   pool y no en el ranking. Para no dejarlas fuera del promedio se etiquetaron
+   con **anotación asistida** y van **marcadas como tales** en el archivo
+   (campo `anotador`), porque son el eslabón débil: medimos que ese
+   procedimiento reproduce al anotador humano con F1 0,23. `eval_mini.py`
+   desglosa por procedencia y tiene `--solo-humanas` para excluirlas.
+4. **Diez consultas se anotaron sin mirar lo que el sistema propone**, para
+   tener una muestra libre del sesgo de pooling (ver abajo).
+
+Todo el material está en `dev/eval/` y el procedimiento en `dev/eval/README.md`.
+
+#### Las tres advertencias que van siempre junto a los números
+
+- **Sesgo de pooling.** Un documento que el recuperador nunca propuso no se
+  anotó, así que cuenta como irrelevante aunque quizá no lo sea. Eso **infla**
+  al sistema que generó el pool, y por eso existen las **10 consultas sin
+  sesgo de pooling**: son las únicas válidas para comparar recuperadores
+  distintos entre sí. Más de una mejora "clara" del proyecto se descartó
+  precisamente porque su ganancia se evaporaba en esas 10.
+- **El NDCG@10 es un proxy.** La relevancia de un fragmento se hereda de su
+  documento, porque anotarla de verdad exigiría juicio graduado fragmento por
+  fragmento. Un fragmento de bibliografía dentro de un documento relevante
+  puntúa 1 en nuestra medición y casi seguro 0 con ADL. El **NDCG
+  penalizado** acota por abajo cuánto miente ese proxy descontando el aparato
+  bibliográfico.
+- **El puntaje del concurso es relativo.** Se combina NDCG@10 y F1@3 por
+  **Conteo de Borda**, o sea posición frente a los otros equipos, no un valor
+  absoluto.
+
+Cómo se decidió qué cambios entraban —contar victorias por consulta y no
+promedios, exigir intervalo de confianza, medir en dos muestras, fijar la
+regla antes de medir— está en `dev/docs/lecciones_metodologia.md`.
 
 ### Qué se probó y no funcionó
 
@@ -210,31 +307,10 @@ contrario de Git LFS, que en el plan gratuito da 1 GB total y **no permite
 recuperar el espacio** una vez subido algo (los objetos quedan atados al
 historial del repositorio).
 
-Después de clonar, para dejar `Entrega/base_vectorial/` completa:
-
-```bash
-gh release download indices-v3 -D /tmp/idx
-
-B=Entrega/base_vectorial
-MINILM=$B/encoder_paraphrase-multilingual-MiniLM-L12-v2
-E5=$B/encoder_multilingual-e5-base
-GTE=$B/encoder_gte-multilingual-base
-mkdir -p $MINILM $E5 $GTE $B/grafo
-
-cp /tmp/idx/minilm-index.faiss $MINILM/index.faiss
-cp /tmp/idx/e5-index.faiss     $E5/index.faiss
-cp /tmp/idx/gte-index.faiss    $GTE/index.faiss
-# Los tres metadata.jsonl son byte-identicos: comparten el chunking unico.
-gunzip -c /tmp/idx/metadata.jsonl.gz > $MINILM/metadata.jsonl
-cp $MINILM/metadata.jsonl $E5/metadata.jsonl
-cp $MINILM/metadata.jsonl $GTE/metadata.jsonl
-gunzip -c /tmp/idx/grafo.graphml.gz  > $B/grafo/grafo.graphml
-
-python dev/scripts/validar_entrega.py   # comprueba que quedo bien
-```
-
-**Los `.gz` se descomprimen y se borran**: la carpeta de entrega lleva solo
-archivos crudos (sec. 1.4), y `validar_entrega.py` falla si sobra alguno.
+Los pasos para rehidratarla, en Linux/macOS y en Windows, están al principio
+de este README (seccion "Primero: rehidratar `Entrega/base_vectorial/`"), que
+es lo primero que hay que hacer despues de clonar. El tag publicado es
+**`indices-v2`**.
 
 #### Cómo PUBLICAR el Release (cuando se regeneran los índices)
 
@@ -259,7 +335,7 @@ gzip -6 -k $B/grafo/grafo.graphml
 # 2. Publicar. El script comprueba que los cinco archivos existan antes de
 #    intentar nada, y sube un solo metadata: los tres encoders lo tienen
 #    byte-identico porque comparten el chunking unico.
-bash dev/scripts/publicar_release.sh indices-v3
+bash dev/scripts/publicar_release.sh indices-v2
 
 # 3. Borrar los .gz de la carpeta de entrega: eran solo para subir.
 rm $B/encoder_paraphrase-multilingual-MiniLM-L12-v2/metadata.jsonl.gz \
@@ -308,7 +384,14 @@ el chunking se hace una sola vez y ambos índices comparten el orden de filas.
 
 ## 2. Requisitos previos
 
-- **Python 3.11 o superior** (probado con 3.13). Verificar con:
+- **Python.** Hay dos umbrales distintos y conviene no confundirlos:
+  - **`Entrega/generador.py` corre con Python ≥ 3.9.5**, que es la versión con
+    la que evalúa ADL (confirmado en la Q&A final). Es autocontenido y no
+    importa nada de `dev/`, así que reproducir `resultados.jsonl` solo necesita
+    eso. Un test lo vigila: el script no usa sintaxis posterior a 3.9.
+  - **El resto del repo** (fase offline, barridos, GUI, tests) se desarrolló
+    con **3.11+** y está probado en 3.13.
+
   ```bash
   python --version   # o: python3 --version
   ```
@@ -796,7 +879,7 @@ Mapeo directo a la Sección 1.4 ("Entregables") de
 | # | Entregable exigido | Dónde está | Estado |
 |---|---|---|---|
 | 1 | Base vectorial: `index.faiss` + `metadata.jsonl` por encoder, en `base_vectorial/encoder_<nombre>/` | `Entrega/base_vectorial/encoder_*/` (**tres**) | ✅ generados con encoders reales, `index.faiss` serializado con `faiss.write_index()`. La sec. 1.4 permite una subcarpeta por encoder; los tres `metadata.jsonl` son byte-idénticos porque comparten el chunking único |
-| 1b | Grafo de conocimiento (bonus) en `base_vectorial/grafo/grafo.graphml` | `Entrega/base_vectorial/grafo/grafo.graphml` | ✅ construido sobre el corpus real: **224.101 nodos, 754.876 aristas** de 1.687 documentos, y `validar_entrega.py` comprueba que todos sus `doc_id` estén indexados (trazabilidad, sec. 7.3). Se entrega el artefacto, pero `resultados.jsonl` se genera **sin** `--use-graph`: medida su fusión RRF, no mejora ninguna de las 10 consultas de anotación independiente (pierde 3-0) |
+| 1b | Grafo de conocimiento (bonus) en `base_vectorial/grafo/grafo.graphml` | `Entrega/base_vectorial/grafo/grafo.graphml` | ✅ construido sobre el corpus real: **224.101 nodos, 754.876 aristas** de 1.687 documentos, y `validar_entrega.py` comprueba que todos sus `doc_id` estén indexados (trazabilidad, sec. 7.3). El grafo **entra en la corrida oficial**, como pide la sec. 7 para conceder el bonus, pero **no por fusión RRF** — esa variante está medida y degrada la recuperación (pierde 11-0 sobre las 50). Entra como **desempate no desplazante**: solo reordena candidatos empatados en score, nunca desplaza a uno mejor puntuado. Medido sobre la entrega: cambia **0 de 50 líneas**, o sea integración del artefacto sin costo en métrica. Se apaga con `--sin-grafo` |
 | 2 | `resultados.jsonl`, 50 líneas, consultas q001–q050 | `Entrega/resultados.jsonl` | ✅ generado con las **50 consultas oficiales** (`dev/consultas_prueba/consultas_50_oficiales.jsonl`) sobre el índice del corpus real, y verificado reproducible byte a byte desde una carpeta aislada |
 | 3 | Documento técnico en PDF (máx. 8 páginas): chunking, encoder(s), tipo de índice FAISS, grafo | `Entrega/informe_tecnico.pdf` | ✅ |
 | 4 | Script `generador.py` que reproduce `resultados.jsonl` desde el índice | `Entrega/generador.py` | ✅ |
@@ -814,7 +897,7 @@ Esquema del resultado por consulta (Sección 9 de la especificación: 3
 documentos con `rank`/`doc_id`, 10 fragmentos con `rank`/`chunk_id`/`doc_id`/
 `text` ≤250 palabras) se valida con el comando de la sección 4, paso 3.
 
-### Dos requisitos que casi cuestan la exclusión
+### Tres requisitos que casi cuestan la exclusión
 
 Ninguno se veía corriendo el camino feliz; los encontró
 `dev/scripts/pruebas_robustez.py`, que ejercita `generador.py` **como lo va a
@@ -828,15 +911,22 @@ vacío y con entradas que no preparamos nosotros.
   detectaba porque el venv local corre 3.13.
 - **BOM en el archivo de consultas.** Se leía con `utf-8`, y cualquier
   archivo guardado con Excel, Bloc de notas o PowerShell en Windows lleva
-  BOM. El archivo lo entrega ADL y no controlamos cómo lo guardan. Ahora se
-  lee con `utf-8-sig`.
+  BOM. El archivo lo entrega ADL y no controlamos cómo lo guardan.
+- **Codificación ANSI (cp1252).** Es la misma clase de fallo, y quedó abierta
+  al arreglar solo el BOM: `Set-Content` de Windows PowerShell escribe cp1252
+  por defecto y las 50 consultas van en español con acentos, así que el script
+  moría con `UnicodeDecodeError` antes de leer una consulta. `load_consultas`
+  prueba ahora `utf-8-sig` → `cp1252` → `latin-1`, y el último **no puede
+  fallar** porque decodifica cualquier byte. Verificado que las cuatro
+  variantes —utf-8, BOM, cp1252 y CRLF— devuelven las mismas 50 consultas.
 
 **La lección, que vale más que los dos arreglos:** probá el artefacto que
 entregás, en las condiciones en que lo van a usar — no las funciones que
 escribiste.
 
-**Pendiente:** publicar los índices como Release (sección 1.1) cuando se
-regeneren.
+**Los índices ya están publicados** en el Release `indices-v2` (cinco assets,
+1,6 GB). Hay que volver a publicarlos solo si se reconstruyen; el
+procedimiento está en la sección 1.1.
 
 ## 8. Estructura del proyecto
 

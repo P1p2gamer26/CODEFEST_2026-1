@@ -83,14 +83,18 @@ FASE ONLINE (cada vez que llega una consulta)
   prefijos.
 - **`retrieval/`** — `search.py` busca los k vecinos más cercanos en FAISS;
   `aggregate.py` colapsa fragmentos a nivel de documento (para elegir los 3
-  documentos más relevantes); `rerank.py` implementa la **cascada de tres
-  encoders que se entrega** (MiniLM genera 200 candidatos, y gte y e5 los
-  re-puntúan con peso 0,25 cada uno leyendo su vector del índice con
-  `reconstruct()`, sin recodificar ningún pasaje); `fusion.py` implementa
+  documentos más relevantes, sumando los 6 mejores fragmentos de cada uno, y
+  post-filtrando por fenómeno dominante); `rerank.py` implementa la **cascada
+  de tres encoders que se entrega**: MiniLM genera 200 candidatos y gte y e5
+  los re-puntúan leyendo su vector del índice con `reconstruct()`, sin
+  recodificar ningún pasaje. Los tres cosenos **se calibran min-max por
+  consulta antes de sumarse** —no comparten dispersión, aunque compartan el
+  rango teórico— con pesos 0,50 (gte) y 1,00 (e5). `fusion.py` implementa
   Reciprocal Rank Fusion
-  (RRF) para combinar varias listas ordenadas —el grafo tratado como un
-  "índice" adicional (sec. 8.5); la fusión RRF *simétrica de dos encoders*
-  existe pero **se midió y se descartó** en favor de la cascada—;
+  (RRF) para combinar varias listas ordenadas —la fusión RRF *simétrica de dos
+  encoders* existe pero **se midió y se descartó** en favor de la cascada, y
+  fusionar el grafo como una lista más también se midió y pierde: el grafo
+  entra como desempate no desplazante—;
   `truncate.py` recorta
   cada fragmento a <=250 palabras según pide el esquema de entrega.
 

@@ -8,7 +8,7 @@
 # Uso:  bash dev/scripts/publicar_release.sh [tag]
 set -euo pipefail
 
-TAG="${1:-indices-v3}"
+TAG="${1:-indices-v2}"
 B=Entrega/base_vectorial
 MINILM="$B/encoder_paraphrase-multilingual-MiniLM-L12-v2"
 

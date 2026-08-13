@@ -1469,7 +1469,11 @@ DEFAULT_K_POOL = 200  # E39: candidatos usados para agregar a nivel documento;
 # seis lecturas; 0,75 y 0,90 fallan sobre las 50. Por eso la grilla quedo
 # cerrada y NO se escala a "el re-puntuador deberia ser el primario", que es
 # otra hipotesis y necesita su propio experimento.
-DEFAULT_RERANK_WEIGHTS = [0.50, 1.00]  # GTE, E5; E39, calibrados por consulta
+DEFAULT_RERANK_WEIGHTS = [0.50, 1.00]  # gte, e5 -- en el orden de
+# DEFAULT_RERANK_ENCODERS. Pero el peso pertenece al ENCODER, no a la
+# posicion: con el mapa de abajo, pedir un solo re-puntuador conserva el peso
+# con el que se midio ese encoder en vez de fallar por contar dos pesos y un
+# nombre. Es el fallback que documenta el mensaje de error de carga de gte.
 DEFAULT_RERANK_NORMALIZATION = "minmax"
 DEFAULT_RERANK_DEPTH = 200
 
@@ -1505,6 +1509,11 @@ DEFAULT_RERANK_DEPTH = 200
 # similitud sobre la misma lista y la suma es conmutativa. El recorte a
 # rerank_depth se hace una sola vez, antes del primero.
 DEFAULT_RERANK_ENCODERS = [ENCODER_RERANK_NAME, ENCODER_SECONDARY_NAME]
+
+# El peso pertenece al encoder, no a su posicion en la lista. Se usa cuando no
+# se pasa --rerank-weight, y es lo que hace que pedir UN solo re-puntuador
+# siga funcionando con el peso con el que se midio.
+DEFAULT_RERANK_WEIGHT_BY_NAME = dict(zip(DEFAULT_RERANK_ENCODERS, DEFAULT_RERANK_WEIGHTS))
 
 
 def load_consultas(path: Path) -> list[dict]:
@@ -1768,9 +1777,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--rerank-weight",
         type=float,
         nargs="+",
-        default=list(DEFAULT_RERANK_WEIGHTS),
-        help="Pesos de los re-puntuadores en el mismo orden de --rerank-encoder. "
-        "Un solo valor se aplica a todos.",
+        default=None,
+        help="Pesos de los re-puntuadores, en el mismo orden de --rerank-encoder. "
+        "Un solo valor se aplica a todos. Si no se pasa, cada encoder usa el peso "
+        "con el que se midio (gte 0.50, e5 1.00) y cualquier otro usa 1.00.",
     )
     parser.add_argument(
         "--rerank-normalization",
@@ -1916,13 +1926,21 @@ def main() -> None:
     if args.use_fake_encoder:
         # El encoder falso no tiene un indice secundario real que re-puntuar.
         nombres_rerank = []
-    pesos_rerank = list(args.rerank_weight)
-    if not nombres_rerank:
-        pesos_rerank = []
-    if len(pesos_rerank) == 1 and nombres_rerank:
-        pesos_rerank *= len(nombres_rerank)
-    if len(pesos_rerank) != len(nombres_rerank):
-        parser.error("--rerank-weight requiere uno o tantos valores como --rerank-encoder")
+    if args.rerank_weight is None:
+        # Sin --rerank-weight, el peso lo decide el NOMBRE del encoder. Asi
+        # `--rerank-encoder multilingual-e5-base` (el fallback documentado para
+        # cuando gte no se puede descargar) funciona en vez de abortar porque
+        # los pesos por defecto son dos y el nombre uno.
+        pesos_rerank = [DEFAULT_RERANK_WEIGHT_BY_NAME.get(nombre, 1.00)
+                        for nombre in nombres_rerank]
+    else:
+        pesos_rerank = list(args.rerank_weight)
+        if not nombres_rerank:
+            pesos_rerank = []
+        if len(pesos_rerank) == 1 and nombres_rerank:
+            pesos_rerank *= len(nombres_rerank)
+        if len(pesos_rerank) != len(nombres_rerank):
+            parser.error("--rerank-weight requiere uno o tantos valores como --rerank-encoder")
     for nombre_r, peso_r in zip(nombres_rerank, pesos_rerank):
         try:
             enc_r = get_encoder(name=nombre_r, use_fake=args.use_fake_encoder)
